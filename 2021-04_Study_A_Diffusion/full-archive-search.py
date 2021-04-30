@@ -5,14 +5,14 @@ import time
 import csv
 
 # obtain credentials from file
-with open('2021-04_Study_A_Diffusion/Twitter_API_credentials.json', 'r') as f:
+with open('Twitter_API_credentials.json', 'r') as f:
     creds = json.loads(f.read())
 
 bearer_token = creds['bearertoken'] 
 
 
 # obtain search terms
-with open('2021-04_Study_A_Diffusion/search_hashtags.csv', newline='') as f:
+with open('search_hashtags.csv', newline='') as f:
     terms = list(csv.reader(f))
 
 # unroll list
