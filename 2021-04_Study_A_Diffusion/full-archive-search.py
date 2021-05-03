@@ -3,6 +3,7 @@ import os
 import json
 import time
 import csv
+import datetime
 
 # obtain credentials from file
 with open('Twitter_API_credentials.json', 'r') as f:
@@ -40,12 +41,27 @@ def create_headers(bearer_token):
 def connect_to_endpoint(url, headers, params):
     response = requests.request("GET", search_url, headers=headers, params=params)
     #print(response.status_code)
-    if response.status_code != 200:
-        raise Exception(response.status_code, response.text)
+    if response.status_code == 429:
+        try_count = 0
+        while try_count < 10 and response.status_code == 429: 
+            time.sleep(3)
+            response = requests.request("GET", search_url, headers=headers, params=params) 
+            try_count += 1
+            if response.status_code == 200:
+                continue
+    elif response.status_code != 200:
+        print(url)
+        print(headers)
+        print(params)
+        print(response.status_code)
+        print(response.text)
     return response.json()
 
 
 def main():
+
+    # print start time for records
+    print(datetime.datetime.now())
 
     # create results file
     results_file = open('results.csv', 'w')
