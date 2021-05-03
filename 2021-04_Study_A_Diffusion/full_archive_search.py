@@ -10,7 +10,6 @@ with open('Twitter_API_credentials.json', 'r') as f:
 
 bearer_token = creds['bearertoken'] 
 
-
 # obtain search terms
 with open('search_hashtags.csv', newline='') as f:
     terms = list(csv.reader(f))
@@ -79,7 +78,7 @@ def main():
     json_response = connect_to_endpoint(search_url, headers, query_params)
 
     # store results in csv format
-    results_header = json_response['data'][0].keys()
+    results_header = ('author_id', 'text', 'created_at', 'id')
     results_writer.writerow(results_header)
     for tweet_result in json_response['data']:
         results_writer.writerow(tweet_result.values())
@@ -90,12 +89,12 @@ def main():
         pagination_params['next_token'] = json_response['meta']['next_token']
         json_response = connect_to_endpoint(search_url, headers, pagination_params)
         for tweet_result in json_response['data']:
-            result_row = [
+            result_row = (
                 try_field(tweet_result,'author_id'),
                 try_field(tweet_result,'text'),
                 try_field(tweet_result,'created_at'),
                 try_field(tweet_result,'id')
-            ]
+            )
             results_writer.writerow(result_row)
         count += 1
         if count % 100 == 0:
