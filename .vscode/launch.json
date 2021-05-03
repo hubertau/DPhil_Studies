@@ -11,6 +11,15 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "cwd" : "${workspaceFolder}/2021-04_Study_A_Diffusion/"
+        },
+        {
+            "name": "Get Unique Users from Results File",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/unique_users.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/2021-04_Study_A_Diffusion/",
+            "args": ["results.csv"]
         }
     ]
 }
