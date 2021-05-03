@@ -56,6 +56,11 @@ def connect_to_endpoint(url, headers, params):
         print(response.text)
     return response.json()
 
+def try_field(tweet_result_obj, field_name):
+    try:
+        return tweet_result_obj[field_name]
+    except:
+        return 'NA'
 
 def main():
 
@@ -85,7 +90,13 @@ def main():
         pagination_params['next_token'] = json_response['meta']['next_token']
         json_response = connect_to_endpoint(search_url, headers, pagination_params)
         for tweet_result in json_response['data']:
-            results_writer.writerow(tweet_result.values())
+            result_row = [
+                try_field(tweet_result,'author_id'),
+                try_field(tweet_result,'text'),
+                try_field(tweet_result,'created_at'),
+                try_field(tweet_result,'id')
+            ]
+            results_writer.writerow(result_row)
         count += 1
         if count % 100 == 0:
             print(count)
