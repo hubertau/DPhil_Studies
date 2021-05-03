@@ -81,7 +81,13 @@ def main():
     results_header = ('author_id', 'text', 'created_at', 'id')
     results_writer.writerow(results_header)
     for tweet_result in json_response['data']:
-        results_writer.writerow(tweet_result.values())
+        result_row = (
+                try_field(tweet_result,'author_id'),
+                try_field(tweet_result,'text'),
+                try_field(tweet_result,'created_at'),
+                try_field(tweet_result,'id')
+            )       
+        results_writer.writerow(result_row)
 
     while 'next_token' in json_response['meta']:
         time.sleep(3)
