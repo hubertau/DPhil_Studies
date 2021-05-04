@@ -5,6 +5,25 @@ import csv
 import datetime
 import logging
 import os
+import argparse
+
+
+parser = argparse.ArgumentParser(description='Full Archive Search on Twitter. Supply search hashtags with search_hashtags.csv in the same directory.')
+
+parser.add_argument(
+    '--continue_from',
+    type = str,
+    default = 'NA'
+)
+
+parser.add_argument(
+    '--count_from',
+    type = int,
+    default = 1
+)
+
+args = parser.parse_args()
+
 
 # obtain credentials from file
 with open('Twitter_API_credentials.json', 'r') as f:
@@ -94,7 +113,9 @@ def main():
     headers = create_headers(bearer_token)
 
     # get first response
-    count = 1
+    count = args.count_from
+    if args.continue_from != 'NA':
+        query_params['next_token'] = args.continue_from
     json_response = connect_to_endpoint(search_url, headers, query_params)
     file_to_save = json_response['data']
     save_filename = os.path.join(DATA_PATH, 'FAS_' + str(count) + '.json')
