@@ -3,6 +3,8 @@ import json
 import time
 import csv
 import datetime
+import logging
+import os
 
 # obtain credentials from file
 with open('Twitter_API_credentials.json', 'r') as f:
@@ -37,22 +39,26 @@ def create_headers(bearer_token):
 
 
 def connect_to_endpoint(url, headers, params):
-    response = requests.request("GET", search_url, headers=headers, params=params)
+    response = requests.request("GET", url, headers=headers, params=params)
     #print(response.status_code)
     if response.status_code == 429:
         try_count = 0
         while try_count < 10 and response.status_code == 429: 
             time.sleep(3)
-            response = requests.request("GET", search_url, headers=headers, params=params) 
+            response = requests.request("GET", url, headers=headers, params=params) 
             try_count += 1
             if response.status_code == 200:
                 continue
+        logging.info('\nResult after some retries of 429 response code')
+        logging.info('response code: {}'.format(response.status_code))
+        logging.info('search url: {}'.format(url))
+        logging.info('headers: {}'.format(headers))
+        logging.info('query parameters: {}\n'.format(params))
     elif response.status_code != 200:
-        print(url)
-        print(headers)
-        print(params)
-        print(response.status_code)
-        print(response.text)
+        logging.info('\nresponse code: {}'.format(response.status_code))
+        logging.info('search url: {}'.format(url))
+        logging.info('headers: {}'.format(headers))
+        logging.info('query parameters: {}\n'.format(params))
     return response.json()
 
 def try_field(tweet_result_obj, field_name):
@@ -64,10 +70,25 @@ def try_field(tweet_result_obj, field_name):
 def main():
 
     # print start time for records
-    print(datetime.datetime.now())
+    start_time = datetime.datetime.now()
+    print(start_time)
+    logging.info('Full Archive Search Collection Start: {}'.format(start_time))
+
+    # obtain current run time for reuslts
+    CURRENT_RUN_TIME = datetime.datetime.today()
+    CURRENT_RUN_TIME = CURRENT_RUN_TIME.strftime("%Y_%m_%d_%H_%M")
+
+    # creating new path
+    OUTPUT_PATH = os.path.join('collection_results_' + CURRENT_RUN_TIME)
+
+    # set up logging file
+    logging.basicConfig(filename=os.path.join(OUTPUT_PATH, 'full_archive_search.log'),
+                        format='%(levelname)s:%(message)s',
+                        level=logging.DEBUG)
 
     # create results file
-    results_file = open('results.csv', 'w')
+    results_path = os.path.join(OUTPUT_PATH, 'results.csv')
+    results_file = open(results_path, 'w')
     results_writer = csv.writer(results_file)
 
     # create headers with bearer token
@@ -93,7 +114,11 @@ def main():
         time.sleep(3)
         pagination_params = query_params
         pagination_params['next_token'] = json_response['meta']['next_token']
+        logging.info(json_response['meta']['next_token'])
         json_response = connect_to_endpoint(search_url, headers, pagination_params)
+        if 'data' not in json_response:
+            logging.info(json_response)
+            continue
         for tweet_result in json_response['data']:
             result_row = (
                 try_field(tweet_result,'author_id'),
@@ -109,6 +134,11 @@ def main():
     # close writing to results
     results_file.close()
 
+    # data collection end time
+    end_time = datetime.datetime.now()
+    print(end_time)
+    logging.info('End Time: {}'.foramt(end_time))
+    logging.info('Time Elapsed: {}'.format(end_time-start_time))
 
 if __name__ == "__main__":
     main()
