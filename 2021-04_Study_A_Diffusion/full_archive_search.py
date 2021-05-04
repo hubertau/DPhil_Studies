@@ -135,13 +135,12 @@ def main():
         count += 1
         file_to_save.extend(json_response['data'])
         if count % 200 == 0:
+            print(count)
             logging.info(count)
             save_filename = os.path.join(DATA_PATH, 'FAS_' + str(count) + '.json')
             with open(save_filename, 'w') as f:
                 json.dump(file_to_save, f)
             file_to_save = []
-            if count == 200:
-                break
 
     # data collection end time
     end_time = datetime.datetime.now()
