@@ -69,11 +69,6 @@ def try_field(tweet_result_obj, field_name):
 
 def main():
 
-    # print start time for records
-    start_time = datetime.datetime.now()
-    print(start_time)
-    logging.info('Full Archive Search Collection Start: {}'.format(start_time))
-
     # obtain current run time for reuslts
     CURRENT_RUN_TIME = datetime.datetime.today()
     CURRENT_RUN_TIME = CURRENT_RUN_TIME.strftime("%Y_%m_%d_%H_%M")
@@ -81,10 +76,22 @@ def main():
     # creating new path
     OUTPUT_PATH = os.path.join('collection_results_' + CURRENT_RUN_TIME)
 
+    # generate folder for output
+    os.makedirs(OUTPUT_PATH, exist_ok=True)
+
     # set up logging file
     logging.basicConfig(filename=os.path.join(OUTPUT_PATH, 'full_archive_search.log'),
+                        encoding='utf-8',
                         format='%(levelname)s:%(message)s',
                         level=logging.DEBUG)
+
+    # log search query
+    logging.info(terms)
+
+    # print start time for records
+    start_time = datetime.datetime.now()
+    print(start_time)
+    logging.info('Full Archive Search Collection Start: {}'.format(start_time))
 
     # create results file
     results_path = os.path.join(OUTPUT_PATH, 'results.csv')
@@ -129,7 +136,7 @@ def main():
             results_writer.writerow(result_row)
         count += 1
         if count % 100 == 0:
-            print(count)
+            logging.info(count)
 
     # close writing to results
     results_file.close()
