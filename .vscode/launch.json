@@ -5,12 +5,23 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Get User Timelines from Full Archive Results",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/user_tweets.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/2021-04_Study_A_Diffusion/",
+            "args": [
+                "results-04-05-2021.csv"
+            ]
+        },
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "cwd" : "${workspaceFolder}/2021-04_Study_A_Diffusion/"
+            "cwd": "${workspaceFolder}/2021-04_Study_A_Diffusion/"
         },
         {
             "name": "Get Unique Users from Results File",
@@ -19,7 +30,10 @@
             "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/unique_users.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/2021-04_Study_A_Diffusion/",
-            "args": ["results.csv"]
+            "args": [
+                "--file",
+                "results.csv"
+            ]
         }
     ]
 }
