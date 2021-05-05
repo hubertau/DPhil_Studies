@@ -11,9 +11,6 @@ def get_unique_users(input_tweets_csv):
     # read in file
     DATA = pd.read_csv(input_tweets_csv)
 
-    # convert ISO 8601 time from Twitter to DateTime objects
-    DATA['created_at'] = pd.to_datetime(DATA['created_at'])
-
     users_and_counts = Counter(DATA['author_id'])
 
     return users_and_counts
