@@ -24,6 +24,17 @@
             "cwd": "${workspaceFolder}/2021-04_Study_A_Diffusion/"
         },
         {
+            "name": "Parsing Full Archive Search Result Files",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/archive_postprocess.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22"
+            ]
+        },
+        {
             "name": "Get Unique Users from Results File",
             "type": "python",
             "request": "launch",

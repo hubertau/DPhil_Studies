@@ -7,5 +7,7 @@
 			"path": "../DemTech/2021-03c-Monthly_Briefing_Calls/weekly_public"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"jupyter.jupyterServerType": "local"
+	}
 }
