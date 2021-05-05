@@ -46,7 +46,7 @@ def main():
     output_file = os.path.join(data_path,'parsed_FAS.csv')
 
     # get list of json files collected
-    file_list = sorted(glob.glob(data_path + '/*.json'), key=os.path.getctime)
+    file_list = sorted(glob.glob(data_path + '/FAS_*.json'), key=os.path.getctime)
 
     for each_file in file_list:
         convert_json_to_csv(each_file, output_file)
