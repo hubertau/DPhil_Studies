@@ -7,60 +7,6 @@ import logging
 import os
 import argparse
 
-
-parser = argparse.ArgumentParser(description='Full Archive Search on Twitter. Supply search hashtags with search_hashtags.csv in the same directory.')
-
-parser.add_argument(
-    '--continue_from',
-    type = str,
-    default = 'NA'
-)
-
-parser.add_argument(
-    '--count_from',
-    type = int,
-    default = 0
-)
-
-parser.add_argument(
-    '--existing_folder',
-    help = 'any pre-existing data collection folder that was interrupted (e.g. 503 service unavailable). To be used in conjunction with --count_from and --countinue_from',
-    type = str,
-    default = 'NA'
-)
-
-args = parser.parse_args()
-
-
-# obtain credentials from file
-with open('Twitter_API_credentials.json', 'r') as f:
-    creds = json.loads(f.read())
-
-bearer_token = creds['bearertoken'] 
-
-# obtain search terms
-with open('search_hashtags.csv', newline='') as f:
-    terms = list(csv.reader(f))
-
-# unroll list
-terms = [i[0] for i in terms]
-search_query = ' OR '.join(terms)
-assert len(search_query) <= 1024, 'Search query is above 1024 characters in length'
-
-search_url = "https://api.twitter.com/2/tweets/search/all"
-
-# Optional params: start_time,end_time,since_id,until_id,max_results,next_token,
-# expansions,tweet.fields,media.fields,poll.fields,place.fields,user.fields
-query_params = {
-                    'query': search_query,
-                    'tweet.fields':'author_id,conversation_id,created_at,entities,geo,in_reply_to_user_id,lang,public_metrics,possibly_sensitive,referenced_tweets',
-                    'media.fields':'media_key,type,preview_image_url',
-                    'place.fields':'full_name,id,country,country_code,geo,name,place_type',
-                    'start_time':'2017-10-17T00:00:00Z',
-                    'end_time': '2017-12-31T23:59:59Z',
-                    'max_results':100
-               }
-
 def create_headers(bearer_token):
     headers = {"Authorization": "Bearer {}".format(bearer_token)}
     return headers
@@ -99,8 +45,58 @@ def connect_to_endpoint(url, headers, params):
 
 def main():
 
-    
+    parser = argparse.ArgumentParser(description='Full Archive Search on Twitter. Supply search hashtags with search_hashtags.csv in the same directory.')
 
+    parser.add_argument(
+        '--continue_from',
+        type = str,
+        default = 'NA'
+    )
+
+    parser.add_argument(
+        '--count_from',
+        type = int,
+        default = 0
+    )
+
+    parser.add_argument(
+        '--existing_folder',
+        help = 'any pre-existing data collection folder that was interrupted (e.g. 503 service unavailable). To be used in conjunction with --count_from and --countinue_from',
+        type = str,
+        default = 'NA'
+    )
+
+    args = parser.parse_args()
+
+
+    # obtain credentials from file
+    with open('Twitter_API_credentials.json', 'r') as f:
+        creds = json.loads(f.read())
+
+    bearer_token = creds['bearertoken'] 
+
+    # obtain search terms
+    with open('search_hashtags.csv', newline='') as f:
+        terms = list(csv.reader(f))
+
+    # unroll list
+    terms = [i[0] for i in terms]
+    search_query = ' OR '.join(terms)
+    assert len(search_query) <= 1024, 'Search query is above 1024 characters in length'
+
+    search_url = "https://api.twitter.com/2/tweets/search/all"
+
+    # Optional params: start_time,end_time,since_id,until_id,max_results,next_token,
+    # expansions,tweet.fields,media.fields,poll.fields,place.fields,user.fields
+    query_params = {
+                        'query': search_query,
+                        'tweet.fields':'author_id,conversation_id,created_at,entities,geo,in_reply_to_user_id,lang,public_metrics,possibly_sensitive,referenced_tweets',
+                        'media.fields':'media_key,type,preview_image_url',
+                        'place.fields':'full_name,id,country,country_code,geo,name,place_type',
+                        'start_time':'2017-10-17T00:00:00Z',
+                        'end_time': '2017-12-31T23:59:59Z',
+                        'max_results':100
+                }
     # generate folder or identify folder for output
     if args.existing_folder == 'NA':
         # obtain current run time for reuslts
@@ -127,6 +123,7 @@ def main():
         
         else:
 
+            # sanity check
             assert os.path.isdir(os.path.join(os.getcwd(), args.existing_folder))
 
             OUTPUT_PATH = os.path.join(os.getcwd(), args.existing_folder)
@@ -149,7 +146,7 @@ def main():
     # create headers with bearer token
     headers = create_headers(bearer_token)
 
-    # get first response
+    # get first response. enable starting from a specific next_token
     count = args.count_from + 1
     if args.continue_from != 'NA':
         query_params['next_token'] = args.continue_from
@@ -159,7 +156,10 @@ def main():
     with open(save_filename, 'w') as f:
         json.dump(file_to_save, f)
 
+    # generate empty list to append to
     file_to_save = []
+
+    # loop over next tokens until there are none
     while 'next_token' in json_response['meta']:
         time.sleep(3)
         pagination_params = query_params
