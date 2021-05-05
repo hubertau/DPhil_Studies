@@ -75,12 +75,21 @@ def connect_to_endpoint(url, headers, params):
             response = requests.request("GET", url, headers=headers, params=params) 
             try_count += 1
             if response.status_code == 200:
-                continue
+                return response.json()
         logging.info('\nResult after some retries of 429 response code')
         logging.info('response code: {}'.format(response.status_code))
         logging.info('search url: {}'.format(url))
         logging.info('headers: {}'.format(headers))
         logging.info('query parameters: {}\n'.format(params))
+    elif response.status_code == 503:
+        # error code 503 means: The Twitter servers are up, but overloaded with requests. Try again later.
+        try_count = 0
+        while try_count < 1000:
+            time.sleep(3)
+            response = requests.request("GET", url, headers=headers, params=params)
+            try_count += 1
+            if response.status_code == 200:
+                return response.json()
     elif response.status_code != 200:
         logging.info('\nresponse code: {}'.format(response.status_code))
         logging.info('search url: {}'.format(url))
