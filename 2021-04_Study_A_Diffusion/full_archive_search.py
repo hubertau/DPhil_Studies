@@ -19,7 +19,14 @@ parser.add_argument(
 parser.add_argument(
     '--count_from',
     type = int,
-    default = 1
+    default = 0
+)
+
+parser.add_argument(
+    '--existing_folder',
+    help = 'any pre-existing data collection folder that was interrupted (e.g. 503 service unavailable). To be used in conjunction with --count_from and --countinue_from',
+    type = str,
+    default = 'NA'
 )
 
 args = parser.parse_args()
@@ -83,17 +90,38 @@ def connect_to_endpoint(url, headers, params):
 
 def main():
 
-    # obtain current run time for reuslts
-    CURRENT_RUN_TIME = datetime.datetime.today()
-    CURRENT_RUN_TIME = CURRENT_RUN_TIME.strftime("%Y_%m_%d_%H_%M")
+    
 
-    # creating new path
-    OUTPUT_PATH = os.path.join('collection_results_' + CURRENT_RUN_TIME)
-    DATA_PATH   = os.path.join(OUTPUT_PATH, 'data')
+    # generate folder or identify folder for output
+    if args.existing_folder == 'NA':
+        # obtain current run time for reuslts
+        CURRENT_RUN_TIME = datetime.datetime.today()
+        CURRENT_RUN_TIME = CURRENT_RUN_TIME.strftime("%Y_%m_%d_%H_%M")
 
-    # generate folder for output
-    os.makedirs(OUTPUT_PATH, exist_ok=True)
-    os.makedirs(DATA_PATH, exist_ok=True)
+        # creating new path
+        OUTPUT_PATH = os.path.join('collection_results_' + CURRENT_RUN_TIME)
+        DATA_PATH   = os.path.join(OUTPUT_PATH, 'data')
+
+        # create folders
+        os.makedirs(OUTPUT_PATH, exist_ok=True)
+        os.makedirs(DATA_PATH, exist_ok=True)
+
+    else:
+
+        # simply point OUTPUT_PATH and DATA_PATH to the correct places
+        if os.path.isabs(args.existing_folder):
+
+            assert os.path.isdir(args.existing_folder)
+
+            OUTPUT_PATH = args.existing_folder
+            DATA_PATH   = os.path.join(OUTPUT_PATH, 'data')
+        
+        else:
+
+            assert os.path.isdir(os.path.join(os.getcwd(), args.existing_folder))
+
+            OUTPUT_PATH = os.path.join(os.getcwd(), args.existing_folder)
+            DATA_PATH   = os.path.join(OUTPUT_PATH, 'data') 
 
     # set up logging file
     logging.basicConfig(filename=os.path.join(OUTPUT_PATH, 'full_archive_search.log'),
@@ -113,7 +141,7 @@ def main():
     headers = create_headers(bearer_token)
 
     # get first response
-    count = args.count_from
+    count = args.count_from + 1
     if args.continue_from != 'NA':
         query_params['next_token'] = args.continue_from
     json_response = connect_to_endpoint(search_url, headers, query_params)
