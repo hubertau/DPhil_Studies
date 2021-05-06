@@ -11,16 +11,19 @@ def main():
 
     users = [i.replace('\n','') for i in users]
 
-    for user_id in tqdm.tqdm(users):
+    for user_id in tqdm.tqdm(users[:14118]):
 
         save_filename = os.path.join(args.output_dir,'data/timeline_' + user_id + '.jsonl')
 
+        query = 'from:' + user_id
+
         subprocess.run(
             ['twarc2',
-            'timeline',
+            'search',
+            '--archive'
             '--end-time',
             '2017-12-31T23:59:59',
-            user_id,
+            query,
             save_filename]
         )
 
