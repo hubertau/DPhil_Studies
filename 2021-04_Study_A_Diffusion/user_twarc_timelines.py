@@ -11,7 +11,7 @@ def main():
 
     users = [i.replace('\n','') for i in users]
 
-    for user_id in tqdm.tqdm(users[:14118]):
+    for user_id in tqdm.tqdm(users[1:14118]):
 
         save_filename = os.path.join(args.output_dir,'data/timeline_' + user_id + '.jsonl')
 
@@ -25,6 +25,7 @@ def main():
             '100',
             '--end-time',
             '2017-12-31T23:59:59',
+            
             query,
             save_filename]
         )
