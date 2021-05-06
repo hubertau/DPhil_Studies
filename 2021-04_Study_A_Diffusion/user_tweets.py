@@ -80,6 +80,7 @@ def main():
             x = json.load(f)
             for tweet_obj in x:
                 users.append(tweet_obj['author_id'])
+    users = list(set(users))
 
     if args.collect_from != None:
         assert str(args.collect_from) in users
@@ -90,6 +91,13 @@ def main():
         user_url = create_url(user_id)
         logging.info('COLLECTING USER {}'.format(user_id))
         query_params = get_params()
+
+        save_filename = DATA_PATH + 'USER_' + str(user_id) + '.json'
+
+        # check if savefile already exists
+        if os.path.isfile(save_filename):
+            logging.info('SKIPPING {} because file already exists'.format(save_filename))
+            continue
 
         # get first response
         count = 1
@@ -110,7 +118,6 @@ def main():
             if count % 1000 == 0:
                 print(count)
         
-        save_filename = DATA_PATH + 'USER_' + str(user_id) + '.json'
         with open(save_filename, 'w') as f:
             json.dump(file_to_save, f)
     
