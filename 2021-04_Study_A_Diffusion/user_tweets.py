@@ -4,7 +4,6 @@ import logging
 import argparse
 import time
 import os
-import tqdm
 import glob
 import unique_users
 import full_archive_search
@@ -76,7 +75,7 @@ def main():
     # users = [str(i[0]) for i in users_and_counts]
     file_list = glob.glob(DATA_PATH+'FAS_*.json')
     users=[]
-    for each_file in tqdm.tqdm(file_list):
+    for each_file in file_list:
         with open(each_file, 'r') as f:
             x = json.load(f)
             for tweet_obj in x:
