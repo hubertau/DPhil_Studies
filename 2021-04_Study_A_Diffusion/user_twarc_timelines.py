@@ -20,7 +20,9 @@ def main():
         subprocess.run(
             ['twarc2',
             'search',
-            '--archive'
+            '--archive',
+            '--max results',
+            '100',
             '--end-time',
             '2017-12-31T23:59:59',
             query,
