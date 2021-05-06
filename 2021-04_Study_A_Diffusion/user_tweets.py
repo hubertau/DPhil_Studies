@@ -5,7 +5,7 @@ import argparse
 import time
 import os
 import glob
-import unique_users
+import tqdm
 import full_archive_search
 # import pandas as pd
 
@@ -86,7 +86,7 @@ def main():
         assert str(args.collect_from) in users
         users = users[users.index(args.collect_from):]
 
-    for user_id in users:
+    for user_id in tqdm.tqdm(users):
 
         user_url = create_url(user_id)
         logging.info('COLLECTING USER {}'.format(user_id))
