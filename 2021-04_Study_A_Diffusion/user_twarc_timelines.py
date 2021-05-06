@@ -9,6 +9,8 @@ def main():
     with open(args.user_list) as f:
         users = f.readlines()
 
+    users = [i.replace('\n','') for i in users]
+
     for user_id in tqdm.tqdm(users):
 
         save_filename = os.path.join(args.output_dir,'data/timeline_' + user_id + '.jsonl')
