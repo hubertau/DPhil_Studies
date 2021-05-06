@@ -2,20 +2,22 @@ import subprocess
 import os
 import argparse 
 import logging
+import tqdm
 
 def main():
 
     with open(args.user_list) as f:
         users = f.readlines()
 
-    for user_id in users:
+    for user_id in tqdm.tqdm(users):
 
         save_filename = os.path.join(args.output_dir,'data/timeline_' + user_id + '.jsonl')
 
         subprocess.run(
             ['twarc2',
             'timeline',
-            '--end-time 2017-12-13T23:59:59',
+            '--end-time',
+            '2017-12-31T23:59:59',
             user_id,
             save_filename]
         )
