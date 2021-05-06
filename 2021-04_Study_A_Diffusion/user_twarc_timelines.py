@@ -21,7 +21,7 @@ def main():
             ['twarc2',
             'search',
             '--archive',
-            '--max results',
+            '--max-results',
             '100',
             '--end-time',
             '2017-12-31T23:59:59',
