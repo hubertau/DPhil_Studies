@@ -46,6 +46,7 @@ def get_params():
         'media.fields':'media_key,type,preview_image_url',
         'place.fields':'full_name,id,country,country_code,geo,name,place_type',
         'user.fields':'created_at,description,entities,id,location,name,pinned_tweet_id,profile_image_url,protected,public_metrics,url,username,verified',
+        'end_time':'2017-12-31T23:59:59Z',
         'max_results':100
     }
 
