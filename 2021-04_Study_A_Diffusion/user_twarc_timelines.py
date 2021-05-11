@@ -17,13 +17,13 @@ def main():
     logging.info('{} users to be collected.'.format(sum(users['tweet_count']>=args.min_tweets)))
     print('{} users to be collected.'.format(sum(users['tweet_count']>=args.min_tweets)))
     logging.info('{} users to be dropped.'.format(sum(users['tweet_count']<args.min_tweets)))
-    print('{} users to be dropped.'.format(sum(users['tweet_count']<args.min_tweets)))    
+    print('{} users to be dropped.'.format(sum(users['tweet_count']<args.min_tweets)))
     users = users[users['tweet_count']>=args.min_tweets]
 
-    for user_row in users.iterrows():
+    for user_row in tqdm.tqdm(users.iterrows()):
 
         # user_id
-        user_id = user_row[1]['user_id']
+        user_id = str(user_row[1]['user_id'])
 
         # generate save filename
         save_filename = os.path.join(args.output_dir,'data/timeline_' + user_id + '.jsonl')
