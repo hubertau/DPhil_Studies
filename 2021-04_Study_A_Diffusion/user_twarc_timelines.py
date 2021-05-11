@@ -24,7 +24,7 @@ def main():
     print('{} users to be dropped.'.format(sum(users['tweet_count']<int(args.min_tweets))))
     users = users[users['tweet_count']>=int(args.min_tweets)]
 
-    for user_row in tqdm.tqdm(users.iterrows()):
+    for user_row in tqdm.tqdm(users.iterrows(), total=len(users)):
 
         # user_id
         user_id = str(user_row[1]['user_id'])
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--max_tweets',
         help='The maximum number of tweets to collect for each user.',
-        default=2000
+        default=500
     )
 
     # parse arguments
