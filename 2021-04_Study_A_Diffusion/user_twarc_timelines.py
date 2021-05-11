@@ -22,7 +22,7 @@ def main():
     print('{} users to be collected.'.format(sum(users['tweet_count']>=int(args.min_tweets))))
     logging.info('{} users to be dropped.'.format(sum(users['tweet_count']<int(args.min_tweets))))
     print('{} users to be dropped.'.format(sum(users['tweet_count']<int(args.min_tweets))))
-    users = users[users['tweet_count']>=args.min_tweets]
+    users = users[users['tweet_count']>=int(args.min_tweets)]
 
     for user_row in tqdm.tqdm(users.iterrows()):
 
