@@ -50,8 +50,10 @@ def main():
             ['twarc2',
             'search',
             '--archive',
+            '--limit',
+            args.limit,
             '--max-results',
-            args.max_tweets,
+            '100',
             '--end-time',
             end_time,
             '--start-time',
@@ -98,9 +100,9 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        '--max_tweets',
+        '--limit',
         help='The maximum number of tweets to collect for each user.',
-        default=500
+        default=2000
     )
 
     # parse arguments
