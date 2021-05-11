@@ -8,11 +8,15 @@ import datetime
 
 def main():
 
+    # read in data
     users = pd.read_csv(
         args.user_list,
         header=None,
         names=['user_id','tweet_count']
     )
+
+    # convert tweet_count column to numeric
+    users['tweet_count'] = pd.to_numeric(users['tweet_count'])
 
     logging.info('{} users to be collected.'.format(sum(users['tweet_count']>=args.min_tweets)))
     print('{} users to be collected.'.format(sum(users['tweet_count']>=args.min_tweets)))
