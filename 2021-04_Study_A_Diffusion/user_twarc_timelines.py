@@ -90,14 +90,12 @@ if __name__ == '__main__':
     parser.add_argument(
         '--min_tweets',
         help='The minimum frequency for user history to be collected.',
-        type=int,
         default=50
     )
 
     parser.add_argument(
         '--max_tweets',
         help='The maximum number of tweets to collect for each user.',
-        type=int,
         default=2000
     )
 
