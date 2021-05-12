@@ -1,9 +1,13 @@
 '''
 Script to process incoming json files to csv for further processing.
+
+DEPRECATED AS OF 2021-05-12. NOT USEFUL ANYMORE.
+
+Files are just to be kept as json. csv is not a good format for Twitter data.
+
 '''
 
-import json
-import csv
+
 import pandas as pd
 import glob
 import argparse
@@ -17,7 +21,12 @@ def convert_json_to_csv(filepath, out_file):
     # convert ISO 8601 format to datetime object
     df['created_at'] = pd.to_datetime(df['created_at'])
 
-    df.to_csv(out_file, mode='a+')
+    if 'geo' not in df.columns:
+        df['geo']=''
+
+    df.to_csv(out_file, mode='a+', columns=['conversation_id', 'text', 'possibly_sensitive', 'lang',
+       'entities', 'referenced_tweets', 'created_at', 'public_metrics',
+       'author_id', 'id', 'in_reply_to_user_id', 'geo'], index=False, line_terminator='z')
 
     print('{} appended'.format(os.path.split(filepath)[-1]))
 
