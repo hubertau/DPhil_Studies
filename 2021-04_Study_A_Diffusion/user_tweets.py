@@ -81,7 +81,16 @@ def main():
             x = json.load(f)
             for tweet_obj in x:
                 users.append(tweet_obj['author_id'])
-    users = list(set(users))
+
+    from collections import Counter
+    users = Counter(users)
+    users = users.most_common()
+    # users = [i[0] for i in users]
+
+    with open('user_list.txt', 'w') as f:
+        for i in users:
+            f.write(','.join(str(s) for s in i))
+            f.write('\n')
 
     if args.collect_from != None:
         assert str(args.collect_from) in users
