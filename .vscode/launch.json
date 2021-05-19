@@ -5,6 +5,26 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "CountVectorizer",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/generate_user_to_hashtag_matrix.py",
+            "console": "integratedTerminal",
+            "args":[
+                "2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/data"
+            ]
+        },
+        {
+            "name": "Collect Conversation IDs",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/collect_user_timelines_convo_ids.py",
+            "console": "integratedTerminal",
+            "args":[
+                "2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/data"
+            ]
+        },
+        {
             "name": "Get User Timelines from Full Archive Results",
             "type": "python",
             "request": "launch",
