@@ -21,19 +21,13 @@ USER_ID_2, #cat, 10
 
 import argparse
 import array
-import concurrent.futures
-import csv
 import glob
-import os
 import pickle
-import re
 from datetime import datetime
-from itertools import repeat
 from os.path import isfile
 
 import jsonlines
 import numpy as np
-import pandas as pd
 import scipy
 import scipy.sparse
 import tqdm
@@ -43,14 +37,20 @@ from sklearn.feature_extraction.text import CountVectorizer
 
 def iterator_jsonl(input_file_list):
 
-    for input_file in tqdm.tqdm(input_file_list, desc='Collecting Vocabulary'):
+    for input_file in tqdm.tqdm(input_file_list, desc='CountVectorizer over collected users:'):
+
+        user_joined_tweet_body = []
 
         with jsonlines.open(input_file) as reader:
             for tweet_jsonl in reader:
                 tweet_list_in_file = tweet_jsonl['data']
                 for tweet_data in tweet_list_in_file:
                     if 'text' in tweet_data:
-                        yield tweet_data['text']
+                        user_joined_tweet_body.append(tweet_data['text'])
+
+        # for the final yield, there needs to be an in-between character I can easily discard
+        # so tokens spanning multiple documents can be discarded
+        yield ' <EOT_TOKEN> '.join(user_joined_tweet_body)
 
 class IncrementalCOOMatrix(object):
 
@@ -98,34 +98,15 @@ class IncrementalCOOMatrix(object):
 
         return len(self.data)
 
-def process_file(input_file, file_list, vocab):
+class TweetVocabVectorizer(object):
 
-    row_index = file_list.index(input_file)
-    print('{} start at {}'.format(row_index, datetime.now()))
-
-    res = np.zeros(len(vocab),dtype=np.int32)
-
-    # count lines
-    line_count = 0
-    with jsonlines.open(input_file) as reader:
-        for _ in reader:
-            line_count += 1
-
-    with jsonlines.open(input_file) as reader:
-        for tweet_jsonl in reader:
-            tweet_list_in_file = tweet_jsonl['data']
-            for tweet_data in tweet_list_in_file:
-                if 'text' in tweet_data:
-                    for column_index, phrase in enumerate(vocab):
-                        if phrase in tweet_data['text']:
-                            res[column_index]+=1
-                            # vocab_matrix[row_index, column_index] += 1
-
-    print('{} end at {}'.format(row_index, datetime.now()))
-
-    return (row_index, res)
+    def __init__(self,ngram_range=(2,3),stopwords_to_append=['rt']):
+        pass
 
 def main():
+
+    start_time = datetime.now()
+    print('start time: {}'.format(start_time))
 
     # instantiate vectorizer
     vectorizer = CountVectorizer(
@@ -139,61 +120,36 @@ def main():
     file_list = sorted(file_list)
 
     # FOR UNIT TEST PURPOSES
-    file_list = file_list[:150]
+    file_list = file_list
 
     # obtain vocabulary
-    vectorizer.fit(iterator_jsonl(file_list))
+    user_vocab_matrix = vectorizer.fit_transform(iterator_jsonl(file_list))
 
-    # obtain vocab
-    vocab = sorted(list(vectorizer.vocabulary_.keys()))
+    # set count of any token including the end_of_tweet_token to zero.
+    print('getting mapping between feature names and indices...')
+    mapping = vectorizer.get_feature_names()
+    print('done')
 
-    # generate vocab count matrix
-    # choosing coo matrix instead of lil matrix because backend of lil is Python lists which don't scale well
-    # and can't be easily parallelised
-    vocab_matrix = IncrementalCOOMatrix((len(file_list), len(vocab)), np.int32)
+    # csc = scipy.sparse.lil_matrix(user_vocab_matrix)
+    # # N.B. eot_token is lowercased because the CountVectorizer does the same
+    # print('removing end of tweet tokens from vocabulary by setting frequency counts to 0...')
+    # eot_token_locs = np.flatnonzero(np.core.defchararray.find(mapping,'eot_token')!=-1)
+    # if len(eot_token_locs) > 0:
+    #     for col_index in tqdm.tqdm(eot_token_locs, desc='setting to 0:'):
+    #         csc[:,col_index] = np.zeros(csc.shape[0], dtype=np.int64)
 
-    with concurrent.futures.ProcessPoolExecutor() as executor:
+    # save vectorizer
+    # user_vocab_matrix = scipy.sparse.csr_matrix(user_vocab_matrix)
+    # scipy.sparse.save_npz('2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/sparse_bispec_mat.npz', csc)
+    with open('2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/user_count_mat.obj', 'wb') as f:
+        pickle.dump(user_vocab_matrix,f)
+    with open('2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/vectorizer.obj', 'wb') as f:
+        pickle.dump(vectorizer,f)
+    with open('2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/mapping.obj', 'wb') as f:
+        pickle.dump(mapping,f)
 
-        # N.B. you cannot use lambda in the ProcessPoolExecutor because python uses pickle to
-        # pass information to the children(?) processes
-        #
-        # Therefore OLD CODE: results = executor.map(lambda p: process_file(*p), multi_args)
-
-        results = executor.map(process_file, file_list, repeat(file_list), repeat(vocab))
-
-    for row_index, res in tqdm.tqdm(results, desc='writing counts to matrix', total=len(file_list)):
-        for col_index, col_value in enumerate(res):
-            vocab_matrix.append(row_index, col_index, col_value)
-
-    # convert to COO matrix
-    print('Converting to CSR Sparse Format')
-    coo = vocab_matrix.tocoo()
-    csr = coo.tocsr()
-
-    # save file
-    print('Saving to .npz file')
-    scipy.sparse.save_npz('2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/sparse_bispec_mat.npz', csr)
-    with open('2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/vocab.obj', 'wb') as f:
-        pickle.dump(vocab, f)
-
-    # generate csv in the right format
-    with open('2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/bispec_ready_counts.csv', 'w', newline='') as csvfile:
-
-        file_writer = csv.writer(csvfile)
-        file_writer.writerow(['Source', 'Target', 'weight'])
-
-        nonzero_row_index_array, nonzero_col_index_array = csr.nonzero()
-
-        for row_index, input_file in enumerate(tqdm.tqdm(file_list, desc='writing to final csv file')):
-            user_id = os.path.split(input_file)[1]
-            user_id = re.sub('\D','',user_id)
-
-            # TODO: subset the nonzero_row_index_array
-            for i,j in zip(nonzero_row_index_array, nonzero_col_index_array):
-                if csr[i,j] > 10:
-                    file_writer.writerow([user_id, vocab[j], csr[i,j]])
-
-    print('done. Sum of matrix: {}'.format(np.sum(csr)))
+    print('done. Sum of matrix: {}'.format(np.sum(user_vocab_matrix)))
+    print('Total time taken: {}'.format(datetime.now()-start_time))
 
 
 if __name__ == '__main__':
