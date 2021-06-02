@@ -1,3 +1,21 @@
+'''
+From the bi-spectral comm readme
+# User-to-Hashtag File Format
+
+The file can be either a ```.tsv``` file or a ```.csv``` file. It can also be gzipped if desired.
+The file should have three columns, ```Source```, representing the User, ```Target```,
+which specified the hashtags, and ```weight```, which gives the number of times this user used
+the given hashtag. Note that zero-entries are not required,
+i.e. values should only be specified where a user used a hashtag at least once.  For example:
+
+```
+Source, Target, weight
+USER_ID_1, #cat, 4
+USER_ID_1, #dog, 1
+USER_ID_2, #cat, 10
+...
+'''
+
 import csv
 import glob
 import os
@@ -47,36 +65,46 @@ with open('collection_results_2021_05_04_16_22/bispec_ready_counts.csv', 'w', ne
     # mask = np.ones(len(mapping), dtype=bool)
 
     for token in tokens_to_drop:
+
+        # N.B. a number of options were tried here. The rationale for the final design is:
+        # mapping contains indices and token string values. Searching this will allow finding the INDICES
+        # of the relevant tokens to ignore. Also because of mapping containing the index information in its
+        # own indices we cannot remove items from the array itself, this would mess up the referencing.
+        #
+        # The nonzero arrays, on the other hand, have no significance to the indices. The elements are the indices of tokens.
+        # Therefore once the relevant token indices are found from mapping, they must be located (multiple instances thereof)
+        # in the nonzero arrays.
+
         print('getting locations of {} token'.format(token))
         mapping_token_locs = np.flatnonzero(np.core.defchararray.find(mapping,token)!=-1)
         print('done')
 
-        # searchsorted doesn't find multiple instances, just matching for each in the mapping_token_locs.
-        # coord_token_locs = np.searchsorted(nonzero_col_index_array, mapping_token_locs)
-
-        # mask = np.ones(len(nonzero_col_index_array),dtype=bool)
-
-
+        # build a mask for each token to drop
+        # N.B. using the np.isin function to search for multiple instances is orders of magnitude
+        # faster than any parallelisation at Python speed.
         mask = np.logical_not(np.isin(nonzero_col_index_array,mapping_token_locs))
 
-        # # mask, don't delete
-        # mask[token_locs] = False
+        # we don't want to shorten or modify mapping, but can we happily truncate nonzero arrays.
         nonzero_col_index_array = nonzero_col_index_array[mask]
         nonzero_row_index_array = nonzero_row_index_array[mask]
-        # mapping                 = np.delete(mapping, token_locs)
 
     for row_index, input_file in enumerate(tqdm.tqdm(file_list, desc='writing to final csv file')):
+
+        # obtain user id from file path name.
         user_id = os.path.split(input_file)[1]
         user_id = re.sub('\D','',user_id)
-
-        # mask_for_this_row = np.logical_and(mask,nonzero_row_index_array==row_index)
 
         for i,j in tqdm.tqdm(zip(nonzero_row_index_array[nonzero_row_index_array==row_index],
                                  nonzero_col_index_array[nonzero_row_index_array==row_index]),
                                  total=np.sum(nonzero_row_index_array==row_index),
                                  leave=False,
                                  desc='writing user {}. ({} out of {})'.format(user_id, row_index+1, len(file_list))):
-            # if j in eot_token_locs:
-            #     continue
             if csr[i,j] > 10:
                 file_writer.writerow([user_id, mapping[j], csr[i,j]])
+
+def main():
+    pass
+
+if __name__ == '__main__':
+
+    main()
