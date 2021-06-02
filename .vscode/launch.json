@@ -15,6 +15,16 @@
             ]
         },
         {
+            "name": "CountVectorizer_NEW",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/generate_user_to_hashtag_matrix_new.py",
+            "console": "integratedTerminal",
+            "args":[
+                "2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/data"
+            ]
+        },
+        {
             "name": "Collect Conversation IDs",
             "type": "python",
             "request": "launch",
