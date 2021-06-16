@@ -1,4 +1,4 @@
-###
+###war
 # This is based on the original bi-spectral clustering script, modified to take cammand line arguments
 ###
 library(argparser, quietly=TRUE)
@@ -28,13 +28,19 @@ parser <- add_argument(parser,
   default=100
 )
 
+parser <- add_argument(parser,
+  "--verbose",
+  help = "whether to pring how long clustering took",
+  default = FALSE
+)
+
 # parse argument
 # args <- parse_args(parser,
 #   c(
 #     "/Users/hubert/Nextcloud/DPhil/DPhil_Studies/2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/bispec_ready_counts.csv",
 #     "/Users/hubert/Nextcloud/DPhil/DPhil_Studies/2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/bsc/",
 #     "--min_user", 10,
-#     "--ncluster", 100
+#     "--ncluster", 101
 #   )
 # )
 
@@ -76,7 +82,13 @@ if(grepl("[.]gz$", USER_TO_HASHTAG_EDGELIST_FILENAME)){
 
 # run bispectral clustering
 ## The function takes as input the 
-listObj=biSpectralCoCluster(user_ht,min_user=MIN_USER,k=N_CLUSTERS)
+listObj=biSpectralCoCluster(user_ht,min_user=MIN_USER,k=N_CLUSTERS, verbose = FALSE)
+
+# 2021-06-08: save dataframes in bispectral clustering
+csv_output_name <- paste0("bsc_", MIN_USER, "_", N_CLUSTERS)
+write.csv(listObj$summary, file.path(OUTPUT_DIRECTORY, paste0(csv_output_name,'_summary.csv')))
+write.csv(listObj$users, file.path(OUTPUT_DIRECTORY, paste0(csv_output_name,'_users.csv')))
+write.csv(listObj$hashtags, file.path(OUTPUT_DIRECTORY, paste0(csv_output_name,'_hashtags.csv')))
 
 # output_filename
 output_filename <- paste0("hashtags_per_cluster_",MIN_USER,"_",N_CLUSTERS,"_.pdf")
