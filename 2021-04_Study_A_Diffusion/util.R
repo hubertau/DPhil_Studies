@@ -17,7 +17,7 @@ load_user_ht_matrix <- function(edgelist_path){
   
 }
 
-biSpectralCoCluster=function(h_edges,min_user=1,k=100,all_hashtags=FALSE){
+biSpectralCoCluster=function(h_edges,min_user=1,k=100,all_hashtags=FALSE,verbose = FALSE){
   
   H=graph.data.frame(h_edges)
   S=simplify(H,remove.loops=FALSE,remove.multiple=TRUE)
@@ -42,7 +42,9 @@ biSpectralCoCluster=function(h_edges,min_user=1,k=100,all_hashtags=FALSE){
   A=A[,ht_mapping]
   rm(S)
   
-  cat('graph constructed')
+  if (verbose){
+    cat('graph constructed')
+  }
   
   start = Sys.time()
   Ucount=rowSums(A)
@@ -55,14 +57,18 @@ biSpectralCoCluster=function(h_edges,min_user=1,k=100,all_hashtags=FALSE){
   D2=Diagonal(n=dim(A)[2],x=d2)
   An=D1%*%A%*%D2
   obj=irlba(An,k,nu=k,nv=k)
-  print(paste("Bispectral took:", Sys.time()-start,"seconds"))
+  if (verbose){
+    print(paste("Bispectral took:", Sys.time()-start,"seconds"))
+  }
   
   uMat=data.frame(ID=rownames(A),degree=Ucount,as.matrix(D1%*%obj$u),stringsAsFactors=FALSE)
   htMat=data.frame(ID=colnames(A),degree=HTcount,as.matrix(D2%*%obj$v),stringsAsFactors=FALSE)
   uhtMat=rbind(uMat[,c(-1,-2)],htMat[,c(-1,-2)])
   row.names(uhtMat)=c(uMat$ID,htMat$ID)
   
-  cat('spectral features extracted... clustering\n')
+  if (verbose){
+    cat('spectral features extracted... clustering\n')
+  }
   
   ht_kobj=kmeans(uhtMat,k,iter.max=10000,algorithm='Lloyd')
   uMat=data.frame(uMat[,1:2],topic_cluster=ht_kobj$cluster[1:dim(uMat)[1]])
@@ -82,7 +88,8 @@ gen_plots <- function(listObj,min_user_count=50, filename='cluster_res_new.pdf',
   top_ht <- 25
   
   
-  pdf(paste(filename,sep=''),width=7,height=10)
+  cairo_pdf(paste(filename,sep=''),width=7,height=10)
+  # quartz(type = 'pdf', file = paste(filename,sep=''),width=7,height=10)
   
   clusters_to_run <- 1:max(userData$topic_cluster)
   if(!is.na(clusters_of_interest)){
@@ -100,12 +107,13 @@ gen_plots <- function(listObj,min_user_count=50, filename='cluster_res_new.pdf',
     ht_c <- min(top_ht,nrow(htD))
     uD=uD[order(uD$degree,decreasing=TRUE),]
     htD=htD[order(htD$degree,decreasing=TRUE),]
-    htD$hashtag=gsub('#','',htD$hashtag)
+    # 2021-06-16 Hubert Note: do not make the hashtags 
+    # htD$hashtag=gsub('#','',htD$hashtag)
     
     p1 <- ggplot(arrange(htD, -degree)[1:ht_c,], aes(reorder(hashtag,degree),degree)) + geom_bar(stat='identity') + coord_flip()
     p1 <- p1 + ylab("Times Used") + xlab("Hashtag")
-    print(p1 + annotate("text",x=4,y=max(htD$degree,na.rm = T)-.35*max(htD$degree), label=paste("Cluster: ",cluster," n users:",nrow(uD))))
+    suppressWarnings(print(p1 + annotate("text",x=4,y=max(htD$degree,na.rm = T)-.35*max(htD$degree), label=paste("Cluster: ",cluster," n users:",nrow(uD)))))
     #dev.off()
   }
-  dev.off()
+  garbage <- dev.off()
 }
