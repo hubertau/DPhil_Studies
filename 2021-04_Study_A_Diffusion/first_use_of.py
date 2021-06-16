@@ -6,6 +6,11 @@ import datetime
 import tqdm
 import csv
 
+
+class TweetUtil(object):
+    
+    def __init__(self,hashtags,data_dir,)
+
 hashtags = [
     'BalanceTonPorc',
     'MoiAussi'
@@ -42,7 +47,7 @@ print('Total tweets processed: {}'.format(tweet_counter))
 times[0].sort()
 times[1].sort()
 
-with open('tweet_times_moiaussi.csv', 'w') as f:
+with open('tweet_times_hashtag_list.csv', 'w') as f:
     writer = csv.writer(f)
     for i in times[0]:
         writer.writerow([datetime.datetime.isoformat(i)])
@@ -51,3 +56,6 @@ with open('tweet_times_balancetonporc.csv', 'w') as f:
     writer = csv.writer(f)
     for i in times[1]:
         writer.writerow([datetime.datetime.isoformat(i)])
+
+if __name__ == '__main__':
+    
