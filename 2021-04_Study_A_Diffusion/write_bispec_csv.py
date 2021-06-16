@@ -25,6 +25,7 @@ import re
 import numpy as np
 import scipy
 import scipy.sparse
+from generate_user_to_hashtag_matrix import TweetVocabVectorizer
 import tqdm
 from numpy.core.fromnumeric import nonzero, searchsorted
 
@@ -33,15 +34,12 @@ with open('collection_results_2021_05_04_16_22/user_count_mat.obj', 'rb') as f:
     csr = pickle.load(f)
 with open('collection_results_2021_05_04_16_22/vectorizer.obj', 'rb') as f:
     vectorizer = pickle.load(f)
-with open('collection_results_2021_05_04_16_22/mapping.obj', 'rb') as f:
-    mapping = pickle.load(f)
+# with open('collection_results_2021_05_04_16_22/mapping.obj', 'rb') as f:
+# mapping = pickle.load(f)
 
 # obtain file list
 file_list = glob.glob('collection_results_2021_05_04_16_22/data/timeline*.jsonl')
 file_list = sorted(file_list)
-
-# FOR UNIT TEST PURPOSES
-file_list = file_list
 
 mapping = vectorizer.get_feature_names()
 mapping = np.array(mapping)
@@ -54,13 +52,13 @@ with open('collection_results_2021_05_04_16_22/bispec_ready_counts.csv', 'w', ne
 
     nonzero_row_index_array, nonzero_col_index_array = csr.nonzero()
 
-    # drop indices with eot_tokens
+    # drop indices with eottokens
     nonzero_col_index_sort_indices = nonzero_col_index_array.argsort()
     nonzero_col_index_array = nonzero_col_index_array[nonzero_col_index_sort_indices]
     nonzero_row_index_array = nonzero_row_index_array[nonzero_col_index_sort_indices]
 
     # define tokens to drop
-    tokens_to_drop = ['eot_token','rt']
+    tokens_to_drop = ['eottoken']
 
     # mask = np.ones(len(mapping), dtype=bool)
 
@@ -84,6 +82,9 @@ with open('collection_results_2021_05_04_16_22/bispec_ready_counts.csv', 'w', ne
         # faster than any parallelisation at Python speed.
         mask = np.logical_not(np.isin(nonzero_col_index_array,mapping_token_locs))
 
+        if len(nonzero_col_index_array) == np.sum(mask):
+            print('WARNING: no instances of token [{}] were found. Is this intended?'.format(token))
+
         # we don't want to shorten or modify mapping, but can we happily truncate nonzero arrays.
         nonzero_col_index_array = nonzero_col_index_array[mask]
         nonzero_row_index_array = nonzero_row_index_array[mask]
@@ -99,12 +100,12 @@ with open('collection_results_2021_05_04_16_22/bispec_ready_counts.csv', 'w', ne
                                  total=np.sum(nonzero_row_index_array==row_index),
                                  leave=False,
                                  desc='writing user {}. ({} out of {})'.format(user_id, row_index+1, len(file_list))):
-            if csr[i,j] > 10:
+            if csr[i,j] > 5:
                 file_writer.writerow([user_id, mapping[j], csr[i,j]])
 
-def main():
-    pass
+# def main():
+#     pass
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
-    main()
+#     main()
