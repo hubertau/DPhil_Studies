@@ -34,15 +34,15 @@ with open('collection_results_2021_05_04_16_22/user_count_mat.obj', 'rb') as f:
     csr = pickle.load(f)
 with open('collection_results_2021_05_04_16_22/vectorizer.obj', 'rb') as f:
     vectorizer = pickle.load(f)
-# with open('collection_results_2021_05_04_16_22/mapping.obj', 'rb') as f:
-# mapping = pickle.load(f)
+with open('collection_results_2021_05_04_16_22/mapping.obj', 'rb') as f:
+    mapping = pickle.load(f)
 
 # obtain file list
 file_list = glob.glob('collection_results_2021_05_04_16_22/data/timeline*.jsonl')
 file_list = sorted(file_list)
 
-mapping = vectorizer.get_feature_names()
-mapping = np.array(mapping)
+# mapping = vectorizer.get_feature_names()
+# mapping = np.array(mapping)
 
 # generate csv in the right format
 with open('collection_results_2021_05_04_16_22/bispec_ready_counts.csv', 'w', newline='') as csvfile:
@@ -58,7 +58,7 @@ with open('collection_results_2021_05_04_16_22/bispec_ready_counts.csv', 'w', ne
     nonzero_row_index_array = nonzero_row_index_array[nonzero_col_index_sort_indices]
 
     # define tokens to drop
-    tokens_to_drop = ['eottoken']
+    tokens_to_drop = []
 
     # mask = np.ones(len(mapping), dtype=bool)
 
