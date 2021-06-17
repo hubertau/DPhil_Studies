@@ -44,7 +44,7 @@ class TweetVocabVectorizer(object):
 
         def inner(*args, **kwargs):
             start_time = datetime.now()
-            print('Start Time: {}'.format(start_time))
+            print('\nStart Time: {}'.format(start_time))
             result = func(*args, **kwargs)
             print('Total Time Taken: {}'.format(datetime.now()-start_time))
             return result
@@ -310,12 +310,16 @@ class TweetVocabVectorizer(object):
             print(true_msg)
 
         assert_helper(len(self.mapping)>0, 'Vocabulary is non-zero. Check OK.')
-        assert_helper(np.sum(self.user_vocab_matrix)>0, 'Count Matrix has non-zero sum. Check OK.')
-        metoosum = np.sum(self.mapping=='#metoo')>0
-        assert_helper(metoosum, 'At least \#MeToo hashtag is in vocab and has count {}. Check OK.'.format(metoosum))
+        user_vocab_matrix_sum = np.sum(self.user_vocab_matrix)
+        assert_helper(user_vocab_matrix_sum>0, 'Count Matrix has non-zero sum, and is {}. Check OK.'.format(user_vocab_matrix_sum))
+        metoosum = np.sum(self.mapping=='#metoo')
+        assert_helper(metoosum>0, 'At least #MeToo hashtag is in vocab and has count {}. Check OK.'.format(metoosum))
+        elements_with_eot_token = np.sum(np.core.defchararray.find(self.mapping,self.eot_token)!=-1)
+        assert_helper(elements_with_eot_token==0, 'No eot_tokens found in vocabulary. Check OK.', '{} counts of eot_token found in voabulary! Check NOT OK.'.format(elements_with_eot_token))
 
         print('All Checks OK.')
 
+    @time_function
     def save_files(self):
 
         collection_results_folder = os.path.split(self.data_dir)[0]
