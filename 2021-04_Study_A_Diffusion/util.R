@@ -12,7 +12,7 @@ load_user_ht_matrix <- function(edgelist_path){
   cat('constructing graph')
   h_edges=fread(edgelist_path,stringsAsFactors=FALSE,colClasses = c("character","character","integer"))
   setnames(h_edges, c("Source","Target","weight"))
-  h_edges$Target=paste('#',h_edges$Target,sep='')
+  # h_edges$Target=paste('#',h_edges$Target,sep='')
   h_edges <- data.table(h_edges)
   
 }
@@ -88,7 +88,7 @@ gen_plots <- function(listObj,min_user_count=50, filename='cluster_res_new.pdf',
   top_ht <- 25
   
   
-  cairo_pdf(paste(filename,sep=''),width=7,height=10)
+  pdf(paste(filename,sep=''),width=7,height=10)
   # quartz(type = 'pdf', file = paste(filename,sep=''),width=7,height=10)
   
   clusters_to_run <- 1:max(userData$topic_cluster)
