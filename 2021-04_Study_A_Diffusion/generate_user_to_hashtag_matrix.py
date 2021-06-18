@@ -32,7 +32,7 @@ class TweetVocabVectorizer(object):
         self.data_dir = data_dir
         self.file_list = sorted(glob.glob(self.data_dir + '/timeline*.jsonl'))
         self.ngram_range = ngram_range
-        self.eot_token=eot_token
+        self.eot_token = eot_token
         self.remove_stop_words = remove_stop_words
         self.token_pattern = r"(?u)#?\b\w\w+\b"
 
@@ -230,7 +230,7 @@ class TweetVocabVectorizer(object):
         return hashtag_set
 
     @time_function
-    def fit_new(self):
+    def fit(self):
 
         # 2021-06-16: draft new CountVectorizer with proper custom analyzer
         # logic: with the right analzyer that first gets all n>1 n-grams and then drops all non-hashtag unigrams only a single pass should be required.
@@ -253,55 +253,6 @@ class TweetVocabVectorizer(object):
 
         print('\nFitting complete. Running Checks:')
         self._check_vectorizer_output()
-
-    @time_function
-    def fit(self):
-
-        # 2021-06-15: introduction of token_pattern argument: the tokenizer itself within the default CountVectorizer class always ignores punctuation surrounding a word even if it has 
-        self.vectorizer_draft = CountVectorizer(
-            input='content',
-            ngram_range=self.ngram_range,
-            stop_words=stopwords.words().extend(self.stopwords_to_append),
-            preprocessor=self.custom_preprocessor,
-            token_pattern=r"(?u)#?\b\w\w+\b"
-        )
-
-        # obtain vocabulary of ngrams
-        print('collecting ngram vocab list')
-        user_vocab_matrix = self.vectorizer_draft.fit_transform(self.iterator_jsonl())
-
-        # obtain ngram vocab
-        ngram_vocab = self.vectorizer_draft.get_feature_names()
-
-        # append the hashtags to this ngram vocab, the hashtags are the only
-        # unigrams desired.
-        total_vocab = list(np.append(ngram_vocab,(list(self.hashtag_set))))
-
-        # 2021-06-07: lowercase everything in vocab, otherwise it doesn't get picked up in the CountVectorizer.
-        # see issue: https://github.com/scikit-learn/scikit-learn/issues/19311
-        total_vocab = [vocab_item.lower() for vocab_item in total_vocab]
-
-        # 2021-06-08: see https://tinyurl.com/y2sgrsh6 (StackOverflow)
-        # when supplying a vocab you still need to supply ngram_range, this is not
-        # inferred from the vocabulary provided as I suppose that adds a significant
-        # overhead to information the user probably knows.
-        self.vectorizer = CountVectorizer(
-            input='content',
-            stop_words=stopwords.words().extend(self.stopwords_to_append),
-            vocabulary=total_vocab,
-            ngram_range=(1,3),
-            preprocessor=self.custom_preprocessor,
-            token_pattern=r"(?u)#?\b\w\w+\b"
-        )
-
-        self.user_vocab_matrix = self.vectorizer.fit_transform(self.iterator_jsonl())
-
-        # set count of any token including the end_of_tweet_token to zero.
-        print('getting mapping between feature names and indices...')
-        self.mapping = self.vectorizer.get_feature_names()
-        print('done')
-
-        print('done. Sum of matrix: {}'.format(np.sum(user_vocab_matrix)))
 
     def _check_vectorizer_output(self):
 
@@ -343,7 +294,7 @@ def main():
     )
 
     # _ = vocab_vectorizer.get_hashtag_vocab()
-    vocab_vectorizer.fit_new()
+    vocab_vectorizer.fit()
     vocab_vectorizer.save_files()
 
 if __name__ == '__main__':
