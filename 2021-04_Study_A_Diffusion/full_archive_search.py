@@ -89,7 +89,7 @@ class FAS_Collector(object):
         first_end   = first_end.strftime('%Y-%m-%d')
 
         self.current_start = self.start_time
-        self.curreent_end  = first_end
+        self.current_end  = first_end
 
         self.save_filename = os.path.join(self.DATA_PATH, 'FAS_' + first_start + '_' + first_end + '_.jsonl') 
 
