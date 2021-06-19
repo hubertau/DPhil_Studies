@@ -84,8 +84,9 @@ class FAS_Collector(object):
 
         self.first_run = True
 
-        first_start = self.start_time.strftime('%Y-%m-%d')
-        first_end   = self.start_time.strftime('%Y-%m-%d')
+        first_start = self.start_time
+        first_end   = datetime_from_string(self.start_time) + relativedelta(months=+1)
+        first_end   = first_end.strftime('%Y-%m-%d')
 
         self.current_start = self.start_time
         self.curreent_end  = first_end
