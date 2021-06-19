@@ -39,10 +39,10 @@ class FAS_Collector(object):
         """
 
         def inner(*args, **kwargs):
-            start_time = datetime.now()
-            print('\nStart Time: {}'.format(start_time))
+            timefunc_start_time = datetime.datetime.now()
+            print('\nStart Time: {}'.format(timefunc_start_time))
             result = func(*args, **kwargs)
-            print('Total Time Taken: {}'.format(datetime.now()-start_time))
+            print('Total Time Taken: {}'.format(datetime.datetime.now()-timefunc_start_time))
             return result
         return inner
 
