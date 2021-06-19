@@ -1,189 +1,180 @@
-import requests
-import json
-import time
+import argparse
 import csv
 import datetime
+import glob
+import json
 import logging
 import os
-import argparse
+import subprocess
+import time
 
-def create_headers(bearer_token):
-    headers = {"Authorization": "Bearer {}".format(bearer_token)}
-    return headers
+import re
+import jsonlines
+import requests
+from dateutil.relativedelta import *
+class FAS_Collector(object):
 
-def connect_to_endpoint(url, headers, params):
-    response = requests.request("GET", url, headers=headers, params=params)
-    #print(response.status_code)
-    if response.status_code == 429:
-        try_count = 0
-        while try_count < 10 and response.status_code == 429: 
-            time.sleep(3)
-            response = requests.request("GET", url, headers=headers, params=params) 
-            try_count += 1
-            if response.status_code == 200:
-                return response.json()
-        logging.info('\nResult after some retries of 429 response code')
-        logging.info('response code: {}'.format(response.status_code))
-        logging.info('search url: {}'.format(url))
-        logging.info('headers: {}'.format(headers))
-        logging.info('query parameters: {}\n'.format(params))
-    elif response.status_code == 503:
-        # error code 503 means: The Twitter servers are up, but overloaded with requests. Try again later.
-        try_count = 0
-        while try_count < 1000:
-            time.sleep(3)
-            response = requests.request("GET", url, headers=headers, params=params)
-            try_count += 1
-            if response.status_code == 200:
-                return response.json()
-    elif response.status_code != 200:
-        logging.info('\nresponse code: {}'.format(response.status_code))
-        logging.info('search url: {}'.format(url))
-        logging.info('headers: {}'.format(headers))
-        logging.info('query parameters: {}\n'.format(params))
-    return response.json()
+    def __init__(self, args):
+
+        self.end_time         = args.end_time
+        self.start_time       = args.start_time
+        self.output_dir       = args.output_dir
+        self.search_query_txt = args.search_query_txt
+
+        # obtain search terms
+        with open(self.search_query_txt, newline='') as f:
+            self.terms = list(csv.reader(f))
+
+        # unroll list
+        self.terms = [i[0] for i in self.terms]
+        self.search_query = ' OR '.join(self.terms)
+        assert len(self.search_query) <= 1024, 'Search query is above 1024 characters in length'
+
+        print('Collector Instance Created. Terms: {}'.format(self.terms))
+
+    def time_function(func):
+
+        """
+        Wrapper function to time execution.
+        """
+
+        def inner(*args, **kwargs):
+            start_time = datetime.now()
+            print('\nStart Time: {}'.format(start_time))
+            result = func(*args, **kwargs)
+            print('Total Time Taken: {}'.format(datetime.now()-start_time))
+            return result
+        return inner
+
+    def check_existing_folder(self):
+
+        # obtain current run time for reuslts
+        self.CURRENT_RUN_TIME = datetime.datetime.today()
+        self.CURRENT_RUN_TIME = self.CURRENT_RUN_TIME.strftime("%Y_%m_%d_%H_%M")
+
+        # creating new path
+        self.OUTPUT_PATH = os.path.join('collection_results_' + self.CURRENT_RUN_TIME)
+        self.DATA_PATH   = os.path.join(self.OUTPUT_PATH, 'data')
+
+        # simply point OUTPUT_PATH and DATA_PATH to the correct places
+        if os.path.isdir(self.OUTPUT_PATH) and os.path.isdir(self.DATA_PATH):
+            pass
+        else:
+            # create folders
+            os.makedirs(self.OUTPUT_PATH, exist_ok=True)
+            os.makedirs(self.DATA_PATH, exist_ok=True)
+
+    def set_up_logging(self):
+
+        # set up logging file
+        logging.basicConfig(filename=os.path.join(self.OUTPUT_PATH, 'full_archive_search.log'),
+                            encoding='utf-8',
+                            format='%(levelname)s:%(message)s',
+                            level=logging.DEBUG)
+
+        self.collection_start_time = datetime.datetime.now()
+
+        logging.info('Full Archive Search Collection Start: {}'.format(self.collection_start_time))
+
+
+    def get_next_filename(self):
+
+        def datetime_from_string(input_string):
+            return datetime.datetime.strptime(input_string, "%Y-%m-%d")
+
+        self.first_run = True
+
+        first_start = datetime.datetime.strftime(self.start_time, '%Y-%m-%d')
+        first_end   = datetime.datetime.strftime(self.end_time, '%Y-%m-%d')
+
+        self.current_start = self.start_time
+        self.curreent_end  = self.first_end
+
+        self.save_filename = os.path.join(self.DATA_PATH, 'FAS_' + first_start + '_' + first_end + '_.jsonl') 
+
+        existing_FAS_results = glob.glob(os.path.join(self.DATA_PATH, 'FAS*.jsonl'))
+
+        if len(existing_FAS_results)>0:
+            self.first_run = False
+            existing_FAS_results = [re.split('[_.]',i)[-2] for i in existing_FAS_results]
+            latest_file = max(existing_FAS_results, key=datetime_from_string)
+            print('Latest file is: {}'.format(latest_file))
+            new_start = datetime.datetime.strftime(datetime_from_string(latest_file), '%Y-%m-%d')
+            new_end   = datetime.datetime.strftime(datetime_from_string(latest_file) + relativedelta(months=+1), '%Y-%m-%d')
+
+            self.save_filename = os.path.join(self.DATA_PATH, 'FAS_' + new_start + '_' + new_end + '_.jsonl')
+
+            self.current_start = new_start
+            self.current_end   = new_end
+
+            if new_start > datetime_from_string(self.end_time):
+                self.save_filename = None
+
+    @time_function
+    def run_twarc(self):
+
+        print('Collecting {}'.format(self.save_filename))
+
+        subprocess.run(
+                ['twarc2',
+                'search',
+                '--archive',
+                '--max-results',
+                '500',
+                '--end-time',
+                self.current_end,
+                '--start-time',
+                self.curren_start,
+                self.search_query,
+                self.save_filename]
+            )
+
+    def collect(self):
+
+        self.check_existing_folder()
+        self.set_up_logging()
+        logging.info(self.terms)
+
+        self.get_next_filename()
+        while self.save_filename != None:
+            self.run_twarc()
+            self.get_next_filename()
+
+        end_time = datetime.datetime.now()
+        print(end_time)
+        logging.info('End Time: {}'.format(end_time))
+        logging.info('Time Elapsed: {}'.format(end_time-self.collection_start_time))
 
 def main():
 
     parser = argparse.ArgumentParser(description='Full Archive Search on Twitter. Supply search hashtags with search_hashtags.csv in the same directory.')
 
     parser.add_argument(
-        '--continue_from',
-        type = str,
-        default = 'NA'
+        '--search_query_txt',
+        help='hashtag search queries in a txt file.'
     )
 
     parser.add_argument(
-        '--count_from',
-        type = int,
-        default = 0
+        '--start_time',
+        help='end_time argument in format YYYY-MM-DD format',
     )
 
     parser.add_argument(
-        '--existing_folder',
-        help = 'any pre-existing data collection folder that was interrupted (e.g. 503 service unavailable). To be used in conjunction with --count_from and --countinue_from',
-        type = str,
-        default = 'NA'
+        '--end_time',
+        help='end_time argument in format YYYY-MM-DD',
+    )
+
+    parser.add_argument(
+        '--output_dir',
+        help='directory to place outputs. defaults to current working directory',
+        default = os.getcwd()
     )
 
     args = parser.parse_args()
 
+    Collector = FAS_Collector(args)
 
-    # obtain credentials from file
-    with open('Twitter_API_credentials.json', 'r') as f:
-        creds = json.loads(f.read())
-
-    bearer_token = creds['bearertoken'] 
-
-    # obtain search terms
-    with open('search_hashtags.csv', newline='') as f:
-        terms = list(csv.reader(f))
-
-    # unroll list
-    terms = [i[0] for i in terms]
-    search_query = ' OR '.join(terms)
-    assert len(search_query) <= 1024, 'Search query is above 1024 characters in length'
-
-    search_url = "https://api.twitter.com/2/tweets/search/all"
-
-    # Optional params: start_time,end_time,since_id,until_id,max_results,next_token,
-    # expansions,tweet.fields,media.fields,poll.fields,place.fields,user.fields
-    query_params = {
-                        'query': search_query,
-                        'tweet.fields':'author_id,conversation_id,created_at,entities,geo,in_reply_to_user_id,lang,public_metrics,possibly_sensitive,referenced_tweets',
-                        'media.fields':'media_key,type,preview_image_url',
-                        'place.fields':'full_name,id,country,country_code,geo,name,place_type',
-                        'start_time':'2017-10-17T00:00:00Z',
-                        'end_time': '2017-12-31T23:59:59Z',
-                        'max_results':100
-                }
-    # generate folder or identify folder for output
-    if args.existing_folder == 'NA':
-        # obtain current run time for reuslts
-        CURRENT_RUN_TIME = datetime.datetime.today()
-        CURRENT_RUN_TIME = CURRENT_RUN_TIME.strftime("%Y_%m_%d_%H_%M")
-
-        # creating new path
-        OUTPUT_PATH = os.path.join('collection_results_' + CURRENT_RUN_TIME)
-        DATA_PATH   = os.path.join(OUTPUT_PATH, 'data')
-
-        # create folders
-        os.makedirs(OUTPUT_PATH, exist_ok=True)
-        os.makedirs(DATA_PATH, exist_ok=True)
-
-    else:
-
-        # simply point OUTPUT_PATH and DATA_PATH to the correct places
-        if os.path.isabs(args.existing_folder):
-
-            assert os.path.isdir(args.existing_folder)
-
-            OUTPUT_PATH = args.existing_folder
-            DATA_PATH   = os.path.join(OUTPUT_PATH, 'data')
-        
-        else:
-
-            # sanity check
-            assert os.path.isdir(os.path.join(os.getcwd(), args.existing_folder))
-
-            OUTPUT_PATH = os.path.join(os.getcwd(), args.existing_folder)
-            DATA_PATH   = os.path.join(OUTPUT_PATH, 'data') 
-
-    # set up logging file
-    logging.basicConfig(filename=os.path.join(OUTPUT_PATH, 'full_archive_search.log'),
-                        encoding='utf-8',
-                        format='%(levelname)s:%(message)s',
-                        level=logging.DEBUG)
-
-    # log search query
-    logging.info(terms)
-
-    # print start time for records
-    start_time = datetime.datetime.now()
-    print(start_time)
-    logging.info('Full Archive Search Collection Start: {}'.format(start_time))
-
-    # create headers with bearer token
-    headers = create_headers(bearer_token)
-
-    # get first response. enable starting from a specific next_token
-    count = args.count_from + 1
-    if args.continue_from != 'NA':
-        query_params['next_token'] = args.continue_from
-    json_response = connect_to_endpoint(search_url, headers, query_params)
-    file_to_save = json_response['data']
-    save_filename = os.path.join(DATA_PATH, 'FAS_' + str(count) + '.json')
-    with open(save_filename, 'w') as f:
-        json.dump(file_to_save, f)
-
-    # generate empty list to append to
-    file_to_save = []
-
-    # loop over next tokens until there are none
-    while 'next_token' in json_response['meta']:
-        time.sleep(3)
-        pagination_params = query_params
-        pagination_params['next_token'] = json_response['meta']['next_token']
-        logging.info('nexttoken:{}'.format(json_response['meta']['next_token']))
-        json_response = connect_to_endpoint(search_url, headers, pagination_params)
-        if 'data' not in json_response:
-            logging.info(json_response)
-            continue
-        count += 1
-        file_to_save.extend(json_response['data'])
-        if count % 200 == 0:
-            print(count)
-            logging.info(count)
-            save_filename = os.path.join(DATA_PATH, 'FAS_' + str(count) + '.json')
-            with open(save_filename, 'w') as f:
-                json.dump(file_to_save, f)
-            file_to_save = []
-
-    # data collection end time
-    end_time = datetime.datetime.now()
-    print(end_time)
-    logging.info('End Time: {}'.format(end_time))
-    logging.info('Time Elapsed: {}'.format(end_time-start_time))
+    Collector.collect()
 
 if __name__ == "__main__":
     main()
