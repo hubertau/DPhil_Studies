@@ -53,7 +53,7 @@ def main():
             '--limit',
             args.limit,
             '--max-results',
-            '100',
+            '500',
             '--end-time',
             end_time,
             '--start-time',
