@@ -126,7 +126,7 @@ class FAS_Collector(object):
                 '--end-time',
                 self.current_end,
                 '--start-time',
-                self.curren_start,
+                self.current_start,
                 self.search_query,
                 self.save_filename]
             )
