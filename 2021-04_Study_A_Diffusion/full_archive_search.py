@@ -84,11 +84,11 @@ class FAS_Collector(object):
 
         self.first_run = True
 
-        first_start = datetime.datetime.strftime(self.start_time, '%Y-%m-%d')
-        first_end   = datetime.datetime.strftime(self.end_time, '%Y-%m-%d')
+        first_start = self.start_time.strftime('%Y-%m-%d')
+        first_end   = self.start_time.strftime('%Y-%m-%d')
 
         self.current_start = self.start_time
-        self.curreent_end  = self.first_end
+        self.curreent_end  = first_end
 
         self.save_filename = os.path.join(self.DATA_PATH, 'FAS_' + first_start + '_' + first_end + '_.jsonl') 
 
@@ -99,8 +99,9 @@ class FAS_Collector(object):
             existing_FAS_results = [re.split('[_.]',i)[-2] for i in existing_FAS_results]
             latest_file = max(existing_FAS_results, key=datetime_from_string)
             print('Latest file is: {}'.format(latest_file))
-            new_start = datetime.datetime.strftime(datetime_from_string(latest_file), '%Y-%m-%d')
-            new_end   = datetime.datetime.strftime(datetime_from_string(latest_file) + relativedelta(months=+1), '%Y-%m-%d')
+            new_start = datetime_from_string(latest_file).strftime('%Y-%m-%d')
+            new_end   = datetime_from_string(latest_file) + relativedelta(months=+1)
+            new_end = new_end.strftime('%Y-%m-%d')
 
             self.save_filename = os.path.join(self.DATA_PATH, 'FAS_' + new_start + '_' + new_end + '_.jsonl')
 
