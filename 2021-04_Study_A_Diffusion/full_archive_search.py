@@ -110,7 +110,7 @@ class FAS_Collector(object):
             new_end   = datetime_from_string(latest_file) + relativedelta(months=+1)
             new_end = new_end.strftime('%Y-%m-%d')
 
-            self.save_filename = os.path.join(self.DATA_PATH, 'FAS_' + new_start + '_' + new_end + '_.jsonl')
+            self.save_filename = os.path.join(self.DATA_PATH, 'FAS_' + new_start + '_' + new_end + '.jsonl')
 
             self.current_start = new_start
             self.current_end   = new_end
