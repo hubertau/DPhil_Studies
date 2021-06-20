@@ -97,7 +97,7 @@ class FAS_Collector(object):
         self.current_start = self.start_time
         self.current_end  = first_end
 
-        self.save_filename = os.path.join(self.DATA_PATH, 'FAS_' + first_start + '_' + first_end + '_.jsonl') 
+        self.save_filename = os.path.join(self.DATA_PATH, 'FAS_' + first_start + '_' + first_end + '.jsonl') 
 
         existing_FAS_results = glob.glob(os.path.join(self.DATA_PATH, 'FAS*.jsonl'))
 
