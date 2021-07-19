@@ -55,7 +55,7 @@ class bispec_search(object):
                             '--ncluster',
                             str(cluster)
                         ],
-                        cwd='/Users/hubert/Nextcloud/DPhil/DPhil_Studies/2021-04_Study_A_Diffusion'
+                        cwd='/home/ball4321/Data_Collection/2021-04_Study_A_Diffusion'
                     ) 
                 else:
                     subprocess.run(
