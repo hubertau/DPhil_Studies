@@ -17,7 +17,7 @@ from generate_user_to_hashtag_matrix import TweetVocabVectorizer
 
 class bispec_search(object):
 
-    def __init__(self, params, csr, vectorizer, mapping, implementation = 'Python', server = False):
+    def __init__(self, params, csr=None, vectorizer=None, mapping=None, implementation = 'Python', server = False):
         self.params = params
         self.type = implementation.lower()
         self.csr = csr
@@ -161,7 +161,7 @@ if __name__ == '__main__':
             'min_user': 10
         }
 
-        clusterer = bispec_search(params, csr, vectorizer, mapping, implementation='R', server=True)
+        clusterer = bispec_search(params, implementation='R', server=True)
 
         clusterer.cluster()
 
