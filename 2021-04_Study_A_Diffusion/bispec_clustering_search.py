@@ -74,6 +74,15 @@ class bispec_search(object):
 
         elif self.type == 'python':
 
+            # open the saved files
+            with open('collection_results_2021_05_04_16_22/user_count_mat.obj', 'rb') as f:
+                csr = pickle.load(f)
+            with open('collection_results_2021_05_04_16_22/vectorizer.obj', 'rb') as f:
+                vectorizer = pickle.load(f)
+            with open('collection_results_2021_05_04_16_22/mapping.obj', 'rb') as f:
+                mapping = pickle.load(f)
+
+
             # The adjacency matrix must be square. see Dhillon (2001) original paper.
             # self.square_mat = scipy.sparse.bmat([[None, self.csr],[self.csr.T,None]])
 
@@ -145,13 +154,6 @@ class bispec_search(object):
 if __name__ == '__main__':
 
     def main():
-        # open the saved files
-        with open('collection_results_2021_05_04_16_22/user_count_mat.obj', 'rb') as f:
-            csr = pickle.load(f)
-        with open('collection_results_2021_05_04_16_22/vectorizer.obj', 'rb') as f:
-            vectorizer = pickle.load(f)
-        with open('collection_results_2021_05_04_16_22/mapping.obj', 'rb') as f:
-            mapping = pickle.load(f)
 
         params = {
             'range': (10,500),
