@@ -156,7 +156,7 @@ if __name__ == '__main__':
     def main():
 
         params = {
-            'range': (10,500),
+            'range': (10,200),
             'interval': 1,
             'min_user': 10
         }
