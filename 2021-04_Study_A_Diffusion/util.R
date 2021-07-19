@@ -22,8 +22,8 @@ biSpectralCoCluster=function(h_edges,min_user=1,k=100,all_hashtags=FALSE,verbose
   H=graph.data.frame(h_edges)
   S=simplify(H,remove.loops=FALSE,remove.multiple=TRUE)
   rm(h_edges)
-  A=get.adjacency(H,names=TRUE)
-  S=get.adjacency(S)
+  A=get.adjacency(H,names=TRUE, attr='weight')
+  S=get.adjacency(S, attr = 'weight')
   
   # HUBERT NOTE: THIS NEXT LINE TREATS ENTRIES IN TARGET COLUMN AS HASHTAGS
   if (all_hashtags){
@@ -38,6 +38,7 @@ biSpectralCoCluster=function(h_edges,min_user=1,k=100,all_hashtags=FALSE,verbose
   A=A[!mapping,]
   S=S[!mapping,]
   
+  # 2021-07-13 HUBERT NOTE: OMG S IS ALL ONES. WEIGHT IS NOT READ IN.
   ht_mapping= colSums(S)>=min_user
   A=A[,ht_mapping]
   rm(S)
@@ -56,7 +57,7 @@ biSpectralCoCluster=function(h_edges,min_user=1,k=100,all_hashtags=FALSE,verbose
   d2[is.infinite(d2)]=0  
   D2=Diagonal(n=dim(A)[2],x=d2)
   An=D1%*%A%*%D2
-  obj=irlba(An,k,nu=k,nv=k)
+  obj=irlba(An,k,nu=k,nv=k,maxit = 2000, verbose=verbose, work=2000)
   if (verbose){
     print(paste("Bispectral took:", Sys.time()-start,"seconds"))
   }
