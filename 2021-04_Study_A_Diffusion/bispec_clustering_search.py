@@ -17,12 +17,13 @@ from generate_user_to_hashtag_matrix import TweetVocabVectorizer
 
 class bispec_search(object):
 
-    def __init__(self, params, csr, vectorizer, mapping, implementation = 'Python'):
+    def __init__(self, params, csr, vectorizer, mapping, implementation = 'Python', server = False):
         self.params = params
         self.type = implementation.lower()
         self.csr = csr
         self.vectorizer = vectorizer
         self.mapping = mapping
+        self.server = server
 
     def time_function(func):
 
@@ -42,19 +43,34 @@ class bispec_search(object):
 
         if self.type == 'r':
             for cluster in tqdm.tqdm(range(self.params['range'][0],self.params['range'][1]+1,self.params['interval'])):
-                subprocess.run(
-                    [
-                        'Rscript',
-                        'bispectral_clustering.R',
-                        '/Users/hubert/Nextcloud/DPhil/DPhil_Studies/2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/bispec_ready_counts.csv',
-                        '/Users/hubert/Nextcloud/DPhil/DPhil_Studies/2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/bsc/',
-                        '--min_user',
-                        str(self.params['min_user']),
-                        '--ncluster',
-                        str(cluster)
-                    ],
-                    cwd='/Users/hubert/Nextcloud/DPhil/DPhil_Studies/2021-04_Study_A_Diffusion'
-                )
+                if self.server:
+                    subprocess.run(
+                        [
+                            'Rscript',
+                            'bispectral_clustering.R',
+                            '/home/ball4321/Data_Collection/2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/bispec_ready_counts.csv',
+                            '/home/ball4321/Data_Collection/2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/bsc/',
+                            '--min_user',
+                            str(self.params['min_user']),
+                            '--ncluster',
+                            str(cluster)
+                        ],
+                        cwd='/Users/hubert/Nextcloud/DPhil/DPhil_Studies/2021-04_Study_A_Diffusion'
+                    ) 
+                else:
+                    subprocess.run(
+                        [
+                            'Rscript',
+                            'bispectral_clustering.R',
+                            '/Users/hubert/Nextcloud/DPhil/DPhil_Studies/2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/bispec_ready_counts.csv',
+                            '/Users/hubert/Nextcloud/DPhil/DPhil_Studies/2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/bsc/',
+                            '--min_user',
+                            str(self.params['min_user']),
+                            '--ncluster',
+                            str(cluster)
+                        ],
+                        cwd='/Users/hubert/Nextcloud/DPhil/DPhil_Studies/2021-04_Study_A_Diffusion'
+                    )
 
         elif self.type == 'python':
 
@@ -143,7 +159,7 @@ if __name__ == '__main__':
             'min_user': 10
         }
 
-        clusterer = bispec_search(params, csr, vectorizer, mapping, implementation='R')
+        clusterer = bispec_search(params, csr, vectorizer, mapping, implementation='R', server=True)
 
         clusterer.cluster()
 
