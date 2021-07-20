@@ -129,7 +129,7 @@ class FAS_Collector(object):
                 'search',
                 '--archive',
                 '--max-results',
-                '500',
+                '100',
                 '--end-time',
                 self.current_end,
                 '--start-time',
