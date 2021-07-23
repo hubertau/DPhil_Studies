@@ -115,8 +115,10 @@ class FAS_Collector(object):
             self.current_start = new_start
             self.current_end   = new_end
 
-            # if new_start>specified end time
-            if datetime_from_string(latest_file) > datetime_from_string(self.end_time):
+            # if new_end>specified end time
+            if datetime_from_string(self.current_end) > datetime_from_string(self.end_time):
+                print('ending collection. Current start: {}'.format(self.current_start))
+                print('ending collection. Current end: {}'.format(self.current_end))
                 self.save_filename = None
 
     @time_function
