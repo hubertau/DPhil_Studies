@@ -84,11 +84,16 @@ if(grepl("[.]gz$", USER_TO_HASHTAG_EDGELIST_FILENAME)){
 ## The function takes as input the 
 listObj=biSpectralCoCluster(user_ht,min_user=MIN_USER,k=N_CLUSTERS, verbose = FALSE)
 
+
+
 # 2021-06-08: save dataframes in bispectral clustering
 csv_output_name <- paste0("bsc_", MIN_USER, "_", N_CLUSTERS)
+## save listObj
+save(listObj, file = file.path(OUTPUT_DIRECTORY, paste0(csv_output_name,'_results.RData')))
 write.csv(listObj$summary, file.path(OUTPUT_DIRECTORY, paste0(csv_output_name,'_summary.csv')))
 write.csv(listObj$users, file.path(OUTPUT_DIRECTORY, paste0(csv_output_name,'_users.csv')))
 write.csv(listObj$hashtags, file.path(OUTPUT_DIRECTORY, paste0(csv_output_name,'_hashtags.csv')))
+
 
 # output_filename
 output_filename <- paste0("hashtags_per_cluster_",MIN_USER,"_",N_CLUSTERS,"_.pdf")
