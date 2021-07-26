@@ -17,6 +17,21 @@ load_user_ht_matrix <- function(edgelist_path){
   
 }
 
+factory <- function(fun)
+  function(...) {
+    warn <- err <- NULL
+    res <- withCallingHandlers(
+      tryCatch(fun(...), error=function(e) {
+        err <<- conditionMessage(e)
+        NULL
+      }), warning=function(w) {
+        warn <<- append(warn, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      })
+    list(res=res, warn=warn, err=err)
+  }
+
+
 biSpectralCoCluster=function(h_edges,min_user=1,k=100,all_hashtags=FALSE,verbose = FALSE){
   
   H=graph.data.frame(h_edges)
@@ -57,7 +72,10 @@ biSpectralCoCluster=function(h_edges,min_user=1,k=100,all_hashtags=FALSE,verbose
   d2[is.infinite(d2)]=0  
   D2=Diagonal(n=dim(A)[2],x=d2)
   An=D1%*%A%*%D2
-  obj=irlba(An,k,nu=k,nv=k,maxit = 2000, verbose=verbose, work=2000)
+  obj=factory(irlba)(An,k,nu=k,nv=k,maxit = 2000, verbose=verbose, work=2000)
+  warnings = obj$warn
+  errors   = obj$err
+  obj      = obj$res
   if (verbose){
     print(paste("Bispectral took:", Sys.time()-start,"seconds"))
   }
@@ -71,14 +89,29 @@ biSpectralCoCluster=function(h_edges,min_user=1,k=100,all_hashtags=FALSE,verbose
     cat('spectral features extracted... clustering\n')
   }
   
-  ht_kobj=kmeans(uhtMat,k,iter.max=10000,algorithm='Lloyd')
+  ht_kobj=factory(kmeans)(uhtMat,k,iter.max=10000,algorithm='Lloyd')
+  kmeans_warnings = ht_kobj$warn
+  kmeans_errors   = ht_kobj$err
+  ht_kobj = ht_kobj$res
   uMat=data.frame(uMat[,1:2],topic_cluster=ht_kobj$cluster[1:dim(uMat)[1]])
   htMat=data.frame(htMat[,1:2],topic_cluster=ht_kobj$cluster[(dim(uMat)[1]+1):length(ht_kobj$cluster)])
   names(htMat)[1]='hashtag'
   summ=as.data.frame(ftable(uMat$topic_cluster))
   names(summ)=c('cluster','count')
   summ=summ[order(summ$count,decreasing=TRUE),]
-  return(list(summary=summ,users=uMat,hashtags=htMat))
+  return(list(summary=summ,
+              users=uMat,
+              hashtags=htMat,
+              uhtMat = uhtMat,
+              obj=obj,
+              ht_kobj=ht_kobj,
+              adjacency = A,
+              An = An,
+              irl_warn = warnings,
+              irl_error = errors,
+              kmeans_warnings = kmeans_warnings,
+              kmeans_errors   = kmeans_errors
+  ))
 } 
 
 
