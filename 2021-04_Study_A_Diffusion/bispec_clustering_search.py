@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 import datetime
 import pickle
 import subprocess
@@ -40,6 +41,7 @@ class bispec_search(object):
         return inner
 
     def cluster(self):
+        print('server boolean is {}'.format(self.server))
 
         if self.type == 'r':
             for cluster in tqdm.tqdm(range(self.params['range'][0],self.params['range'][1]+1,self.params['interval'])):
@@ -153,7 +155,21 @@ class bispec_search(object):
 
 if __name__ == '__main__':
 
-    def main():
+    parser = ArgumentParser(description='Bispectral Cluster Search')
+
+    parser.add_argument(
+        '--server',
+        help = 'whether to use local or server directories',
+        default = False,
+        action='store_true'
+    )
+
+    args = parser.parse_args()
+
+    assert (args.server == 0) or (args.server==1)
+
+
+    def main(args):
 
         params = {
             'range': (10,200),
@@ -161,8 +177,8 @@ if __name__ == '__main__':
             'min_user': 10
         }
 
-        clusterer = bispec_search(params, implementation='R', server=True)
+        clusterer = bispec_search(params, implementation='R', server=args.server)
 
         clusterer.cluster()
 
-    main()
+    main(args)
