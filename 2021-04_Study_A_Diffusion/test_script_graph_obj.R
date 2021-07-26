@@ -50,7 +50,7 @@ args <- parse_args(parser,
     "/Users/hubert/Nextcloud/DPhil/DPhil_Studies/2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/bispec_ready_counts.csv",
     "/Users/hubert/Nextcloud/DPhil/DPhil_Studies/2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/bsc/",
     "--min_user", 10,
-    "--ncluster", 500
+    "--ncluster", 10
   )
 )
 
@@ -61,11 +61,28 @@ args <- parse_args(parser,
 report_date <- Sys.Date()
 
 set.seed(0)
+
+factory <- function(fun)
+  function(...) {
+    warn <- err <- NULL
+    res <- withCallingHandlers(
+      tryCatch(fun(...), error=function(e) {
+        err <<- conditionMessage(e)
+        NULL
+      }), warning=function(w) {
+        warn <<- append(warn, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      })
+    list(res=res, warn=warn, err=err)
+  }
+
+
+
 biSpectralCoCluster=function(h_edges,min_user=1,k=100,all_hashtags=FALSE,verbose = FALSE){
   
   H=graph.data.frame(h_edges)
   S=simplify(H,remove.loops=FALSE,remove.multiple=TRUE)
-  # rm(h_edges)
+  rm(h_edges)
   A=get.adjacency(H,names=TRUE, attr='weight')
   S=get.adjacency(S, attr = 'weight')
   
@@ -78,10 +95,11 @@ biSpectralCoCluster=function(h_edges,min_user=1,k=100,all_hashtags=FALSE,verbose
   
   A=A[,mapping]
   S=S[,mapping]
-  # rm(H)
+  rm(H)
   A=A[!mapping,]
   S=S[!mapping,]
   
+  # 2021-07-13 HUBERT NOTE: OMG S IS ALL ONES. WEIGHT IS NOT READ IN.
   ht_mapping= colSums(S)>=min_user
   A=A[,ht_mapping]
   rm(S)
@@ -100,18 +118,10 @@ biSpectralCoCluster=function(h_edges,min_user=1,k=100,all_hashtags=FALSE,verbose
   d2[is.infinite(d2)]=0  
   D2=Diagonal(n=dim(A)[2],x=d2)
   An=D1%*%A%*%D2
-  # for(k in seq(from=10,to=500,by=20)){
-  #   for (l in seq(from=0, to=1, by=0.05)){
-  #     zzz <- matrix(0, ncol=3383, nrow=2363)
-  #     diag(zzz) <- l
-  #     
-  #     print(k)
-  #     print(l)
-  #     
-  #     obj=irlba(An+zzz,k,nu=k,nv=k,maxit = 2000, tol=1e-4, verbose=TRUE, work=2000)
-  #   }
-  # }
-  obj=irlba(An,k,nu=k,nv=k,maxit = 2000, verbose=verbose, work=2000)
+  obj=factory(irlba)(An,k,nu=k,nv=k,maxit = 2000, verbose=verbose, work=2000)
+  warnings = obj$warn
+  errors   = obj$err
+  obj      = obj$res
   if (verbose){
     print(paste("Bispectral took:", Sys.time()-start,"seconds"))
   }
@@ -125,14 +135,29 @@ biSpectralCoCluster=function(h_edges,min_user=1,k=100,all_hashtags=FALSE,verbose
     cat('spectral features extracted... clustering\n')
   }
   
-  ht_kobj=kmeans(uhtMat,k,iter.max=10000,algorithm='Lloyd')
+  ht_kobj=factory(kmeans)(uhtMat,k,iter.max=10000,algorithm='Lloyd')
+  kmeans_warnings = ht_kobj$warn
+  kmeans_errors   = ht_kobj$err
+  ht_kobj = ht_kobj$res
   uMat=data.frame(uMat[,1:2],topic_cluster=ht_kobj$cluster[1:dim(uMat)[1]])
   htMat=data.frame(htMat[,1:2],topic_cluster=ht_kobj$cluster[(dim(uMat)[1]+1):length(ht_kobj$cluster)])
   names(htMat)[1]='hashtag'
   summ=as.data.frame(ftable(uMat$topic_cluster))
   names(summ)=c('cluster','count')
   summ=summ[order(summ$count,decreasing=TRUE),]
-  return(list(summary=summ,users=uMat,hashtags=htMat))
+  return(list(summary=summ,
+              users=uMat,
+              hashtags=htMat,
+              uhtMat = uhtMat,
+              obj=obj,
+              ht_kobj=ht_kobj,
+              adjacency = A,
+              An = An,
+              irl_warn = warnings,
+              irl_error = errors,
+              kmeans_warnings = kmeans_warnings,
+              kmeans_errors   = kmeans_errors
+              ))
 } 
 
 # Where is your user to hashtag matrix? Make sure it is as defined in the Readme!
@@ -170,6 +195,7 @@ if(grepl("[.]gz$", USER_TO_HASHTAG_EDGELIST_FILENAME)){
 ## The function takes as input the 
 listObj=biSpectralCoCluster(user_ht,min_user=MIN_USER,k=N_CLUSTERS, verbose = FALSE)
 
+cat('done')
 # 2021-06-08: save dataframes in bispectral clustering
 # csv_output_name <- paste0("bsc_", MIN_USER, "_", N_CLUSTERS)
 # write.csv(listObj$summary, file.path(OUTPUT_DIRECTORY, paste0(csv_output_name,'_summary.csv')))
@@ -181,15 +207,3 @@ listObj=biSpectralCoCluster(user_ht,min_user=MIN_USER,k=N_CLUSTERS, verbose = FA
 
 # look at results
 # gen_plots(listObj,min_user_count = 1,filename=file.path(OUTPUT_DIRECTORY, output_filename))
-
-#test loop
-for(k in 10:500){
-  for (l in 1:100){
-    l <- l/100
-    zzz <- matrix(0, ncol=3383, nrow=2363)
-    diag(zzz) <- l
-    
-    obj=irlba(An+zzz,k,nu=k,nv=k,maxit = 2000, tol=1e-4, verbose=TRUE, work=2000)
-  }
-}
-
