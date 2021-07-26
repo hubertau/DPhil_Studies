@@ -57,6 +57,21 @@ class BSCresults(object):
         assert len(self.file_list_users)>0
         assert len(self.file_list_hashtags)>0
 
+
+    def time_function(func):
+
+        """
+        Wrapper function to time execution.
+        """
+
+        def inner(*args, **kwargs):
+            timefunc_start_time = datetime.datetime.now()
+            print('\nStart Time: {}'.format(timefunc_start_time))
+            result = func(*args, **kwargs)
+            print('Total Time Taken: {}'.format(datetime.datetime.now()-timefunc_start_time))
+            return result
+        return inner
+
     def set_coi(self, clusters_of_interest_list):
 
         if not type(clusters_of_interest_list) is list:
@@ -223,6 +238,7 @@ class BSCresults(object):
 
         return cluster_words
 
+    @time_function
     def get_user_cluster_data(self, cluster_total, cluster_num):
 
         assert type(cluster_total) == int
