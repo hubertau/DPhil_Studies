@@ -37,5 +37,5 @@ for (file in files){
 
 plot(listObj$adjacency,
     
-          
+        
 )
