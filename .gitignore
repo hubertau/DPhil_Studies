@@ -17,3 +17,5 @@
 *.RData
 2021-04_Study_A_Diffusion/.RData
 DPhil_Studies.code-workspace
+.vscode/launch.json
+.vscode/settings.json
