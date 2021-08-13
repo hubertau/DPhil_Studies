@@ -155,7 +155,7 @@ class TimelineAnalyzer(BSCresults):
             'hashtags': []
         }
 
-        self.new_FAS_dir = '/Users/hubert/Nextcloud/DPhil/DPhil_Studies/2021-04_Study_A_Diffusion/collection_results_2021_06_19_16_21/data'
+        self.new_FAS_dir = '/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/collection_results_2021_06_19_16_21/data'
 
         for user_jsonl_file in tqdm.tqdm(glob.glob(os.path.join(self.new_FAS_dir,'FAS*.jsonl')), desc='processing FAS jsonl files'):
             with jsonlines.open(user_jsonl_file) as reader:
@@ -195,27 +195,42 @@ class TimelineAnalyzer(BSCresults):
         self.FAS_activity_df_long = self.FAS_activity_df_long[self.FAS_activity_df_long['vocab:#']!=0]
 
         self.FAS_activity_plot = plotnine.ggplot(self.FAS_activity_df_long, plotnine.aes(x = 'created_at', y = 'vocab:#', color = 'hashtag')) + \
-            plotnine.geom_line() + \
-            plotnine.theme(axis_text_x =  plotnine.element_text(rotation = 45, hjust=1))
-            # plotnine.scale_y_continuous(trans='log10') + \
+            plotnine.geom_line(group=1) + \
+            plotnine.scale_x_datetime(date_breaks = '1 month') + \
+            plotnine.theme(
+                text = plotnine.element_text(family=['Noto Sans KR', 'Noto Serif JP','STIX Two Text', 'Cairo']), 
+                axis_text_x =  plotnine.element_text(rotation = 45, hjust=1)) + \
+            plotnine.ggtitle('Activity Plot for Searched #MeToo Hashtags') + \
+            plotnine.xlab('Date') + \
+            plotnine.ylab('Volume of Activity')
 
         # save plot
         plot_savename = os.path.join(self.image_path, 'FAS_activity.png')
         self.FAS_activity_plot.save(
                         plot_savename,
+                        width=15,
+                        height=10,
                         dpi=600,
                         verbose = False
                     )
 
         self.FAS_activity_plot_log = plotnine.ggplot(self.FAS_activity_df_long, plotnine.aes(x = 'created_at', y = 'vocab:#', color = 'hashtag')) + \
-            plotnine.geom_line() + \
-            plotnine.theme(axis_text_x =  plotnine.element_text(rotation = 45, hjust=1)) + \
+            plotnine.geom_line(group=1) + \
+            plotnine.scale_x_datetime(date_breaks = '1 month') + \
+            plotnine.theme(
+                text = plotnine.element_text(family=['Noto Sans KR', 'Noto Serif JP','STIX Two Text', 'Cairo']), 
+                axis_text_x =  plotnine.element_text(rotation = 45, hjust=1)) + \
+            plotnine.ggtitle('Activity Plot for Searched #MeToo Hashtags') + \
+            plotnine.xlab('Date') + \
+            plotnine.ylab('Volume of Activity') + \
             plotnine.scale_y_continuous(trans='log10')
 
         # save plot
         plot_savename = os.path.join(self.image_path, 'FAS_activity_log.png')
         self.FAS_activity_plot_log.save(
                         plot_savename,
+                        width=15,
+                        height=10,
                         dpi=600,
                         verbose = False
                     )
