@@ -9,14 +9,11 @@ import datetime
 import plotnine
 import glob
 import tqdm
+import scipy.signal
 
 from bispec_clustering_eval import BSCresults
 
 class TimelineAnalyzer(BSCresults):
-
-    # def get_vocab_indices(self):
-
-    #     self.vocab_indices = [i for i, s in enumerate(list(self.df.columns)) if 'vocab' in s]
 
     def print_stats(self):
 
@@ -192,6 +189,9 @@ class TimelineAnalyzer(BSCresults):
         self.FAS_activity_df_long = pd.wide_to_long(self.FAS_activity_df, stubnames='vocab:#', i='created_at', j='hashtag', suffix = '.+')
 
         self.FAS_activity_df_long= self.FAS_activity_df_long.reset_index()
+        self.FAS_activity_df_long_with_zeros = self.FAS_activity_df_long.copy(deep=True)
+
+        # drop_zeros
         self.FAS_activity_df_long = self.FAS_activity_df_long[self.FAS_activity_df_long['vocab:#']!=0]
 
         self.FAS_activity_plot = plotnine.ggplot(self.FAS_activity_df_long, plotnine.aes(x = 'created_at', y = 'vocab:#', color = 'hashtag')) + \
@@ -234,3 +234,12 @@ class TimelineAnalyzer(BSCresults):
                         dpi=600,
                         verbose = False
                     )
+
+    def FAS_peaks(self):
+
+        # This should be run after FAS plots have been created, because then the FAS_actitivty_df object is also created. This function will obtain peaks from that data
+
+
+        # N.B. 2021-09-01 attempt the peak finding algorithm from scipy. See https://stackoverflow.com/questions/22583391/peak-signal-detection-in-realtime-timeseries-data/22640362#22640362 for this idea.
+
+        pass
