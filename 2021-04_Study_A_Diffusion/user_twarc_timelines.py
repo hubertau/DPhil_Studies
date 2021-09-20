@@ -1,3 +1,10 @@
+'''
+2021-09-14: Script to collect user timelines from a list of users supplied.
+
+A list of users and their respective existing frequencies is to be supplied in a text file. The purpose of this is an estimate of their actual tweeting frequencies.
+
+'''
+
 import subprocess
 import os
 import argparse
@@ -5,10 +12,12 @@ import pandas as pd
 import logging
 import tqdm
 import datetime
+import csv
+
 
 def main():
 
-    # read in data
+    # read in data. N.B. the data should come in the form of a txt file with each row as a user_id, count where count is the number of tweets in the initial FAS collection.
     users = pd.read_csv(
         args.user_list,
         header=None,
@@ -24,6 +33,7 @@ def main():
     print('{} users to be dropped.'.format(sum(users['tweet_count']<int(args.min_tweets))))
     users = users[users['tweet_count']>=int(args.min_tweets)]
 
+    # now iterate through the users
     for user_row in tqdm.tqdm(users.iterrows(), total=len(users)):
 
         # user_id
@@ -40,11 +50,36 @@ def main():
         # generate query
         query = 'from:' + user_id
 
+        # omit retweets
+        if args.omit_retweets:
+            query = query + ' -is:retweet'
+
+            # N.B. Prepend a dash (-) to a keyword (or any operator) to negate it (NOT). For example, cat #meme -grumpy will match Tweets containing the hashtag #meme and the term cat, but only if they do not contain the term grumpy. One common query clause is -is:retweet, which will not match on Retweets, thus matching only on original Tweets, Quote Tweets, and replies. All operators can be negated, but negated operators cannot be used alone.
+
+        if args.omit_hashtags:
+            with open('/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/search_hashtags.txt', newline='') as f:
+                terms = list(csv.reader(f))
+            terms = ['-'+i[0] for i in terms]
+            terms  = ' '.join(terms)
+            query = query + ' ' + terms
+
+        assert len(query) <= 1024, 'Query length too long'
+
+        print('\nQuery is: {}.\n'.format(query))
+
         # generate start and end dates
         end_time = datetime.datetime.fromisoformat(args.end_time)
         start_time = end_time - datetime.timedelta(args.back)
         end_time = datetime.datetime.isoformat(end_time)
         start_time = datetime.datetime.isoformat(start_time)
+
+        if args.start_time:
+            start_time = datetime.datetime.fromisoformat(args.start_time)
+            start_time = datetime.datetime.isoformat(start_time)
+
+
+        print('start time: {}'.format(start_time))
+        print('end_time: {}'.format(end_time))
 
         subprocess.run(
             ['twarc2',
@@ -53,7 +88,7 @@ def main():
             '--limit',
             args.limit,
             '--max-results',
-            '500',
+            '100',
             '--end-time',
             end_time,
             '--start-time',
@@ -94,6 +129,11 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
+        '--start_time',
+        help='end_time argument in format YYYY-MM-DDTHH:mm:ss (ISO format). If present, --back option is ignored.'
+    )
+
+    parser.add_argument(
         '--min_tweets',
         help='The minimum frequency for user history to be collected.',
         default=50
@@ -105,8 +145,25 @@ if __name__ == '__main__':
         default=2000
     )
 
+    parser.add_argument(
+        '--omit_hashtags',
+        help='Include in query to not include tweets that contain the original search hashtags. These are already collected in the FAS.',
+        default = False,
+        action = "store_true"
+    )
+
+    parser.add_argument(
+        '--omit_retweets',
+        help = 'omit retweets in the query',
+        default = False,
+        action = 'store_true'
+    )
+
     # parse arguments
     args = parser.parse_args()
+
+    if args.omit_hashtags:
+        print("N.B. Original hashtag search queries have been omitted from collected tweets.")
 
     # set up logging
     logging.basicConfig(filename=os.path.join(args.output_dir, 'user_timelines.log'),
