@@ -152,9 +152,7 @@ class TimelineAnalyzer(BSCresults):
             'hashtags': []
         }
 
-        self.new_FAS_dir = '/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/collection_results_2021_06_19_16_21/data'
-
-        for user_jsonl_file in tqdm.tqdm(glob.glob(os.path.join(self.new_FAS_dir,'FAS*.jsonl')), desc='processing FAS jsonl files'):
+        for user_jsonl_file in tqdm.tqdm(glob.glob(os.path.join(self.data_dir,'FAS*.jsonl')), desc='processing FAS jsonl files'):
             with jsonlines.open(user_jsonl_file) as reader:
                 for tweet_jsonl in reader:
                     tweet_list_in_file = tweet_jsonl['data']
