@@ -23,6 +23,7 @@ class TweetVocabVectorizer(object):
     def __init__(
         self,
         data_dir,
+        subset,
         ngram_range=(2,3),
         remove_stop_words=True,
         eot_token='eottoken'
@@ -35,6 +36,7 @@ class TweetVocabVectorizer(object):
         self.eot_token = eot_token
         self.remove_stop_words = remove_stop_words
         self.token_pattern = r"(?u)#?\b\w\w+\b"
+        self.subset = subset
 
     def time_function(func):
 
@@ -159,28 +161,26 @@ class TweetVocabVectorizer(object):
 
         return tokens
 
-    def iterator_jsonl(self, limit=None):
+    def iterator_jsonl(self):
 
         """
         Iterator to yield a raw input string from a user file.
-
-        Keyword Arguments:
-            limit: Default None, meaning no limit. Set to integer to tell function only to let that number of files through. For diagnostic purposes.
 
         Yields:
             [type]: [description]
         """
 
-        if limit==None:
-            iter_list = self.file_list
+        if self.subset == None:
+            self.iter_list = self.file_list
         else:
-            iter_list = self.file_list[:limit]
+            assert type(self.subset) == int
+            self.iter_list = self.file_list[:self.subset]
 
 
         # set eot_token join string
         eot_join_str = ' ' + self.eot_token + ' '
 
-        for input_file in tqdm.tqdm(iter_list, desc='CountVectorizer over collected users:'):
+        for input_file in tqdm.tqdm(self.iter_list, desc='CountVectorizer over collected users:'):
 
             user_joined_tweet_body = []
 
@@ -211,7 +211,13 @@ class TweetVocabVectorizer(object):
         print('collecting hashtag list')
         hashtag_set = set()
 
-        for file_name in tqdm.tqdm(self.file_list):
+        if self.subset == None:
+            self.iter_list = self.file_list
+        else:
+            assert type(self.subset) == int
+            self.iter_list = self.file_list[:self.subset]
+
+        for file_name in tqdm.tqdm(self.iter_list):
             with jsonlines.open(file_name) as reader:
                 for tweet_jsonl in reader:
                     tweet_list_in_file = tweet_jsonl['data']
@@ -289,6 +295,7 @@ def main():
 
     vocab_vectorizer = TweetVocabVectorizer(
         args.data_dir,
+        args.subset,
         ngram_range=(3,4),
         remove_stop_words=False
     )
@@ -304,6 +311,13 @@ if __name__ == '__main__':
     parser.add_argument(
         'data_dir',
         help='data directory'
+    )
+
+    parser.add_argument(
+        '--subset',
+        help='debugging purposes. Index to iterate timeline files over.',
+        default = None,
+        type = int
     )
 
     # parse args
