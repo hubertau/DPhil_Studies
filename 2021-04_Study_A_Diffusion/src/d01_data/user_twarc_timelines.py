@@ -25,7 +25,7 @@ def main():
     )
 
     # if continue_from_user_id has been provided, then print this and filter the data
-    users = users.iloc[users['user_id'][users['user_id']==560707426].index[0]:,:]
+    users = users.iloc[users['user_id'][users['user_id']==args.continue_from_user_id].index[0]:,:]
     print('\nContinuing from user {}. Collecting this user now.'.format(args.continue_from_user_id))
 
     # convert tweet_count column to numeric
@@ -44,7 +44,7 @@ def main():
         user_id = str(user_row[1]['user_id'])
 
         # generate save filename
-        save_filename = os.path.join(args.output_dir,'data/timeline_' + user_id + '.jsonl')
+        save_filename = os.path.join(args.data_dir,'timeline_' + user_id + '.jsonl')
 
         # check if file already exists
         if os.path.isfile(save_filename):
@@ -120,6 +120,11 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
+        '--data_dir',
+        help='where to place the data files.'
+    )
+
+    parser.add_argument(
         '--back',
         help='The maximum period back for each user to extract. Give integer in days. Default = 14',
         type = int,
@@ -189,5 +194,6 @@ if __name__ == '__main__':
         raise ValueError('invalid end_time string')
 
     assert os.path.isdir(args.output_dir)
+    assert os.path.isdir(args.data_dir)
 
     main()
