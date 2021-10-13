@@ -1,3 +1,7 @@
 {
-    "python.analysis.extraPaths": ["./2021-04_Study_A_Diffusion","/home/hubert/.local/lib/python3.9/site-packages"]
+    "python.analysis.extraPaths": [
+        "./2021-04_Study_A_Diffusion",
+        "/home/hubert/.local/lib/python3.9/site-packages"
+    ],
+    "jupyter.jupyterServerType": "local"
 }

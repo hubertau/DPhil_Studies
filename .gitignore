@@ -10,6 +10,7 @@
 *.npz
 *.png
 *.jsonl
+*.json
 *.css
 *.RData
 DPhil_Studies.code-workspace
