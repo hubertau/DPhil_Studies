@@ -2,7 +2,8 @@
 .DS_Store
 *.log
 *.pyc
-2021-04_Study_A_Diffusion/data/01_raw*.jsonl
+2021-04_Study_A_Diffusion/data/01_raw/*.jsonl
+2021-04_Study_A_Diffusion/data/01_raw/*.json
 .Rproj.user
 *.pdf
 *.obj
