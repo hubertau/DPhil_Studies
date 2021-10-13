@@ -1,26 +1,31 @@
+#!/usr/bin/python
+
+'''
+This is the script used to collect the first stage of data: tweets containing any of the search hashtags.
+
+'''
+
+
 import argparse
 import csv
 import datetime
 import glob
-import json
 import logging
 import os
-import subprocess
-import time
-
 import re
-import jsonlines
-import requests
+import subprocess
+
 from dateutil.relativedelta import *
+
 class FAS_Collector(object):
 
     def __init__(self, args):
 
         self.end_time                   = args.end_time
         self.start_time                 = args.start_time
-        self.output_dir                 = args.output_dir
+        self.OUTPUT_PATH                = args.output_dir
         self.search_query_txt           = args.search_query_txt
-        self.existing_collection_folder = args.existing_collection_folder
+        self.DATA_PATH                  = args.data_dir
 
         # obtain search terms
         with open(self.search_query_txt, newline='') as f:
@@ -46,29 +51,6 @@ class FAS_Collector(object):
             print('Total Time Taken: {}'.format(datetime.datetime.now()-timefunc_start_time))
             return result
         return inner
-
-    def check_existing_folder(self):
-
-        if self.existing_collection_folder != None:
-            self.OUTPUT_PATH = self.existing_collection_folder
-            self.DATA_PATH   = os.path.join(self.OUTPUT_PATH, 'data')
-        else:
-
-            # obtain current run time for reuslts
-            self.CURRENT_RUN_TIME = datetime.datetime.today()
-            self.CURRENT_RUN_TIME = self.CURRENT_RUN_TIME.strftime("%Y_%m_%d_%H_%M")
-
-            # creating new path
-            self.OUTPUT_PATH = os.path.join('collection_results_' + self.CURRENT_RUN_TIME)
-            self.DATA_PATH   = os.path.join(self.OUTPUT_PATH, 'data')
-
-            # simply point OUTPUT_PATH and DATA_PATH to the correct places
-            if os.path.isdir(self.OUTPUT_PATH) and os.path.isdir(self.DATA_PATH):
-                pass
-            else:
-                # create folders
-                os.makedirs(self.OUTPUT_PATH, exist_ok=True)
-                os.makedirs(self.DATA_PATH, exist_ok=True)
 
     def set_up_logging(self):
 
@@ -142,7 +124,6 @@ class FAS_Collector(object):
 
     def collect(self):
 
-        self.check_existing_folder()
         self.set_up_logging()
         logging.info(self.terms)
 
@@ -182,9 +163,8 @@ def main():
     )
 
     parser.add_argument(
-        '--existing_collection_folder',
-        help='existing collections folder',
-        default = None
+        '--data_dir',
+        help='where to place the scraped data.'
     )
 
     args = parser.parse_args()
