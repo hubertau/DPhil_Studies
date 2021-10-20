@@ -1,3 +1,5 @@
+#!/usr/bin/python3.9
+
 '''
 Script to tokenise and count the instances of hashtags and designated phrases.
 
@@ -23,6 +25,7 @@ class TweetVocabVectorizer(object):
     def __init__(
         self,
         data_dir,
+        output_dir,
         subset,
         ngram_range=(2,3),
         remove_stop_words=True,
@@ -31,6 +34,7 @@ class TweetVocabVectorizer(object):
 
         # set attributes
         self.data_dir = data_dir
+        self.output_dir = output_dir
         self.file_list = sorted(glob.glob(self.data_dir + '/timeline*.jsonl'))
         self.ngram_range = ngram_range
         self.eot_token = eot_token
@@ -279,13 +283,11 @@ class TweetVocabVectorizer(object):
     @time_function
     def save_files(self):
 
-        collection_results_folder = os.path.split(self.data_dir)[0]
-
-        with open(os.path.join(collection_results_folder,'user_count_mat.obj'), 'wb') as f:
+        with open(os.path.join(self.output_dir,'user_count_mat_ngram_' + str(self.ngram_range[0]) + str(self.ngram_range[1]) + '.obj'), 'wb') as f:
             pickle.dump(self.user_vocab_matrix,f)
-        with open(os.path.join(collection_results_folder,'vectorizer.obj'), 'wb') as f:
+        with open(os.path.join(self.output_dir,'vectorizer_ngram_' + str(self.ngram_range[0]) + str(self.ngram_range[1]) + '.obj'), 'wb') as f:
             pickle.dump(self.vectorizer,f)
-        with open(os.path.join(collection_results_folder,'mapping.obj'), 'wb') as f:
+        with open(os.path.join(self.output_dir,'mapping_ngram_' + str(self.ngram_range[0]) + str(self.ngram_range[1]) + '.obj'), 'wb') as f:
             pickle.dump(self.mapping,f)
 
         print('files saved')
@@ -295,8 +297,9 @@ def main():
 
     vocab_vectorizer = TweetVocabVectorizer(
         args.data_dir,
+        args.output_dir,
         args.subset,
-        ngram_range=(3,4),
+        ngram_range=args.ngram_range,
         remove_stop_words=False
     )
 
@@ -314,6 +317,17 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
+        'output_dir',
+        help='output directory'
+    )
+
+    parser.add_argument(
+        '--ngram_range',
+        help='specify ngram_range. place two integers contiguously for max and min, inclusive',
+        default = (3,4)
+    )
+
+    parser.add_argument(
         '--subset',
         help='debugging purposes. Index to iterate timeline files over.',
         default = None,
@@ -322,5 +336,7 @@ if __name__ == '__main__':
 
     # parse args
     args = parser.parse_args()
+
+    args.ngram_range = (int(args.ngram_range[0]), int(args.ngram_range[1]))
 
     main()
