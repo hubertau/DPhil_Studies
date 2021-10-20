@@ -1,3 +1,9 @@
+#!/usr/bin/python3.9
+
+'''
+Script to search through different bispectral clustering parameters.
+'''
+
 from argparse import ArgumentParser
 import datetime
 import pickle
@@ -5,15 +11,13 @@ import subprocess
 
 import numpy as np
 import numpy as np
-import scipy
 import scipy.sparse
-import sklearn
 import tqdm
 from numpy.core.fromnumeric import nonzero, searchsorted
 from sklearn.cluster import KMeans, SpectralCoclustering
 from sklearn.metrics import consensus_score
 
-from generate_user_to_hashtag_matrix import TweetVocabVectorizer
+# from generate_user_to_hashtag_matrix import TweetVocabVectorizer
 
 
 class bispec_search(object):
@@ -50,14 +54,13 @@ class bispec_search(object):
                         [
                             'Rscript',
                             'bispectral_clustering.R',
-                            '/home/ball4321/Data_Collection/2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/bispec_ready_counts.csv',
-                            '/home/ball4321/Data_Collection/2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/bsc/',
+                            '../../data/02_intermediate/bispec_ready_counts.csv',
+                            '../../data/results`/',
                             '--min_user',
                             str(self.params['min_user']),
                             '--ncluster',
                             str(cluster)
-                        ],
-                        cwd='/home/ball4321/Data_Collection/2021-04_Study_A_Diffusion'
+                        ]
                     ) 
                 else:
                     subprocess.run(
@@ -152,24 +155,7 @@ class bispec_search(object):
                 with open(save_filename, 'wb') as f:
                     pickle.dump(fit_data, f)
 
-
-if __name__ == '__main__':
-
-    parser = ArgumentParser(description='Bispectral Cluster Search')
-
-    parser.add_argument(
-        '--server',
-        help = 'whether to use local or server directories',
-        default = False,
-        action='store_true'
-    )
-
-    args = parser.parse_args()
-
-    assert (args.server == 0) or (args.server==1)
-
-
-    def main(args):
+def main(args):
 
         params = {
             'range': (10,200),
@@ -180,5 +166,11 @@ if __name__ == '__main__':
         clusterer = bispec_search(params, implementation='R', server=args.server)
 
         clusterer.cluster()
+
+if __name__ == '__main__':
+
+    parser = ArgumentParser(description='Bispectral Cluster Search')
+
+    args = parser.parse_args()
 
     main(args)
