@@ -1,4 +1,9 @@
+#!/usr/bin/python3.9
+
 '''
+
+Script to write results of vectorizer objects etc. to csv ready for bispectarl clustering.
+
 From the bi-spectral comm readme
 # User-to-Hashtag File Format
 
@@ -23,89 +28,91 @@ import pickle
 import re
 
 import numpy as np
-import scipy
-import scipy.sparse
-from generate_user_to_hashtag_matrix import TweetVocabVectorizer
 import tqdm
 from numpy.core.fromnumeric import nonzero, searchsorted
 
-# open the saved files
-with open('collection_results_2021_05_04_16_22/user_count_mat.obj', 'rb') as f:
-    csr = pickle.load(f)
-with open('collection_results_2021_05_04_16_22/vectorizer.obj', 'rb') as f:
-    vectorizer = pickle.load(f)
-with open('collection_results_2021_05_04_16_22/mapping.obj', 'rb') as f:
-    mapping = pickle.load(f)
+def main():
 
-# obtain file list
-file_list = glob.glob('collection_results_2021_05_04_16_22/data/timeline*.jsonl')
-file_list = sorted(file_list)
+    user_count_mat_file = '../../data/02_intermediate/user_count_mat.obj'
+    vectorizer_file = '../../data/02_intermediate/vectorizer.obj'
+    mapping_file = '../../data/02_intermediate/mapping.obj'
+    file_list = glob.glob('../../data/01_raw/timeline*.jsonl')
+    bispec_count_csv_file = '../../data/02_intermediate/bispec_ready_counts.csv'
 
-# mapping = vectorizer.get_feature_names()
-# mapping = np.array(mapping)
 
-# generate csv in the right format
-with open('collection_results_2021_05_04_16_22/bispec_ready_counts.csv', 'w', newline='') as csvfile:
+    # open the saved files
+    with open(user_count_mat_file, 'rb') as f:
+        csr = pickle.load(f)
+    # with open(vectorizer_file, 'rb') as f:
+        # vectorizer = pickle.load(f)
+    with open(mapping_file, 'rb') as f:
+        mapping = pickle.load(f)
 
-    file_writer = csv.writer(csvfile)
-    file_writer.writerow(['Source', 'Target', 'weight'])
+    # obtain file list
+    file_list = sorted(file_list)
 
-    nonzero_row_index_array, nonzero_col_index_array = csr.nonzero()
+    # mapping = vectorizer.get_feature_names()
+    # mapping = np.array(mapping)
 
-    # drop indices with eottokens
-    nonzero_col_index_sort_indices = nonzero_col_index_array.argsort()
-    nonzero_col_index_array = nonzero_col_index_array[nonzero_col_index_sort_indices]
-    nonzero_row_index_array = nonzero_row_index_array[nonzero_col_index_sort_indices]
+    # generate csv in the right format
+    with open(bispec_count_csv_file, 'w', newline='') as csvfile:
 
-    # define tokens to drop
-    tokens_to_drop = []
+        file_writer = csv.writer(csvfile)
+        file_writer.writerow(['Source', 'Target', 'weight'])
 
-    # mask = np.ones(len(mapping), dtype=bool)
+        nonzero_row_index_array, nonzero_col_index_array = csr.nonzero()
 
-    for token in tokens_to_drop:
+        # drop indices with eottokens
+        nonzero_col_index_sort_indices = nonzero_col_index_array.argsort()
+        nonzero_col_index_array = nonzero_col_index_array[nonzero_col_index_sort_indices]
+        nonzero_row_index_array = nonzero_row_index_array[nonzero_col_index_sort_indices]
 
-        # N.B. a number of options were tried here. The rationale for the final design is:
-        # mapping contains indices and token string values. Searching this will allow finding the INDICES
-        # of the relevant tokens to ignore. Also because of mapping containing the index information in its
-        # own indices we cannot remove items from the array itself, this would mess up the referencing.
-        #
-        # The nonzero arrays, on the other hand, have no significance to the indices. The elements are the indices of tokens.
-        # Therefore once the relevant token indices are found from mapping, they must be located (multiple instances thereof)
-        # in the nonzero arrays.
+        # define tokens to drop
+        tokens_to_drop = []
 
-        print('getting locations of {} token'.format(token))
-        mapping_token_locs = np.flatnonzero(np.core.defchararray.find(mapping,token)!=-1)
-        print('done')
+        # mask = np.ones(len(mapping), dtype=bool)
 
-        # build a mask for each token to drop
-        # N.B. using the np.isin function to search for multiple instances is orders of magnitude
-        # faster than any parallelisation at Python speed.
-        mask = np.logical_not(np.isin(nonzero_col_index_array,mapping_token_locs))
+        for token in tokens_to_drop:
 
-        if len(nonzero_col_index_array) == np.sum(mask):
-            print('WARNING: no instances of token [{}] were found. Is this intended?'.format(token))
+            # N.B. a number of options were tried here. The rationale for the final design is:
+            # mapping contains indices and token string values. Searching this will allow finding the INDICES
+            # of the relevant tokens to ignore. Also because of mapping containing the index information in its
+            # own indices we cannot remove items from the array itself, this would mess up the referencing.
+            #
+            # The nonzero arrays, on the other hand, have no significance to the indices. The elements are the indices of tokens.
+            # Therefore once the relevant token indices are found from mapping, they must be located (multiple instances thereof)
+            # in the nonzero arrays.
 
-        # we don't want to shorten or modify mapping, but can we happily truncate nonzero arrays.
-        nonzero_col_index_array = nonzero_col_index_array[mask]
-        nonzero_row_index_array = nonzero_row_index_array[mask]
+            print('getting locations of {} token'.format(token))
+            mapping_token_locs = np.flatnonzero(np.core.defchararray.find(mapping,token)!=-1)
+            print('done')
 
-    for row_index, input_file in enumerate(tqdm.tqdm(file_list, desc='writing to final csv file')):
+            # build a mask for each token to drop
+            # N.B. using the np.isin function to search for multiple instances is orders of magnitude
+            # faster than any parallelisation at Python speed.
+            mask = np.logical_not(np.isin(nonzero_col_index_array,mapping_token_locs))
 
-        # obtain user id from file path name.
-        user_id = os.path.split(input_file)[1]
-        user_id = re.sub('\D','',user_id)
+            if len(nonzero_col_index_array) == np.sum(mask):
+                print('WARNING: no instances of token [{}] were found. Is this intended?'.format(token))
 
-        for i,j in tqdm.tqdm(zip(nonzero_row_index_array[nonzero_row_index_array==row_index],
-                                 nonzero_col_index_array[nonzero_row_index_array==row_index]),
-                                 total=np.sum(nonzero_row_index_array==row_index),
-                                 leave=False,
-                                 desc='writing user {}. ({} out of {})'.format(user_id, row_index+1, len(file_list))):
-            if csr[i,j] > 5:
-                file_writer.writerow([user_id, mapping[j], csr[i,j]])
+            # we don't want to shorten or modify mapping, but can we happily truncate nonzero arrays.
+            nonzero_col_index_array = nonzero_col_index_array[mask]
+            nonzero_row_index_array = nonzero_row_index_array[mask]
 
-# def main():
-#     pass
+        for row_index, input_file in enumerate(tqdm.tqdm(file_list, desc='writing to final csv file')):
 
-# if __name__ == '__main__':
+            # obtain user id from file path name.
+            user_id = os.path.split(input_file)[1]
+            user_id = re.sub('\D','',user_id)
 
-#     main()
+            for i,j in tqdm.tqdm(zip(nonzero_row_index_array[nonzero_row_index_array==row_index],
+                                    nonzero_col_index_array[nonzero_row_index_array==row_index]),
+                                    total=np.sum(nonzero_row_index_array==row_index),
+                                    leave=False,
+                                    desc='writing user {}. ({} out of {})'.format(user_id, row_index+1, len(file_list))):
+                if csr[i,j] > 5:
+                    file_writer.writerow([user_id, mapping[j], csr[i,j]])
+
+if __name__ == '__main__':
+
+    main()
