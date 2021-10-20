@@ -234,7 +234,7 @@ class TimelineAnalyzer(BSCresults):
             plotnine.scale_y_continuous(trans='log10')
 
         # save plot
-        plot_savename = os.path.join(self.image_path, 'FAS_activity_log.png')
+        plot_savename = os.path.join(self.FAS_image_path, 'FAS_activity_log.png')
         self.FAS_activity_plot_log.save(
                         plot_savename,
                         width=15,
