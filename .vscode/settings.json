@@ -1,6 +1,6 @@
 {
     "python.analysis.extraPaths": [
-        "./2021-04_Study_A_Diffusion",
+        "./2021-04_Study_A_Diffusion/src/d05_model_evaluation",
         "/home/hubert/.local/lib/python3.9/site-packages"
     ],
     "jupyter.jupyterServerType": "local"
