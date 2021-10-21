@@ -27,6 +27,7 @@ class TweetVocabVectorizer(object):
         data_dir,
         output_dir,
         subset,
+        low_memory,
         ngram_range=(2,3),
         remove_stop_words=True,
         eot_token='eottoken'
@@ -35,6 +36,7 @@ class TweetVocabVectorizer(object):
         # set attributes
         self.data_dir = data_dir
         self.output_dir = output_dir
+        self.low_memory = low_memory
         self.file_list = sorted(glob.glob(self.data_dir + '/timeline*.jsonl'))
         self.ngram_range = ngram_range
         self.eot_token = eot_token
@@ -256,10 +258,13 @@ class TweetVocabVectorizer(object):
         self.mapping = self.vectorizer.get_feature_names()
         print('done')
 
-        # convert mapping to array form
-        print('\nconverting feature mapping to array form...')
-        self.mapping = np.array(self.mapping)
-        print('done')
+        if self.low_memory:
+            print('\n Not converting to numpy array for memory reasons. Continuing...')
+        else:
+            # convert mapping to array form
+            print('\nconverting feature mapping to array form...')
+            self.mapping = np.array(self.mapping)
+            print('done')
 
         print('\nFitting complete. Running Checks:')
         self._check_vectorizer_output()
@@ -299,6 +304,7 @@ def main():
         args.data_dir,
         args.output_dir,
         args.subset,
+        args.low_memory,
         ngram_range=args.ngram_range,
         remove_stop_words=False
     )
@@ -332,6 +338,13 @@ if __name__ == '__main__':
         help='debugging purposes. Index to iterate timeline files over.',
         default = None,
         type = int
+    )
+
+    parser.add_argument(
+        '--low_memory',
+        help='Low Memory option. In particular it seems allocating memory for np.array(mapping) is large. Turn this off to not convert mapping with numpy.',
+        default = False,
+        action='store_true'
     )
 
     # parse args
