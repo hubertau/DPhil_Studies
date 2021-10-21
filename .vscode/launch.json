@@ -41,7 +41,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}/2021-04_Study_A_Diffusion/"
+            "cwd": "${fileDirname}"
         },
         {
             "name": "Parsing Full Archive Search Result Files",
@@ -64,6 +64,16 @@
             "args": [
                 "--file",
                 "results.csv"
+            ]
+        },
+        {
+            "name": "Run Basic Graph/Timeline Stats py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d04_modelling/basic_timeline_stats.py",
+            "cwd": "${fileDirname}",
+            "args": [
+                "../../data/02_intermediate/user_list_full_0_nocount.txt"
             ]
         }
     ]
