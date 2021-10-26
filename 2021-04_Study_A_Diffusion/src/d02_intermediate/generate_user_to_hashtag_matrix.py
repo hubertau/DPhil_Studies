@@ -266,8 +266,7 @@ class TweetVocabVectorizer(object):
             self.mapping = np.array(self.mapping)
             print('done')
 
-        print('\nFitting complete. Running Checks:')
-        self._check_vectorizer_output()
+
 
     def _check_vectorizer_output(self):
 
@@ -278,9 +277,10 @@ class TweetVocabVectorizer(object):
         assert_helper(len(self.mapping)>0, 'Vocabulary is non-zero. Check OK.')
         user_vocab_matrix_sum = np.sum(self.user_vocab_matrix)
         assert_helper(user_vocab_matrix_sum>0, 'Count Matrix has non-zero sum, and is {}. Check OK.'.format(user_vocab_matrix_sum))
-        metoosum = np.sum(self.mapping=='#metoo')
+        metoosum = np.sum(['#metoo' in i for i in self.mapping])
         assert_helper(metoosum>0, 'At least #MeToo hashtag is in vocab and has count {}. Check OK.'.format(metoosum))
-        elements_with_eot_token = np.sum(np.core.defchararray.find(self.mapping,self.eot_token)!=-1)
+        # elements_with_eot_token = np.sum(np.core.defchararray.find(self.mapping,self.eot_token)!=-1)
+        elements_with_eot_token = np.sum(['eottoken' in i for i in mapping])
         assert_helper(elements_with_eot_token==0, 'No eot_tokens found in vocabulary. Check OK.', '{} counts of eot_token found in voabulary! Check NOT OK.'.format(elements_with_eot_token))
 
         print('All Checks OK.')
@@ -312,6 +312,8 @@ def main():
     # _ = vocab_vectorizer.get_hashtag_vocab()
     vocab_vectorizer.fit()
     vocab_vectorizer.save_files()
+    print('\nFitting complete. Running Checks:')
+    vocab_vectorizer._check_vectorizer_output()
 
 if __name__ == '__main__':
 
