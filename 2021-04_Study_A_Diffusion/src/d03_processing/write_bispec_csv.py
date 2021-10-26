@@ -21,7 +21,9 @@ USER_ID_2, #cat, 10
 ...
 '''
 
+import argparse
 import csv
+from ctypes import ArgumentError
 import glob
 import os
 import pickle
@@ -31,16 +33,18 @@ import numpy as np
 import tqdm
 from numpy.core.fromnumeric import nonzero, searchsorted
 
-def main():
+def main(args):
 
-    user_count_mat_file = '../../data/02_intermediate/user_count_mat.obj'
-    vectorizer_file = '../../data/02_intermediate/vectorizer.obj'
-    mapping_file = '../../data/02_intermediate/mapping.obj'
+    user_count_mat_file = args.user_count_mat_file
+    # vectorizer_file = args.user_count_mat_file
+    mapping_file = args.mapping_file
     file_list = glob.glob('../../data/01_raw/timeline*.jsonl')
-    bispec_count_csv_file = '../../data/02_intermediate/bispec_ready_counts.csv'
+    ngram_range=args.mapping_file[-6:-4]
+    bispec_count_csv_file = '../../data/02_intermediate/bispec_ready_counts_' + ngram_range + '.csv'
 
 
     # open the saved files
+    print('loading in files...')
     with open(user_count_mat_file, 'rb') as f:
         csr = pickle.load(f)
     # with open(vectorizer_file, 'rb') as f:
@@ -99,7 +103,7 @@ def main():
             nonzero_col_index_array = nonzero_col_index_array[mask]
             nonzero_row_index_array = nonzero_row_index_array[mask]
 
-        for row_index, input_file in enumerate(tqdm.tqdm(file_list, desc='writing to final csv file')):
+        for row_index, input_file in enumerate(tqdm.tqdm(file_list, desc='writing to final csv file at {}'.format(bispec_count_csv_file))):
 
             # obtain user id from file path name.
             user_id = os.path.split(input_file)[1]
@@ -115,4 +119,20 @@ def main():
 
 if __name__ == '__main__':
 
-    main()
+
+    parser = argparse.ArgumentParser(description='Write csv file for bispectral clustering.')
+
+
+    parser.add_argument(
+        'user_count_mat_file',
+        help='user count matrix file'
+    )
+
+    parser.add_argument(
+        'mapping_file',
+        help='mapping file'
+    )
+
+    args = parser.parse_args()
+
+    main(args)
