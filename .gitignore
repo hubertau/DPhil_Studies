@@ -4,6 +4,7 @@
 *.pyc
 2021-04_Study_A_Diffusion/data/01_raw/*.jsonl
 2021-04_Study_A_Diffusion/data/01_raw/*.json
+2021-04_Study_A_Diffusion/data/01_raw/*.txt
 .Rproj.user
 *.pdf
 *.obj
