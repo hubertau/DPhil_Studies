@@ -64,7 +64,9 @@ N_CLUSTERS <- args$ncluster
 # load r utils
 # print(dirname(sys.frame(1)$ofile))
 # source(paste0(dirname(sys.frame(1)$ofile),"/util.R"))
-source(paste0(getwd(),"/util.R"))
+# source(paste0(getwd(),"/util.R"))
+source("/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/src/d00_utils/util.R")
+
 
 # You can optionally identify some users (we do this via ID) and hashtags that you are particularly interested in here
 known_important_users <- c("29417304","755113","16948493")
@@ -73,16 +75,18 @@ known_important_hashtags <- c("charlotteprotests", "keithlamontscott",
                               "charlotteuprising","blacklivesmatter")
 
 # load the data in
-if(grepl("[.]gz$", USER_TO_HASHTAG_EDGELIST_FILENAME)){
-  # Note, you might not be able to use zcat here, esp. if on Windows. There are other ways to read in gzipped files though!
-  user_ht <- load_user_ht_matrix(paste0("zcat < ", USER_TO_HASHTAG_EDGELIST_FILENAME))
-} else {
-  user_ht <- fread(USER_TO_HASHTAG_EDGELIST_FILENAME)
-}
+# if(grepl("[.]gz$", USER_TO_HASHTAG_EDGELIST_FILENAME)){
+#   # Note, you might not be able to use zcat here, esp. if on Windows. There are other ways to read in gzipped files though!
+#   user_ht <- load_user_ht_matrix(paste0("zcat < ", USER_TO_HASHTAG_EDGELIST_FILENAME))
+# } else {
+#   user_ht <- fread(USER_TO_HASHTAG_EDGELIST_FILENAME)
+# }
+
+user_ht <- fread(USER_TO_HASHTAG_EDGELIST_FILENAME)
 
 # run bispectral clustering
 ## The function takes as input the 
-listObj=biSpectralCoCluster(user_ht,min_user=MIN_USER,k=N_CLUSTERS, verbose = FALSE)
+listObj=biSpectralCoCluster(user_ht,min_user=MIN_USER,k=N_CLUSTERS, verbose = args$verbose)
 
 
 
@@ -100,6 +104,9 @@ output_filename <- paste0("hashtags_per_cluster_",MIN_USER,"_",N_CLUSTERS,"_.pdf
 
 # look at results
 gen_plots(listObj,min_user_count = 1,filename=file.path(OUTPUT_DIRECTORY, output_filename))
+
+
+########################################################################
 
 # # You can identify a subset of clusters that look interesting after reviewing the output of the above function!
 # clusters_of_interest <- c(70,64,57, 34, 9,24, 13,79, 50, 8,47)
