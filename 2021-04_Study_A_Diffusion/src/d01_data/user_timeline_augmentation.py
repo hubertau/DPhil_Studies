@@ -98,6 +98,9 @@ def main(args):
     FAS_filelist = glob.glob(os.path.join(args.data_dir, 'FAS*.jsonl'))
     timeline_filelist = glob.glob(os.path.join(args.data_dir, 'timeline*.jsonl'))
 
+    if args.subset:
+        timeline_filelist = timeline_filelist[:args.subset]
+
     # sort and extract date ranges
     sorted_FAS_list_with_dates = sort_FAS_by_daterange(FAS_filelist)
     if args.verbose:
@@ -105,45 +108,45 @@ def main(args):
 
     # get user_ids
     user_ids = [re.split('[_.]',timeline)[-2] for timeline in timeline_filelist]
-    # if args.verbose:
-    #     print(user_ids)
 
-    # get user_timespans
-    # timeline_date_range = [timeline_file_span(timeline) for timeline in timeline_filelist]
-
-    user_scan_ranges = defaultdict(set)
+    # user_scan_ranges = defaultdict(set)
 
     # for timeline in tqdm.tqdm(timeline_filelist, desc='User Files'):
         # 
 
         # get user date range
-        
 
         # # determine the FAS files to scan
         # FAS_files_to_scan = filter_FAS(timeline_date_range, sorted_FAS_list_with_dates)
 
     user_tweets_to_append = defaultdict(list)
-    for i in tqdm.tqdm(sorted_FAS_list_with_dates, desc='FAS scan', leave=False):
+    for i in tqdm.tqdm(sorted_FAS_list_with_dates, desc='FAS Scan. Writing to individual user jsonl in the process.'):
         with jsonlines.open(i[0]) as reader:
             for tweet_json in reader:
                 for tweet in tweet_json['data']:
                     if tweet['author_id'] in user_ids:
-                        user_tweets_to_append[tweet['author_id']].append(tweet['id'])
-                        user_scan_ranges[tweet['author_id']].add(i)
+                        # user_tweets_to_append[tweet['author_id']].append(tweet['id'])
+                        # user_scan_ranges[tweet['author_id']].add(i)
 
-    for id in tqdm.tqdm(user_ids, desc='writing to files'):
-        # write out results
-        save_filename = 'augmented_timeline_ids_' + id + '.txt'
-        save_filename = os.path.join(args.data_dir, save_filename)
+                        # 2021-11-08 version: write to jsonlines files as scan is happening so that we don't have to do hold a large amount of text in memory.
+                        save_filename = 'augmented_timeline_ids_' + tweet['author_id'] + '.jsonl'
+                        save_filename = os.path.join(args.data_dir, save_filename)
+                        with jsonlines.open(save_filename, 'a') as writer:
+                            writer.write(tweet)
 
-        # scan_ranges = sort_FAS_by_daterange(list(user_scan_ranges[id]))
+    # for id in tqdm.tqdm(user_ids, desc='writing to files'):
+    #     # write out results
+    #     save_filename = 'augmented_timeline_ids_' + id + '.txt'
+    #     save_filename = os.path.join(args.data_dir, save_filename)
 
-        with open(save_filename, 'w') as f:
-            # f.write(scan_ranges[0]+ '\n')
-            # f.write(scan_ranges[1] + '\n')
-            for j in user_tweets_to_append[id]:
-                f.write(j)
-                f.write('\n')
+    #     # scan_ranges = sort_FAS_by_daterange(list(user_scan_ranges[id]))
+
+    #     with open(save_filename, 'w') as f:
+    #         # f.write(scan_ranges[0]+ '\n')
+    #         # f.write(scan_ranges[1] + '\n')
+    #         for j in user_tweets_to_append[id]:
+    #             f.write(j)
+    #             f.write('\n')
 
 if __name__ == '__main__':
 
@@ -152,6 +155,12 @@ if __name__ == '__main__':
     parser.add_argument(
         'data_dir',
         help='data directory'
+    )
+
+    parser.add_argument(
+        '--subset',
+        help='only run this script on a subset of the data. Used primarily for debugging.',
+        type = int,
     )
 
     parser.add_argument(
