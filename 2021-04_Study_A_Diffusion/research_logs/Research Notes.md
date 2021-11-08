@@ -1,10 +1,35 @@
+# 2021-11-08 Planning
+
+* [DONE] Plan out file structure for augmented timelines - perhaps writing to extra json files. This would help with processing later, e.g. vectorizing
+* [TODO] Clean code and commit
+* [TODO] Review follower collection and why it's so slow.
+* [TODO] Review sampling strategy of second period window and determine if I should do sampling based on activity but following distribution. Remember to set random seed in sampling.
+* [TODO] Initiate Vectoriser for 3-grams and schedule writing csv.
+* [TODO] Set up ARC resources.
+
 # 2021-10-21 Meeting with Chico
 
 * Current state of where I am
+	* Two stages of data collection, Twitter data limits
+	* Plan A: with data from Twitter engineer, can do full analysis.
+	* Plan B: without data from Twitter engineer, collect sample in Nov for periods 2 and 3, spend the time until then setting up the feature extraction and statistical analysis.
+	* Problems with server space.
+	* applying to ARC, waiting on that to come back.
+	* politics and compustational social science?
+	* match users on followers ('diet')
 * Prospective Timeline
 	* Meeting with Phil 13 Dec - could you come in person?
-	* Idea is then to have 
-* Supervision arrangement going forward
+	* Idea is then to have a rough draft by that meeting.
+	* Then refine over the break until January.
+	* Confirmation in Hilary, interview sometime end of HT
+* Plan for analysis:
+	* Incorporate both retweets and language convergence -> that's what BSC was about
+	* However, in my pilots there wasn't much interaction between the users who were assigned the same cluster.
+	* 
+* Supervision arrangement going forward?
+	* would every two weeks suit?
+* communication
+	* whatsapp? email?
 
 
 # 2021-10-21
