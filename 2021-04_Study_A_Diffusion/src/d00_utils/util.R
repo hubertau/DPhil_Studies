@@ -17,7 +17,7 @@ load_user_ht_matrix <- function(edgelist_path){
   
 }
 
-factory <- function(fun)
+factory <- function(fun){
   function(...) {
     warn <- err <- NULL
     res <- withCallingHandlers(
@@ -30,9 +30,9 @@ factory <- function(fun)
       })
     list(res=res, warn=warn, err=err)
   }
+}
 
-
-biSpectralCoCluster=function(h_edges,min_user=1,k=100,all_hashtags=FALSE,verbose = FALSE){
+biSpectralCoCluster_debug=function(h_edges,min_user=1,k=100,all_hashtags=FALSE,verbose = TRUE){
   
   H=graph.data.frame(h_edges)
   S=simplify(H,remove.loops=FALSE,remove.multiple=TRUE)
@@ -72,7 +72,76 @@ biSpectralCoCluster=function(h_edges,min_user=1,k=100,all_hashtags=FALSE,verbose
   d2[is.infinite(d2)]=0  
   D2=Diagonal(n=dim(A)[2],x=d2)
   An=D1%*%A%*%D2
-  obj=factory(irlba)(An,k,nu=k,nv=k,maxit = 2000, verbose=verbose, work=2000)
+  if (verbose){
+    cat('ncluster = ', k)
+  } 
+  # obj=factory(irlba)(An,nu=k,nv=k,maxit = 3000, verbose=verbose, work=2500)
+  obj = irlba(An, nu=k, nv=k, maxit=3000, verbose=verbose, work=2500)
+  # warnings = obj$warn
+  # errors   = obj$err
+  # obj      = obj$res
+  if (verbose){
+    print(paste("Bispectral took:", Sys.time()-start,"seconds"))
+    print(dim(An))
+    # print(obj$warn)
+    # print(obj$err)
+    print(typeof(D1))
+    print(typeof(obj$u))
+    print(typeof(obj$v))
+  }
+  An
+
+  # uMat=data.frame(ID=rownames(A),degree=Ucount,as.matrix(D1%*%obj$u),stringsAsFactors=FALSE)
+  # htMat=data.frame(ID=colnames(A),degree=HTcount,as.matrix(D2%*%obj$v),stringsAsFactors=FALSE)
+  # uhtMat=rbind(uMat[,c(-1,-2)],htMat[,c(-1,-2)])
+  # row.names(uhtMat)=c(uMat$ID,htMat$ID)
+
+  # if (verbose){
+  #   cat('spectral features extracted... clustering\n')
+  # }
+}
+
+biSpectralCoCluster=function(h_edges,min_user=1,k=100,all_hashtags=FALSE,verbose = FALSE){
+  
+  H=graph.data.frame(h_edges)
+  S=simplify(H,remove.loops=FALSE,remove.multiple=TRUE)
+  rm(h_edges)
+  A=get.adjacency(H,names=TRUE, attr='weight')
+  S=get.adjacency(S, attr = 'weight')
+  
+  # HUBERT NOTE: THIS NEXT LINE TREATS ENTRIES IN TARGET COLUMN AS HASHTAGS
+  if (all_hashtags){
+    mapping=grepl('#',V(H)$name)  
+  }else{
+    mapping=!grepl("^[0-9]+$", V(H)$name)
+  }
+  
+  A=A[,mapping]
+  S=S[,mapping]
+  rm(H)
+  A=A[!mapping,]
+  S=S[!mapping,]
+  
+  # 2021-07-13 HUBERT NOTE: OMG S IS ALL ONES. WEIGHT IS NOT READ IN.
+  ht_mapping= colSums(S)>=min_user
+  A=A[,ht_mapping]
+  rm(S)
+  
+  if (verbose){
+    cat('graph constructed\n')
+  }
+  
+  start = Sys.time()
+  Ucount=rowSums(A)
+  HTcount=colSums(A)
+  d1=1/sqrt(rowSums(A))
+  d1[is.infinite(d1)]=0
+  D1=Diagonal(n=dim(A)[1],x=d1)
+  d2=1/sqrt(colSums(A))
+  d2[is.infinite(d2)]=0  
+  D2=Diagonal(n=dim(A)[2],x=d2)
+  An=D1%*%A%*%D2
+  obj=factory(irlba)(An, nu=k,nv=k,maxit = 3000, verbose=verbose, work=2500)
   warnings = obj$warn
   errors   = obj$err
   obj      = obj$res
@@ -151,3 +220,4 @@ gen_plots <- function(listObj,min_user_count=50, filename='cluster_res_new.pdf',
   }
   garbage <- dev.off()
 }
+# 
