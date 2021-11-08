@@ -12,8 +12,9 @@ import subprocess
 import numpy as np
 import numpy as np
 import scipy.sparse
+import os
 import tqdm
-from numpy.core.fromnumeric import nonzero, searchsorted
+from numpy.core.fromnumeric import argsort, nonzero, searchsorted
 from sklearn.cluster import KMeans, SpectralCoclustering
 from sklearn.metrics import consensus_score
 
@@ -22,13 +23,13 @@ from sklearn.metrics import consensus_score
 
 class bispec_search(object):
 
-    def __init__(self, params, csr=None, vectorizer=None, mapping=None, implementation = 'Python', server = False):
-        self.params = params
+    def __init__(self, csv_file, output_dir, range, interval, min_user, csr=None, vectorizer=None, mapping=None, implementation = 'Python'):
+        self.csv_file = csv_file
+        self.output_dir = output_dir
+        self.range = range
+        self.interval = interval
+        self.min_user = min_user
         self.type = implementation.lower()
-        self.csr = csr
-        self.vectorizer = vectorizer
-        self.mapping = mapping
-        self.server = server
 
     def time_function(func):
 
@@ -45,37 +46,21 @@ class bispec_search(object):
         return inner
 
     def cluster(self):
-        print('server boolean is {}'.format(self.server))
 
         if self.type == 'r':
-            for cluster in tqdm.tqdm(range(self.params['range'][0],self.params['range'][1]+1,self.params['interval'])):
-                if self.server:
-                    subprocess.run(
-                        [
-                            'Rscript',
-                            'bispectral_clustering.R',
-                            '../../data/02_intermediate/bispec_ready_counts.csv',
-                            '../../data/results`/',
-                            '--min_user',
-                            str(self.params['min_user']),
-                            '--ncluster',
-                            str(cluster)
-                        ]
-                    ) 
-                else:
-                    subprocess.run(
-                        [
-                            'Rscript',
-                            'bispectral_clustering.R',
-                            '/Users/hubert/Nextcloud/DPhil/DPhil_Studies/2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/bispec_ready_counts.csv',
-                            '/Users/hubert/Nextcloud/DPhil/DPhil_Studies/2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/bsc/',
-                            '--min_user',
-                            str(self.params['min_user']),
-                            '--ncluster',
-                            str(cluster)
-                        ],
-                        cwd='/Users/hubert/Nextcloud/DPhil/DPhil_Studies/2021-04_Study_A_Diffusion'
-                    )
+            for cluster in tqdm.tqdm(range(self.range[0],self.range[1]+1,self.interval)):
+                subprocess.run(
+                    [
+                        'Rscript',
+                        'bispectral_clustering.R',
+                        str(self.csv_file),
+                        str(self.output_dir),
+                        '--min_user',
+                        str(self.min_user),
+                        '--ncluster',
+                        str(cluster)
+                    ]
+                )
 
         elif self.type == 'python':
 
@@ -157,13 +142,14 @@ class bispec_search(object):
 
 def main(args):
 
-        params = {
-            'range': (10,200),
-            'interval': 1,
-            'min_user': 10
-        }
-
-        clusterer = bispec_search(params, implementation='R', server=args.server)
+        clusterer = bispec_search(
+            args.csv_file,
+            args.output_dir,
+            args.range,
+            args.interval,
+            args.min_user,
+            implementation = args.implementation
+        )
 
         clusterer.cluster()
 
@@ -171,6 +157,48 @@ if __name__ == '__main__':
 
     parser = ArgumentParser(description='Bispectral Cluster Search')
 
+    parser.add_argument(
+        'csv_file',
+        help='csv file in the right format for R bispec clustering'
+    )
+
+    parser.add_argument(
+        '--output_dir',
+        help='output directory. defaults to csv_file location.'
+    )
+
+    parser.add_argument(
+        '--implementation',
+        help='implementation to use. either python or R',
+        default='R'
+    )
+
+    parser.add_argument(
+        '--range',
+        help='range of clusters to work scan through. In format [low]-[high]',
+        default='10-20'
+    )
+
+    parser.add_argument(
+        '--interval',
+        help='step value within range of search.',
+        default='1'
+    )
+
+    parser.add_argument(
+        '--min_user',
+        help='count for which a user must have to participate in clustering',
+        default='10'
+    )
+
     args = parser.parse_args()
+
+    args.range = args.range.split('-')
+    args.range = (int(args.range[0]),int(args.range[1]))
+    args.interval = int(args.interval)
+    args.min_user = int(args.min_user)
+
+    if not args.output_dir:
+        args.output_dir = os.path.split(args.csv_file)[0]
 
     main(args)
