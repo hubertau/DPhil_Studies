@@ -28,6 +28,7 @@ class TweetVocabVectorizer(object):
         output_dir,
         subset,
         low_memory,
+        verbose,
         ngram_range=(2,3),
         remove_stop_words=True,
         eot_token='eottoken'
@@ -37,12 +38,23 @@ class TweetVocabVectorizer(object):
         self.data_dir = data_dir
         self.output_dir = output_dir
         self.low_memory = low_memory
-        self.file_list = sorted(glob.glob(self.data_dir + '/timeline*.jsonl'))
+        self.file_list = sorted(glob.glob(os.path.join(self.data_dir,'timeline*.jsonl')))
+        self.augmented_file_list = sorted(glob.glob(os.path.join(self.data_dir,'augmented*.jsonl')))
         self.ngram_range = ngram_range
         self.eot_token = eot_token
         self.remove_stop_words = remove_stop_words
         self.token_pattern = r"(?u)#?\b\w\w+\b"
         self.subset = subset
+        self.verbose = verbose
+
+        # sanity check for user timelines and agumented tweets
+        assert all([
+            re.split('[_.]', self.file_list[i])[-2] == re.split('[_.]',self.augmented_file_list[i])[-2] for i in range(len(self.file_list))
+        ])
+
+        if self.verbose:
+            print(self.file_list[:5])
+            print(self.augmented_file_list[:5])
 
     def time_function(func):
 
@@ -176,17 +188,14 @@ class TweetVocabVectorizer(object):
             [type]: [description]
         """
 
-        if self.subset == None:
-            self.iter_list = self.file_list
-        else:
-            assert type(self.subset) == int
+        if self.subset:
             self.iter_list = self.file_list[:self.subset]
-
+            self.augmented_iter_list = self.augmented_file_list[:self.subset]
 
         # set eot_token join string
         eot_join_str = ' ' + self.eot_token + ' '
 
-        for input_file in tqdm.tqdm(self.iter_list, desc='CountVectorizer over collected users:'):
+        for index, input_file in enumerate(tqdm.tqdm(self.iter_list, desc='CountVectorizer over collected users:')):
 
             user_joined_tweet_body = []
 
@@ -196,6 +205,12 @@ class TweetVocabVectorizer(object):
                     for tweet_data in tweet_list_in_file:
                         if 'text' in tweet_data:
                             user_joined_tweet_body.append(tweet_data['text'])
+
+            # incorporate augmented data too.
+            with jsonlines.open(self.augmented_iter_list[index]) as reader:
+                for tweet in reader:
+                    if 'text' in tweet_data:
+                        user_joined_tweet_body.append(tweet_data['text'])
 
             # for the final yield, there needs to be an in-between character i can easily discard
             # so tokens spanning multiple documents can be discarded
@@ -217,11 +232,9 @@ class TweetVocabVectorizer(object):
         print('collecting hashtag list')
         hashtag_set = set()
 
-        if self.subset == None:
-            self.iter_list = self.file_list
-        else:
-            assert type(self.subset) == int
+        if self.subset:
             self.iter_list = self.file_list[:self.subset]
+            self.augmented_iter_list = self.augmented_file_list[:self.subset]
 
         for file_name in tqdm.tqdm(self.iter_list):
             with jsonlines.open(file_name) as reader:
@@ -231,7 +244,15 @@ class TweetVocabVectorizer(object):
                         if 'entities' in tweet_data:
                             if 'hashtags' in tweet_data['entities']:
                                 hts = [i['tag'].lower() for i in tweet_data['entities']['hashtags']]
-                                hashtag_set.update(hts)
+                                hashtag_set.add(hts)
+
+        for file_name in tqdm.tqdm(self.augmented_iter_list):
+            with jsonlines.open(file_name) as reader:
+                for tweet in reader:
+                    if 'entities' in tweet:
+                        if 'hashtags' in tweet_data['entities']:
+                            hts = [i['tag'].lower() for i in tweet_data['entities']['hashtags']]
+                            hashtag_set.add(hts)
 
         self.hashtag_set = hashtag_set
 
@@ -298,13 +319,14 @@ class TweetVocabVectorizer(object):
         print('files saved')
 
 
-def main():
+def main(args):
 
     vocab_vectorizer = TweetVocabVectorizer(
         args.data_dir,
         args.output_dir,
         args.subset,
         args.low_memory,
+        args.verbose,
         ngram_range=args.ngram_range,
         remove_stop_words=False
     )
@@ -349,9 +371,16 @@ if __name__ == '__main__':
         action='store_true'
     )
 
+    parser.add_argument(
+        '--verbose',
+        help='verbosity parameter',
+        default=False,
+        action='store_true'
+    )
+
     # parse args
     args = parser.parse_args()
 
     args.ngram_range = (int(args.ngram_range[0]), int(args.ngram_range[1]))
 
-    main()
+    main(args)
