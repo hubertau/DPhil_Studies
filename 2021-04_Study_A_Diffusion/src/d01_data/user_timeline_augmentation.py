@@ -14,6 +14,7 @@ from collections import defaultdict
 import re
 import os
 import tqdm
+import pprint
 
 import jsonlines
 
@@ -95,16 +96,30 @@ def filter_FAS(date_range, sorted_FAS_filelist):
 def main(args):
 
     # get filelist in strings
-    FAS_filelist = glob.glob(os.path.join(args.data_dir, 'FAS*.jsonl'))
+    FAS_filelist = sort_FAS_by_daterange(glob.glob(os.path.join(args.data_dir, 'FAS*.jsonl')))
+    FAS_filelist = [i[0] for i in FAS_filelist]
+
+    # only take FAS files required:
+    FAS_dates = [(i,e,FAS_range_from_filename(e)) for i,e in enumerate(FAS_filelist)]
+    args.min_FAS_date = datetime.datetime.strptime(args.min_FAS_date,'%Y-%m-%d')
+    args.max_FAS_date = datetime.datetime.strptime(args.max_FAS_date,'%Y-%m-%d')
+
+    FAS_filelist = [i[1] for i in FAS_dates if (not i[2][0] > args.max_FAS_date) and not i[2][1] < args.min_FAS_date]
+
+    if args.verbose:
+        pp = pprint.PrettyPrinter(indent = 4)
+        pp.pprint(FAS_filelist)
+
     timeline_filelist = glob.glob(os.path.join(args.data_dir, 'timeline*.jsonl'))
 
     if args.subset:
         timeline_filelist = timeline_filelist[:args.subset]
 
+    if args.verbose:
+        print('Number of timeline files to be created: {}'.format(len(timeline_filelist)))
+
     # sort and extract date ranges
     sorted_FAS_list_with_dates = sort_FAS_by_daterange(FAS_filelist)
-    if args.verbose:
-        print(sorted_FAS_list_with_dates[:10])
 
     # get user_ids
     user_ids = [re.split('[_.]',timeline)[-2] for timeline in timeline_filelist]
@@ -127,6 +142,11 @@ def main(args):
                     if tweet['author_id'] in user_ids:
                         # user_tweets_to_append[tweet['author_id']].append(tweet['id'])
                         # user_scan_ranges[tweet['author_id']].add(i)
+
+                        created_at = datetime.datetime.fromisoformat(tweet['created_at'][:-1])
+
+                        if created_at < args.min_FAS_date or created_at > args.max_FAS_date:
+                            continue
 
                         # 2021-11-08 version: write to jsonlines files as scan is happening so that we don't have to do hold a large amount of text in memory.
                         save_filename = 'augmented_timeline_ids_' + tweet['author_id'] + '.jsonl'
@@ -155,6 +175,16 @@ if __name__ == '__main__':
     parser.add_argument(
         'data_dir',
         help='data directory'
+    )
+
+    parser.add_argument(
+        'min_FAS_date',
+        help='minimum FAS date required',
+    )
+
+    parser.add_argument(
+        'max_FAS_date',
+        help='maximum FAS date required',
     )
 
     parser.add_argument(
