@@ -48,6 +48,7 @@ class TweetVocabVectorizer(object):
         self.verbose = verbose
 
         # sanity check for user timelines and agumented tweets
+        assert len(self.file_list) == len(self.augmented_file_list)
         assert all([
             re.split('[_.]', self.file_list[i])[-2] == re.split('[_.]',self.augmented_file_list[i])[-2] for i in range(len(self.file_list))
         ])
@@ -55,6 +56,10 @@ class TweetVocabVectorizer(object):
         if self.verbose:
             print(self.file_list[:5])
             print(self.augmented_file_list[:5])
+
+        # check if input directories are directories
+        assert os.path.isdir(self.data_dir)
+        assert os.path.isdir(self.output_dir)
 
     def time_function(func):
 
@@ -191,6 +196,9 @@ class TweetVocabVectorizer(object):
         if self.subset:
             self.iter_list = self.file_list[:self.subset]
             self.augmented_iter_list = self.augmented_file_list[:self.subset]
+        else:
+            self.iter_list = self.file_list
+            self.augmented_iter_list = self.augmented_file_list
 
         # set eot_token join string
         eot_join_str = ' ' + self.eot_token + ' '
@@ -209,8 +217,8 @@ class TweetVocabVectorizer(object):
             # incorporate augmented data too.
             with jsonlines.open(self.augmented_iter_list[index]) as reader:
                 for tweet in reader:
-                    if 'text' in tweet_data:
-                        user_joined_tweet_body.append(tweet_data['text'])
+                    if 'text' in tweet:
+                        user_joined_tweet_body.append(tweet['text'])
 
             # for the final yield, there needs to be an in-between character i can easily discard
             # so tokens spanning multiple documents can be discarded
