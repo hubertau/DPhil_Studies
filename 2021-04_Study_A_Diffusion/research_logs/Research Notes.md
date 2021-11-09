@@ -1,11 +1,13 @@
+# 2021-11-09 Implementing Python BSC properly
+* [DONE] Set up Python Implementation.
+* [TODO] from 2021-11-08: Review sampling strategy of second period window and determine if I should do sampling based on activity but following distribution. Remember to set random seed in sampling.
 # 2021-11-08 Planning
-
 * [DONE] Plan out file structure for augmented timelines - perhaps writing to extra json files. This would help with processing later, e.g. vectorizing
-* [TODO] Clean code and commit
-* [TODO] Review follower collection and why it's so slow.
+* [DONE] Clean code and commit
+* [DONE] Review follower collection and why it's so slow.
 * [TODO] Review sampling strategy of second period window and determine if I should do sampling based on activity but following distribution. Remember to set random seed in sampling.
-* [TODO] Initiate Vectoriser for 3-grams and schedule writing csv.
-* [TODO] Set up ARC resources.
+* [DONE] Initiate Vectoriser for 3-grams and schedule writing csv.
+* [DONE] Set up ARC resources.
 
 # 2021-10-21 Meeting with Chico
 
