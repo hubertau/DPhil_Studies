@@ -88,7 +88,12 @@ class bispec_search(object):
         existing_files = glob.glob(os.path.join(self.output_dir, 'bsc_python_cluster*' + '_ngram_' + str(self.ngram_range[0] + self.ngram_range[1]) + '_min_' + str(self.min_user) + '.obj'))
 
         # User may be runing bsc on a new range, so only reduce to ones that would be overwritten with this script
-        existing_files = [i for i in existing_files if self.bsc_range[0] <= int(re.split('_', i)[3]) <= self.bsc_range[1]]
+        existing_files = [(re.split('[_.]',i),i) for i in existing_files]
+        existing_files = [i[1] for i in existing_files if
+            self.bsc_range[0] <= int(i[0][-6]) <= self.bsc_range[1] and
+            i[0][-4] == str(self.ngram_range[0])+str(self.ngram_range[1]) and
+            i[0][-2] == str(self.min_user)
+        ]
 
         # prompt for input
         if len(existing_files) > 0:
@@ -215,22 +220,23 @@ class bispec_search(object):
                 with open(save_filename, 'wb') as f:
                     pickle.dump(results, f)
 
-                print('saved to {}'.format(save_filename))
+                if args.verbose:
+                    print('saved to {}'.format(save_filename))
 
 def main(args):
 
-        clusterer = bispec_search(
-            args.ngram_range,
-            args.data_dir,
-            args.output_dir,
-            args.range,
-            args.interval,
-            args.min_user,
-            implementation = args.implementation,
-            verbose = args.verbose
-        )
+    clusterer = bispec_search(
+        args.ngram_range,
+        args.data_dir,
+        args.output_dir,
+        args.range,
+        args.interval,
+        args.min_user,
+        implementation = args.implementation,
+        verbose = args.verbose
+    )
 
-        clusterer.cluster()
+    clusterer.cluster()
 
 if __name__ == '__main__':
 
