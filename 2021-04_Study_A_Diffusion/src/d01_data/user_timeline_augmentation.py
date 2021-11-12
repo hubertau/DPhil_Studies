@@ -75,7 +75,7 @@ def filter_FAS(date_range, sorted_FAS_filelist):
 
     N.B. the dates of the FAS files are not inclusive, whereas because both min an max dates of date range are from tweet objects they are inclusive.
 
-    This function returns
+    This function returns indices
     '''
 
     required_min = len(sorted_FAS_filelist)
@@ -91,7 +91,7 @@ def filter_FAS(date_range, sorted_FAS_filelist):
             required_min = min(required_min, i)
         if date_range[1] > FAS_date_min:
             required_max = max(required_max, i)
-    return (required_min, required_max)
+    return sorted_FAS_filelist[required_min:required_max+1]
 
 def main(args):
 
