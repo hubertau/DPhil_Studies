@@ -1,5 +1,8 @@
+#!/usr/bin/python3.9
+
 '''
-This script is to evaluate the clustering
+This script is to evaluate the clustering. Works for both python and R implmentations.
+
 
 For reference, this is form the evaluation
 # # Sensitivity
@@ -24,12 +27,13 @@ For reference, this is form the evaluation
 # p
 
 N.B. NMI is a measure of clustering results https://scikit-learn.org/stable/modules/generated/sklearn.metrics.normalized_mutual_info_score.html 
-
 '''
 
+import argparse
 import datetime
 import glob
 import os
+import pickle
 import re
 from typing import DefaultDict
 
@@ -37,8 +41,42 @@ import jsonlines
 import numpy as np
 import pandas as pd
 import plotnine
+import tqdm
 from sklearn.metrics import cluster
 from sklearn.metrics import normalized_mutual_info_score as nmi_score
+
+
+def bicluster_ncut(cocluster, csr, i):
+    rows, cols = cocluster.get_indices(i)
+    if not (np.any(rows) and np.any(cols)):
+        import sys
+
+        return sys.float_info.max
+    row_complement = np.nonzero(np.logical_not(cocluster.rows_[i]))[0]
+    col_complement = np.nonzero(np.logical_not(cocluster.columns_[i]))[0]
+    # Note: the following is identical to X[rows[:, np.newaxis],
+    # cols].sum() but much faster in scipy <= 0.16
+    weight = csr[rows][:, cols].sum()
+    # weight = csr[rows[:, np.newaxis],cols].sum()
+    cut = csr[row_complement][:, cols].sum() + csr[rows][:, col_complement].sum()
+    return cut / weight
+
+def ncut_cluster(cocluster, csr, i):
+
+    rows, cols = cocluster.get_indices(i)
+    if not (np.any(rows) and np.any(cols)):
+        import sys
+
+        return sys.float_info.max
+    row_complement = np.nonzero(np.logical_not(cocluster.rows_[i]))[0]
+    col_complement = np.nonzero(np.logical_not(cocluster.columns_[i]))[0]
+    # Note: the following is identical to X[rows[:, np.newaxis],
+    # cols].sum() but much faster in scipy <= 0.16
+    weight = csr[rows][:, cols].sum()
+    # weight = csr[rows[:, np.newaxis],cols].sum()
+    cut = csr[row_complement][:, cols].sum() + csr[rows][:, col_complement].sum()
+    return cut / weight
+
 
 
 class BSCresults(object):
@@ -51,15 +89,6 @@ class BSCresults(object):
         self.file_list_hashtags = glob.glob(os.path.join(self.bsc_dir,'*hashtags.csv'))
         self.data_dir = data_dir
         self.file_list_user_jsonl = glob.glob(os.path.join(self.data_dir, 'timeline*.jsonl'))
-
-        # if os.path.isdir(self.bsc_dir):
-        #     assert len(self.file_list_user_jsonl)>0
-        #     assert len(self.file_list_summary)>0
-        #     assert len(self.file_list_users)>0
-        #     assert len(self.file_list_hashtags)>0
-        # else:
-        #     print('Detected that the */bsc/ folder is not yet existent.')
-
 
     def time_function(func):
 
@@ -321,10 +350,76 @@ class BSCresults(object):
 
         return df
 
-def main():
+def main(args):
 
-    pass
+    python_output_files = glob.glob(os.path.join(args.results_dir, 'bsc_python*'))
+    python_output_files = sorted(python_output_files, key=lambda x: int(re.split('[_.]', x)[-6]))
+
+    if args.subset:
+        python_output_files = python_output_files[:args.subset]
+
+    with open(args.csr, 'rb') as f:
+        csr = pickle.load(f)
+
+    # with open(args.mapping_file, 'rb') as f:
+    #     feature_names = pickle.load(f)
+
+
+    results = []
+    for e in tqdm.tqdm(python_output_files):
+        total_ncut=0
+        with open(e, 'rb') as f:
+            model = pickle.load(f)
+        model_total_clusters = max(model.row_labels_)+1
+        for cluster in tqdm.tqdm(range(model_total_clusters), leave=False):
+            total_ncut += ncut_cluster(model, csr, cluster)
+        results.append((model_total_clusters,total_ncut))
+
+    split = re.split('[_.]',python_output_files[0])
+
+    save_filename = 'eval_bsc_python_cluster_ngram_' + split[-4] + '_min_' + split[-2] + '.obj'
+    save_filename = os.path.join(args.output_dir, save_filename)
+
+    with open(save_filename, 'wb') as f:
+        pickle.dump(results, f)
 
 if __name__ == '__main__':
 
-    main()
+    parser = argparse.ArgumentParser(description='Evaluate the best bispectral clustering result')
+
+    parser.add_argument(
+        'results_dir',
+        help='directory of clustering results'
+    )
+
+    parser.add_argument(
+        'output_dir',
+        help='output directory'
+    )
+
+    parser.add_argument(
+        'csr',
+        help='csr matrix after vectorizing'
+    )
+
+    parser.add_argument(
+        'mapping_file',
+        help='mapping or feature names file',
+    )
+
+    parser.add_argument(
+        '--subset',
+        help='Subset of cluster results to run through. For debugging',
+        type=int
+    )
+
+    parser.add_argument(
+        '--implementation',
+        help='python or R',
+        default='python',
+        type=str
+    )
+
+    args = parser.parse_args()
+
+    main(args)
