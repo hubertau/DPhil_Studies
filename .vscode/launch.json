@@ -5,6 +5,24 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Empirical Distribution",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d01_data/empirical_distribution_sampling.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d01_data/",
+            "args": [
+                "../../data/01_raw/",
+                "../../data/01_group",
+                "../../references/search_hashtags.txt",
+                "1",
+                "../../data/02_intermediate/user_list_full_0_nocount.txt",
+                "--group_daterange_file",
+                "../../data/02_intermediate/FAS_selected_date_ranges.obj",
+                "--verbose"
+            ]
+        },
+        {
             "name": "Debug: bispec clustering search",
             "type": "python",
             "request": "launch",
