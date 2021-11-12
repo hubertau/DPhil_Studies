@@ -27,7 +27,6 @@ class TweetVocabVectorizer(object):
         data_dir,
         output_dir,
         subset,
-        low_memory,
         verbose,
         ngram_range=(2,3),
         remove_stop_words=True,
@@ -37,7 +36,6 @@ class TweetVocabVectorizer(object):
         # set attributes
         self.data_dir = data_dir
         self.output_dir = output_dir
-        self.low_memory = low_memory
         self.file_list = sorted(glob.glob(os.path.join(self.data_dir,'timeline*.jsonl')))
         self.augmented_file_list = sorted(glob.glob(os.path.join(self.data_dir,'augmented*.jsonl')))
         self.ngram_range = ngram_range
@@ -136,6 +134,13 @@ class TweetVocabVectorizer(object):
 
         return token_pattern.findall
 
+    def _token_digit_hashtag(x):
+        if x[0]=='#':
+            return x
+        if x[0].isdigit():
+            return x
+        return None
+
     def custom_analyzer(self, doc):
 
         """
@@ -167,7 +172,7 @@ class TweetVocabVectorizer(object):
         if max_n != 1:
             original_tokens = tokens
             # 2021-06-16 Hubert note: the original sklearn tokenizer here just iterates through all the unigrams. But I don't want that so only preserve the unigrams that are hashtags.
-            tokens = [w for w in tokens if w[0]=='#']
+            tokens = [v for v in [self._token_digit_hashtag(x) for x in tokens] if v is not None]
 
             n_original_tokens = len(original_tokens)
 
@@ -284,17 +289,8 @@ class TweetVocabVectorizer(object):
 
         # set count of any token including the end_of_tweet_token to zero.
         print('\ngetting mapping between feature names and indices...')
-        self.mapping = self.vectorizer.get_feature_names()
+        self.mapping = self.vectorizer.get_feature_names_out()
         print('done')
-
-        if self.low_memory:
-            print('\n Not converting to numpy array for memory reasons. Continuing...')
-        else:
-            # convert mapping to array form
-            print('\nconverting feature mapping to array form...')
-            self.mapping = np.array(self.mapping)
-            print('done')
-
 
 
     def _check_vectorizer_output(self):
@@ -306,9 +302,10 @@ class TweetVocabVectorizer(object):
         assert_helper(len(self.mapping)>0, 'Vocabulary is non-zero. Check OK.')
         user_vocab_matrix_sum = np.sum(self.user_vocab_matrix)
         assert_helper(user_vocab_matrix_sum>0, 'Count Matrix has non-zero sum, and is {}. Check OK.'.format(user_vocab_matrix_sum))
+
         metoosum = np.sum(['#metoo' in i for i in self.mapping])
         assert_helper(metoosum>0, 'At least #MeToo hashtag is in vocab and has count {}. Check OK.'.format(metoosum))
-        # elements_with_eot_token = np.sum(np.core.defchararray.find(self.mapping,self.eot_token)!=-1)
+
         elements_with_eot_token = np.sum(['eottoken' in i for i in self.mapping])
         assert_helper(elements_with_eot_token==0, 'No eot_tokens found in vocabulary. Check OK.', '{} counts of eot_token found in voabulary! Check NOT OK.'.format(elements_with_eot_token))
 
@@ -333,7 +330,6 @@ def main(args):
         args.data_dir,
         args.output_dir,
         args.subset,
-        args.low_memory,
         args.verbose,
         ngram_range=args.ngram_range,
         remove_stop_words=False
@@ -370,13 +366,6 @@ if __name__ == '__main__':
         help='debugging purposes. Index to iterate timeline files over.',
         default = None,
         type = int
-    )
-
-    parser.add_argument(
-        '--low_memory',
-        help='Low Memory option. In particular it seems allocating memory for np.array(mapping) is large. Turn this off to not convert mapping with numpy.',
-        default = False,
-        action='store_true'
     )
 
     parser.add_argument(
