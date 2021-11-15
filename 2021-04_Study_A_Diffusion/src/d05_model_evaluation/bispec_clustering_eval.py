@@ -35,31 +35,19 @@ import glob
 import os
 import pickle
 import re
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from itertools import repeat
+from multiprocessing import Pool, RawArray
 from typing import DefaultDict
 
+import h5py
 import jsonlines
 import numpy as np
 import pandas as pd
 import plotnine
-import tqdm
 from sklearn.metrics import cluster
 from sklearn.metrics import normalized_mutual_info_score as nmi_score
 
-
-def bicluster_ncut(cocluster, csr, i):
-    rows, cols = cocluster.get_indices(i)
-    if not (np.any(rows) and np.any(cols)):
-        import sys
-
-        return sys.float_info.max
-    row_complement = np.nonzero(np.logical_not(cocluster.rows_[i]))[0]
-    col_complement = np.nonzero(np.logical_not(cocluster.columns_[i]))[0]
-    # Note: the following is identical to X[rows[:, np.newaxis],
-    # cols].sum() but much faster in scipy <= 0.16
-    weight = csr[rows][:, cols].sum()
-    # weight = csr[rows[:, np.newaxis],cols].sum()
-    cut = csr[row_complement][:, cols].sum() + csr[rows][:, col_complement].sum()
-    return cut / weight
 
 def ncut_cluster(cocluster, csr, i):
 
@@ -76,8 +64,6 @@ def ncut_cluster(cocluster, csr, i):
     # weight = csr[rows[:, np.newaxis],cols].sum()
     cut = csr[row_complement][:, cols].sum() + csr[rows][:, col_complement].sum()
     return cut / weight
-
-
 
 class BSCresults(object):
 
@@ -361,27 +347,89 @@ def main(args):
     with open(args.csr, 'rb') as f:
         csr = pickle.load(f)
 
-    # with open(args.mapping_file, 'rb') as f:
-    #     feature_names = pickle.load(f)
+    def process_one_model_result(file):
 
+        print('processing {}'.format(file))
 
-    results = []
-    for e in tqdm.tqdm(python_output_files):
         total_ncut=0
-        with open(e, 'rb') as f:
+        with open(file, 'rb') as f:
             model = pickle.load(f)
         model_total_clusters = max(model.row_labels_)+1
-        for cluster in tqdm.tqdm(range(model_total_clusters), leave=False):
+        for cluster in range(model_total_clusters):
             total_ncut += ncut_cluster(model, csr, cluster)
-        results.append((model_total_clusters,total_ncut))
 
-    split = re.split('[_.]',python_output_files[0])
+        total_ncut /= model_total_clusters
 
-    save_filename = 'eval_bsc_python_cluster_ngram_' + split[-4] + '_min_' + split[-2] + '.obj'
-    save_filename = os.path.join(args.output_dir, save_filename)
+        print('done {}'.format(file))
 
-    with open(save_filename, 'wb') as f:
-        pickle.dump(results, f)
+        return (model_total_clusters, total_ncut)
+
+    # var_dict = {}
+
+    # def init_worker(X, X_shape):
+    #     # Using a dictionary is not strictly necessary. You can also
+    #     # use global variables.
+    #     var_dict['X'] = X
+    #     var_dict['X_shape'] = X_shape
+
+    # def worker_func(i):
+    #     # Simply computes the sum of the i-th row of the input matrix X
+    #     X_np = np.frombuffer(var_dict['X']).reshape(var_dict['X_shape'])
+    #     single_file_result  = process_one_model_result(i, X_np)
+    #     return single_file_result
+
+    # X_shape = csr.shape
+    # # Randomly generate some data
+    # X = RawArray('d', X_shape[0] * X_shape[1])
+    # # Wrap X as an numpy array so we can easily manipulates its data.
+    # X_np = np.frombuffer(X).reshape(X_shape)
+    # # Copy data to our shared array.
+    # np.copyto(X_np, csr)
+
+    # with Pool(processes=args.max_workers, initializer=init_worker, initargs=(X, X_shape)) as pool:
+    #     results = pool.map(worker_func, python_output_files)
+    #     # print('Results (pool):\n', np.array(result))
+    # Should print the same results.
+    # print('Results (numpy):\n', np.sum(X_np, 1))
+
+    with ThreadPoolExecutor(max_workers=args.max_workers) as executor:
+        results = executor.map(process_one_model_result, python_output_files)
+
+
+    # for e in tqdm.tqdm(python_output_files):
+    #     total_ncut=0
+    #     with open(e, 'rb') as f:
+    #         model = pickle.load(f)
+    #     model_total_clusters = max(model.row_labels_)+1
+    #     for cluster in tqdm.tqdm(range(model_total_clusters), leave=False):
+    #         total_ncut += ncut_cluster(model, csr, cluster)
+    #     results.append((model_total_clusters,total_ncut))
+
+    # split = re.split('[_.]',python_output_files[0])
+
+    # save_filename = 'eval_bsc_python_cluster_ngram_' + split[-4] + '_min_' + split[-2] + '.obj'
+    # save_filename = os.path.join(args.output_dir, save_filename)
+
+    results = list(results)
+    results = sorted(results, key=results[0])
+
+    # with open(save_filename, 'wb') as f:
+        # pickle.dump(results, f)
+
+    cluster_sizes = [i[0] for i in results]
+    results_to_write = [i[1] for i in results]
+
+    with h5py.File(os.path.join(args.output_dir, 'bispec_cluster_eval.hdf5'), 'a') as f:
+
+        dset = f.create_dataset(str(datetime.datetime.now().replace(microsecond=0)), data=results_to_write)
+
+        metadata = {
+            'min_cluster_size': min(cluster_sizes),
+            'max_cluster_size': max(cluster_sizes),
+            'interval': cluster_sizes[1] - cluster_sizes[0]
+        }
+
+        dset.attrs.update(metadata)
 
 if __name__ == '__main__':
 
@@ -418,6 +466,13 @@ if __name__ == '__main__':
         help='python or R',
         default='python',
         type=str
+    )
+
+    parser.add_argument(
+        '--max_workers',
+        help='For multiprocessing. Default to None.',
+        default=None,
+        type = int
     )
 
     args = parser.parse_args()
