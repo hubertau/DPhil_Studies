@@ -134,7 +134,7 @@ class TweetVocabVectorizer(object):
 
         return token_pattern.findall
 
-    def _token_digit_hashtag(x):
+    def _token_digit_hashtag(self,x):
         if x[0]=='#':
             return x
         if x[0].isdigit():
