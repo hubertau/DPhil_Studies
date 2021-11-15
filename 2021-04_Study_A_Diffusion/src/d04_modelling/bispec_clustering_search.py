@@ -12,6 +12,7 @@ import pprint
 import re
 import subprocess
 from argparse import ArgumentParser
+from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 import scipy.sparse
@@ -19,6 +20,8 @@ import tqdm
 from numpy.core.fromnumeric import argsort, nonzero, searchsorted
 from sklearn.cluster import SpectralCoclustering
 from sklearn.metrics import consensus_score
+
+
 class bispec_search(object):
 
     def __init__(self,
@@ -29,7 +32,8 @@ class bispec_search(object):
         interval,
         min_user,
         implementation = 'Python',
-        verbose = False
+        verbose = False,
+        max_workers = None
     ):
         self.ngram_range = ngram_range
         self.data_dir = data_dir
@@ -39,6 +43,7 @@ class bispec_search(object):
         self.min_user = min_user
         self.type = implementation.lower()
         self.verbose = verbose
+        self.max_workers = max_workers
 
         if self.verbose:
             print('Verbose output selected.')
@@ -81,6 +86,27 @@ class bispec_search(object):
             print('Total Time Taken: {}'.format(datetime.datetime.now()-timefunc_start_time))
             return result
         return inner
+
+    def model_python(self, cluster):
+
+        model = SpectralCoclustering(n_clusters=cluster, random_state=0)
+
+        results = model.fit(self.new_csr)
+        # score = consensus_score(model.biclusters_,
+                # (rows[:, row_idx], columns[:, col_idx]))
+
+        # print("consensus score: {:.3f}".format(score))
+
+        # fit_data = self.new_csr[np.argsort(model.row_labels_)]
+        # fit_data = self.new_csr[:, np.argsort(model.column_labels_)]
+
+        save_filename = os.path.join(self.output_dir, 'bsc_python_cluster_' + str(cluster) + '_ngram_' + str(self.ngram_range[0] + self.ngram_range[1]) + '_min_' + str(self.min_user) + '.obj')
+
+        with open(save_filename, 'wb') as f:
+            pickle.dump(results, f)
+
+        msg = 'saved at {}'.format(save_filename)
+        return msg
 
     def cluster(self):
 
@@ -138,9 +164,6 @@ class bispec_search(object):
             if self.verbose:
                 print('CSR loaded in.')
 
-            # The adjacency matrix must be square. see Dhillon (2001) original paper.
-            # self.square_mat = scipy.sparse.bmat([[None, self.csr],[self.csr.T,None]])
-
             if self.verbose:
                 print('Filtering for min user value...')
 
@@ -156,72 +179,39 @@ class bispec_search(object):
             if self.verbose:
                 print('NaN check complete.')
 
-            # if self.verbose:
-            #     print('Converting to dense...')
 
-            # # self.new_csr = np.array(self.new_csr.todense())
-            # # self.new_csr = self.new_csr/np.max(self.new_csr)
+            with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
+                result_messages = executor.map(
+                    self.model_python,
+                    range(self.bsc_range[0],self.bsc_range[1]+1,self.interval)
+                )
 
-            # if self.verbose:
-            #     print('Done.')
+            if self.verbose:
+                for i in result_messages:
+                    print(i)
 
-            # The following code is from https://github.com/acgacgacgacg/biclustering/blob/master/spectral_bicluster.py
-            #
-            # Input A: a relational matrix
-            # Output B: clustered ralational matrix of A (default k=2)
-            # def spectral_bicluster(A,n_clusters = 2):
-            #     m, n = A.shape
-            #     D1 = np.diag(np.sum(A, axis=1))**(-0.5)
-            #     D2 = np.diag(np.sum(A, axis=0))**(-0.5)
-            #     An = np.dot(np.dot(D1, A), D2)
-            #     U, s, V = np.linalg.svd(An, full_matrices=True)
-            #     # print 'u1=', U[:,0]
-            #     # print 'u2=', U[:,0]
-            #     # print s
-            #     z2 = np.hstack((np.dot(D1, U[:,1]), np.dot(D2, V.T[:, 1]))).reshape(m+n, 1)
-            #     # print z2
-            #     objKmeans = KMeans(n_clusters = n_clusters).fit(z2)
-            #     mu, labels = objKmeans.cluster_centers_, objKmeans.labels_
-            #     idx_d_1 = np.where(labels[:m]==0)[0]
-            #     a = len(idx_d_1)
-            #     idx_d_2 = np.where(labels[:m]==1)[0]
-            #     print(idx_d_1, idx_d_2)
 
-            #     idx_w_1 = np.where(labels[m:]==0)[0]
-            #     b = len(idx_w_1)
-            #     idx_w_2 = np.where(labels[m:]==1)[0]
-            #     print(idx_w_1, idx_w_2)
-            #     # print a, b
-            #     B = np.vstack((A[idx_d_1], A[idx_d_2])).T
-            #     B = np.vstack((B[idx_w_1], B[idx_w_2])).T
+            # for cluster in tqdm.tqdm(range(self.bsc_range[0],self.bsc_range[1]+1,self.interval)):
+            #     # res = spectral_bicluster(self.square_mat, n_clusters=cluster)
+            #     model = SpectralCoclustering(n_clusters=cluster, random_state=0)
 
-            #     # Check the Laplacian
-            #     # L = np.vstack((np.hstack((np.zeros((m,m)),A)), np.hstack((A.T, np.zeros((n, n))))))
-            #     L = np.vstack((np.hstack((np.diag(np.sum(A, axis=1)),-A)), np.hstack((-A.T, np.diag(np.sum(A, axis=0))))))
+            #     results = model.fit(self.new_csr)
+            #     # score = consensus_score(model.biclusters_,
+            #             # (rows[:, row_idx], columns[:, col_idx]))
 
-            #     # print e
-            #     return B
+            #     # print("consensus score: {:.3f}".format(score))
 
-            for cluster in tqdm.tqdm(range(self.bsc_range[0],self.bsc_range[1]+1,self.interval)):
-                # res = spectral_bicluster(self.square_mat, n_clusters=cluster)
-                model = SpectralCoclustering(n_clusters=cluster, random_state=0)
+            #     # fit_data = self.new_csr[np.argsort(model.row_labels_)]
+            #     # fit_data = self.new_csr[:, np.argsort(model.column_labels_)]
 
-                results = model.fit(self.new_csr)
-                # score = consensus_score(model.biclusters_,
-                        # (rows[:, row_idx], columns[:, col_idx]))
+            #     save_filename = os.path.join(self.output_dir, 'bsc_python_cluster_' + str(cluster) + '_ngram_' + str(self.ngram_range[0] + self.ngram_range[1]) + '_min_' + str(self.min_user) + '.obj')
 
-                # print("consensus score: {:.3f}".format(score))
+            #     with open(save_filename, 'wb') as f:
+            #         pickle.dump(results, f)
 
-                # fit_data = self.new_csr[np.argsort(model.row_labels_)]
-                # fit_data = self.new_csr[:, np.argsort(model.column_labels_)]
+            #     if args.verbose:
+            #         print('saved to {}'.format(save_filename))
 
-                save_filename = os.path.join(self.output_dir, 'bsc_python_cluster_' + str(cluster) + '_ngram_' + str(self.ngram_range[0] + self.ngram_range[1]) + '_min_' + str(self.min_user) + '.obj')
-
-                with open(save_filename, 'wb') as f:
-                    pickle.dump(results, f)
-
-                if args.verbose:
-                    print('saved to {}'.format(save_filename))
 
 def main(args):
 
@@ -281,6 +271,12 @@ if __name__ == '__main__':
         '--implementation',
         help='implementation to use. either python or R',
         default='R'
+    )
+
+    parser.add_argument(
+        '--max_workers',
+        help='Max CPU nodes to use',
+        default=None
     )
 
     parser.add_argument(
