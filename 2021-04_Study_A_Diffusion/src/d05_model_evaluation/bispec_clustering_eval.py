@@ -32,6 +32,7 @@ N.B. NMI is a measure of clustering results https://scikit-learn.org/stable/modu
 import argparse
 import datetime
 import glob
+import logging
 import os
 import pickle
 import re
@@ -47,15 +48,16 @@ import pandas as pd
 import plotnine
 from sklearn.metrics import cluster
 from sklearn.metrics import normalized_mutual_info_score as nmi_score
+# from numba import jit
+import sys
 
 
 def ncut_cluster(cocluster, csr, i):
 
     rows, cols = cocluster.get_indices(i)
     if not (np.any(rows) and np.any(cols)):
-        import sys
-
-        return sys.float_info.max
+        # return sys.float_info.max
+        return 0
     row_complement = np.nonzero(np.logical_not(cocluster.rows_[i]))[0]
     col_complement = np.nonzero(np.logical_not(cocluster.columns_[i]))[0]
     # Note: the following is identical to X[rows[:, np.newaxis],
@@ -349,7 +351,7 @@ def main(args):
 
     def process_one_model_result(file):
 
-        print('processing {}'.format(file))
+        logging.info(f'processing {file}')
 
         total_ncut=0
         with open(file, 'rb') as f:
@@ -360,7 +362,7 @@ def main(args):
 
         total_ncut /= model_total_clusters
 
-        print('done {}'.format(file))
+        logging.info(f'END processing {file}')
 
         return (model_total_clusters, total_ncut)
 
@@ -391,7 +393,9 @@ def main(args):
     #     # print('Results (pool):\n', np.array(result))
     # Should print the same results.
     # print('Results (numpy):\n', np.sum(X_np, 1))
-
+    if args.max_workers is None:
+        args.max_workers = os.cpu_count()
+    logging.info(f'Beginning ProcessPool Executor with {args.max_workers} workers.')
     with ThreadPoolExecutor(max_workers=args.max_workers) as executor:
         results = executor.map(process_one_model_result, python_output_files)
 
@@ -475,6 +479,52 @@ if __name__ == '__main__':
         type = int
     )
 
+    parser.add_argument(
+        '--log_dir',
+        help='director to place log in. Defaults to $HOME',
+        default='$HOME'
+    )
+
+    parser.add_argument(
+        '--log_level',
+        help='logging_level',
+        type=str.upper,
+        choices=['INFO','DEBUG','WARNING','CRITICAL','ERROR','NONE'],
+        default='DEBUG'
+    )
+
     args = parser.parse_args()
 
-    main(args)
+    logging_dict = {
+        'NONE': None,
+        'CRITICAL': logging.CRITICAL,
+        'ERROR': logging.ERROR,
+        'WARNING': logging.WARNING,
+        'INFO': logging.INFO,
+        'DEBUG': logging.DEBUG
+    }
+
+    logging_level = logging_dict[args.log_level]
+
+
+    if logging_level is not None:
+
+        logging_fmt   = '[%(levelname)s] %(asctime)s - %(message)s'
+        today_datetime = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
+        logging_file  = os.path.join(args.log_dir, f'{today_datetime}_bispec_eval.log')
+        logging.basicConfig(
+            handlers=[
+                logging.FileHandler(filename=logging_file,mode='w'),
+                logging.StreamHandler()
+            ],
+            format=logging_fmt,
+            level=logging_level,
+            datefmt='%m/%d/%Y %I:%M:%S %p'
+        )
+
+        logging.info(f'Start time of script is {today_datetime}')
+
+    try:
+        main(args)
+    except KeyboardInterrupt:
+        logging.info('Keyboard Interrupt from user')
