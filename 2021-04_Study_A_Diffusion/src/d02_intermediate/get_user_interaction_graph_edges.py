@@ -6,18 +6,120 @@ Script to obtain retweet edges from user timelines
 '''
 
 import argparse
-import pickle
+import datetime
 import glob
+import logging
 import os
-import tqdm
+import re
+from concurrent.futures import ProcessPoolExecutor
+from itertools import repeat
+
+import attr
+import h5py
 import jsonlines
-import json
-from collections import defaultdict
+import pandas as pd
+# from mpi4py import MPI
+
+
+@attr.s(frozen=True, slots=True)
+class Tweet_Interaction:
+    tweet_id: str = attr.ib(validator=attr.validators.instance_of(str))
+    author_id: str = attr.ib(validator=attr.validators.instance_of(str))
+    created_at: datetime.datetime = attr.ib(converter=lambda x: datetime.datetime.fromisoformat(x[:-1]).date())
+    in_reply_to: list[str] = attr.ib(factory=list, order=False, hash=False, repr=True)
+    mentions: list[str] = attr.ib(factory=list, order=False, hash=False, repr=True)
+    quotes: list[str] = attr.ib(factory=list, order=False, hash=False, repr=True)
+    replies: list[str] = attr.ib(factory=list, order=False, hash=False, repr=True)
+    contains_hashtags: list[str] = attr.ib(factory=list, order=False, hash=False, repr=True)
+
+
+def process_one_tweet_object(tweet, user_list):
+
+    # check mentions. These are the users that the person @-ed in their tweet text. mentions will have length 0 if either none are mentioned or if none mentioned are in the desired user list. We make this check because this paper is only interested in the interactions between users.
+    try:
+        mentions = [i['id'] for i in tweet['entities']['mentions'] if i['id'] in user_list]
+    except:
+        mentions = []
+
+    # referenced tweets are those quoted or replied to.
+    contains_referenced_tweets = 'referenced_tweets' in tweet
+    if contains_referenced_tweets:
+
+        referenced_tweets = tweet['referenced_tweets']
+
+        # extract quote tweets. do not check for user_list because these are tweet ids not user ids
+        quotes = [i['id'] for i in referenced_tweets if i['type'] == 'quoted']
+
+        # extract replies. do not check for user_list because these are tweet ids not user ids
+        replies = [i['id'] for i in referenced_tweets if i['type'] == 'replied_to']
+
+        current_tweet_id = tweet['id']
+        try:
+            in_reply_to = list(tweet['in_reply_to_user_id'])
+        except KeyError:
+            in_reply_to = []
+
+        # if no saveable mentions, quotes, or replies are found then 
+        if len(quotes) + len(replies) == 0 and len(mentions) == 0 and (str(in_reply_to) not in user_list):
+            return None
+
+        if 'entities' in tweet and 'hashtags' in tweet['entities']:
+            contains_hashtags = [i['tag'] for i in tweet['entities']['hashtags']]
+        else:
+            contains_hashtags = []
+
+        tweet_extract = Tweet_Interaction(
+            tweet_id=current_tweet_id,
+            author_id=tweet['author_id'],
+            mentions=mentions,
+            quotes=quotes,
+            replies=replies,
+            created_at=tweet['created_at'],
+            in_reply_to=in_reply_to,
+            contains_hashtags=contains_hashtags
+        )
+        return tweet_extract
+
+    else:
+        return None
+
+def process_one_file_pair(input_tuple):
+
+    twitter_user_timeline, augmented_file, user_list = input_tuple
+
+    logging.info(f'Processing {twitter_user_timeline} and {augmented_file}')
+
+    results = []
+    with jsonlines.open(twitter_user_timeline) as reader:
+        for tweet_jsonl in reader:
+            # iterate over the tweets
+            for tweet in tweet_jsonl['data']:
+                results.append(process_one_tweet_object(tweet, user_list))
+
+    # incorporate augmented data too.
+    with jsonlines.open(augmented_file) as reader:
+        for tweet in reader:
+            results.append(process_one_tweet_object(tweet, user_list))
+
+    logging.info(f'End processing {twitter_user_timeline} and {augmented_file}')
+
+    return results
 
 def main(args):
 
-    # process
-    timeline_flist = glob.glob(os.path.join(args.data_dir, 'timeline*.jsonl'))
+    # collect data files
+    timeline_file_list = sorted(glob.glob(os.path.join(args.data_dir, 'timeline*.jsonl')))
+    augmented_file_list = sorted(glob.glob(os.path.join(args.data_dir, 'augmented*.jsonl')))
+
+    # sanity checks
+    try:
+        assert len(timeline_file_list) == len(augmented_file_list)
+        assert all([
+            re.split('[_.]', timeline_file_list[i])[-2] == re.split('[_.]',augmented_file_list[i])[-2] for i in range(len(timeline_file_list))
+        ])
+    except AssertionError:
+        logging.error(f'Assertion error on timeline and augmented jsonl files', exc_info=True)
+        raise
 
     # get userset
     with open(args.user_list_file, 'r') as f:
@@ -25,68 +127,26 @@ def main(args):
         p = [str(i.replace('\n','')) for i in p]
         user_list = set(p)
 
-    # initiate defaultdict object to contain the users and their interactions
-    interaction_edges = defaultdict(list)
+    assert os.path.isdir(args.output_dir)
+    output_filename = os.path.join(args.output_dir, 'interactions.hdf5')
 
-    # 2021-10-26: creating new structure to filter out the interactions between users.
-    for twitter_user_timeline in tqdm.tqdm(timeline_flist):
-        with jsonlines.open(twitter_user_timeline) as reader:
-            for tweet_jsonl in reader:
+    if args.max_workers is None:
+        args.max_workers = os.cpu_count()
 
-                # obtain current user id of the timeline file. To be used as the key in the interaction edges dict
-                current_user_id = tweet_jsonl['data'][0]['author_id']
+    with ProcessPoolExecutor(max_workers=args.max_workers) as executor:
+        logging.info(f'Beginning ProcessPool Executor with {args.max_workers} workers.')
+        results = executor.map(process_one_file_pair, zip(timeline_file_list, augmented_file_list, repeat(user_list)))
 
-                # iterate over the tweets
-                for tweet in tweet_jsonl['data']:
+    # flatten list of lists
+    results = [item for sublist in results for item in sublist if item is not None]
 
-                    # check mentions. These are the users that the person @-ed in their tweet text. mentions will have length 0 if either none are mentioned or if none mentioned are in the desired user list. We make this check because this paper is only interested in the interactions between users.
-                    try:
-                        mentions = [i['id'] for i in tweet['entities']['mentions'] if i['id'] in user_list]
-                    except:
-                        mentions = []
-
-                    # referenced tweets are those quoted or replied to.
-                    contains_referenced_tweets = 'referenced_tweets' in tweet
-                    if contains_referenced_tweets:
-
-                        referenced_tweets = tweet['referenced_tweets']
-
-                        # extract quote tweets. do not check for user_list because these are tweet ids not user ids
-                        quotes = [i['id'] for i in referenced_tweets if i['type'] == 'quoted']
-
-                        # extract replies. do not check for user_list because these are tweet ids not user ids
-                        replies = [i['id'] for i in referenced_tweets if i['type'] == 'replied_to']
-
-                        current_tweet_id = tweet['id']
-                        current_tweet_created_at = tweet['created_at']
-                        if len(quotes)==1 and len(replies) == 0:
-                            in_reply_to=[]
-                        else:
-                            in_reply_to = tweet['in_reply_to_user_id']
-
-                        # if no saveable mentions, quotes, or replies are found then 
-                        if len(quotes) + len(replies) == 0 and len(mentions) == 0 and (str(in_reply_to) not in user_list):
-                            continue
-
-                        if 'entities' in tweet and 'hashtags' in tweet['entities']:
-                            contains_hashtags = [i['tag'] for i in tweet['entities']['hashtags']]
-                        else:
-                            contains_hashtags = []
-
-                        appending_dict = {
-                            'id': current_tweet_id,
-                            'mentions': mentions,
-                            'quotes': quotes,
-                            'replies': replies,
-                            'created_at': current_tweet_created_at,
-                            'in_reply_to': in_reply_to,
-                            'contains_hashtags': contains_hashtags
-                        }
-
-                        interaction_edges[str(current_user_id)].append(appending_dict)
-
-    with open(args.output_filename, 'wb') as f:
-        pickle.dump(interaction_edges, f)
+    results_pd = pd.DataFrame([attr.asdict(x) for x in results])
+    results_pd.to_hdf(
+        output_filename,
+        key='interactions_group_{}'.format(re.split('_',args.user_list_file)[-2]),
+        mode='a'
+    )
+    logging.info(f'File saved to {output_filename}')
 
 if __name__ == '__main__':
 
@@ -105,18 +165,64 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        '--output_filename',
-        help='desired output filename',
-        default='../../data/02_intermediate/interaction_edges.obj'
+        '--output_dir',
+        help='desired output directory',
+        default='../../data/02_intermediate/'
     )
 
     parser.add_argument(
-        '--verbose',
-        help='verbosity parameter',
-        default=False,
-        action='store_true'
+        '--max_workers',
+        help='Max workers for ProcessPoolExecutor',
+        default=None,
+        type=int
+    )
+
+    parser.add_argument(
+        '--log_dir',
+        help='director to place log in. Defaults to $HOME',
+        default='$HOME'
+    )
+
+    parser.add_argument(
+        '--log_level',
+        help='logging_level',
+        type=str.upper,
+        choices=['INFO','DEBUG','WARNING','CRITICAL','ERROR','NONE'],
+        default='DEBUG'
     )
 
     args = parser.parse_args()
 
-    main(args)
+    logging_dict = {
+        'NONE': None,
+        'CRITICAL': logging.CRITICAL,
+        'ERROR': logging.ERROR,
+        'WARNING': logging.WARNING,
+        'INFO': logging.INFO,
+        'DEBUG': logging.DEBUG
+    }
+
+    logging_level = logging_dict[args.log_level]
+
+
+    if logging_level is not None:
+
+        logging_fmt   = '[%(levelname)s] %(asctime)s - %(message)s'
+        today_datetime = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
+        logging_file  = os.path.join(args.log_dir, f'{today_datetime}_interaction_edges.log')
+        logging.basicConfig(
+            handlers=[
+                logging.FileHandler(filename=logging_file,mode='w'),
+                logging.StreamHandler()
+            ],
+            format=logging_fmt,
+            level=logging_level,
+            datefmt='%m/%d/%Y %I:%M:%S %p'
+        )
+
+        logging.info(f'Start time of script is {today_datetime}')
+
+    try:
+        main(args)
+    except KeyboardInterrupt:
+        logging.info('Keyboard Interrupt from user')
