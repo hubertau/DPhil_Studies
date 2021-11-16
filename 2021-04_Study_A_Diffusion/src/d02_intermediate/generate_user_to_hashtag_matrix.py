@@ -8,6 +8,7 @@ Saves to files to be read by subsequent scripts to write to csv, which will fina
 
 import argparse
 import glob
+import logging
 import os
 import pickle
 import re
@@ -20,6 +21,7 @@ import tqdm
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 
+
 class TweetVocabVectorizer(object):
 
     def __init__(
@@ -27,7 +29,6 @@ class TweetVocabVectorizer(object):
         data_dir,
         output_dir,
         subset,
-        verbose,
         ngram_range=(2,3),
         remove_stop_words=True,
         eot_token='eottoken'
@@ -43,17 +44,12 @@ class TweetVocabVectorizer(object):
         self.remove_stop_words = remove_stop_words
         self.token_pattern = r"(?u)#?\b\w\w+\b"
         self.subset = subset
-        self.verbose = verbose
 
         # sanity check for user timelines and agumented tweets
         assert len(self.file_list) == len(self.augmented_file_list)
         assert all([
             re.split('[_.]', self.file_list[i])[-2] == re.split('[_.]',self.augmented_file_list[i])[-2] for i in range(len(self.file_list))
         ])
-
-        if self.verbose:
-            print(self.file_list[:5])
-            print(self.augmented_file_list[:5])
 
         # check if input directories are directories
         assert os.path.isdir(self.data_dir)
@@ -208,7 +204,12 @@ class TweetVocabVectorizer(object):
         # set eot_token join string
         eot_join_str = ' ' + self.eot_token + ' '
 
-        for index, input_file in enumerate(tqdm.tqdm(self.iter_list, desc='CountVectorizer over collected users:')):
+        total_files=len(self.iter_list)
+
+        for index, input_file in enumerate(self.iter_list):
+
+            if index%100 == 0:
+                logging.info(f'Completed {index-1} files of {total_files} for ngram range {self.ngram_range}')
 
             user_joined_tweet_body = []
 
@@ -288,16 +289,16 @@ class TweetVocabVectorizer(object):
         self.user_vocab_matrix = self.vectorizer.fit_transform(self.iterator_jsonl())
 
         # set count of any token including the end_of_tweet_token to zero.
-        print('\ngetting mapping between feature names and indices...')
+        logging.info('getting mapping between feature names and indices')
         self.mapping = self.vectorizer.get_feature_names_out()
-        print('done')
+        logging.info('getting mapping between feature names and indices... done')
 
 
     def _check_vectorizer_output(self):
 
         def assert_helper(condition, true_msg='Condition Fulfilled', false_msg='Error'):
             assert(condition), false_msg
-            print(true_msg)
+            logging.info(true_msg)
 
         assert_helper(len(self.mapping)>0, 'Vocabulary is non-zero. Check OK.')
         user_vocab_matrix_sum = np.sum(self.user_vocab_matrix)
@@ -309,7 +310,7 @@ class TweetVocabVectorizer(object):
         elements_with_eot_token = np.sum(['eottoken' in i for i in self.mapping])
         assert_helper(elements_with_eot_token==0, 'No eot_tokens found in vocabulary. Check OK.', '{} counts of eot_token found in voabulary! Check NOT OK.'.format(elements_with_eot_token))
 
-        print('All Checks OK.')
+        logging.info('All Checks OK.')
 
     @time_function
     def save_files(self):
@@ -330,7 +331,6 @@ def main(args):
         args.data_dir,
         args.output_dir,
         args.subset,
-        args.verbose,
         ngram_range=args.ngram_range,
         remove_stop_words=False
     )
@@ -338,7 +338,7 @@ def main(args):
     # _ = vocab_vectorizer.get_hashtag_vocab()
     vocab_vectorizer.fit()
     vocab_vectorizer.save_files()
-    print('\nFitting complete. Running Checks:')
+    logging.info('Fitting complete. Running Checks')
     vocab_vectorizer._check_vectorizer_output()
 
 if __name__ == '__main__':
@@ -369,11 +369,48 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        '--verbose',
-        help='verbosity parameter',
-        default=False,
-        action='store_true'
+        '--log_dir',
+        help='director to place log in. Defaults to $HOME',
+        default='$HOME'
     )
+
+    parser.add_argument(
+        '--log_level',
+        help='logging_level',
+        type=str.upper,
+        choices=['INFO','DEBUG','WARNING','CRITICAL','ERROR','NONE'],
+        default='DEBUG'
+    )
+
+    args = parser.parse_args()
+
+    logging_dict = {
+        'NONE': None,
+        'CRITICAL': logging.CRITICAL,
+        'ERROR': logging.ERROR,
+        'WARNING': logging.WARNING,
+        'INFO': logging.INFO,
+        'DEBUG': logging.DEBUG
+    }
+
+    logging_level = logging_dict[args.log_level]
+
+    if logging_level is not None:
+
+        logging_fmt   = '[%(levelname)s] %(asctime)s - %(message)s'
+        today_datetime = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
+        logging_file  = os.path.join(args.log_dir, f'{today_datetime}_vectorizer.log')
+        logging.basicConfig(
+            handlers=[
+                logging.FileHandler(filename=logging_file,mode='w'),
+                logging.StreamHandler()
+            ],
+            format=logging_fmt,
+            level=logging_level,
+            datefmt='%m/%d/%Y %I:%M:%S %p'
+        )
+
+        logging.info(f'Start time of script is {today_datetime}')
 
     # parse args
     args = parser.parse_args()
@@ -381,3 +418,5 @@ if __name__ == '__main__':
     args.ngram_range = (int(args.ngram_range[0]), int(args.ngram_range[1]))
 
     main(args)
+
+
