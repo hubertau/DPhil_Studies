@@ -398,7 +398,7 @@ if __name__ == '__main__':
     if logging_level is not None:
 
         logging_fmt   = '[%(levelname)s] %(asctime)s - %(message)s'
-        today_datetime = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
+        today_datetime = str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
         logging_file  = os.path.join(args.log_dir, f'{today_datetime}_vectorizer.log')
         logging.basicConfig(
             handlers=[
