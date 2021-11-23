@@ -7,12 +7,13 @@ For sampling of users to do second data collection.
 import argparse
 import datetime
 import glob
+import math
 import os
 import pickle
-import math
 import pprint
 
 import attr
+import h5py
 import jsonlines
 import pandas as pd
 import tqdm
@@ -135,12 +136,20 @@ def sample_df(df, max_total = None, weights = False):
 def main(args):
 
     # get daterange from group number
-    with open(args.group_daterange_file, 'rb') as f:
-        group_daterange = pickle.load(f)
+    # with open(args.group_daterange_file, 'rb') as f:
+    #     group_daterange = pickle.load(f)
+    with h5py.File(args.group_daterange_file, 'r') as f:
+        group_daterange = f['segments']['selected_ranges']
+        group_daterange = group_daterange[()]
+        group_daterange = group_daterange.astype('U13')
 
     # get appropriate file list
     FAS_filelist = augmentation.sort_FAS_by_daterange(glob.glob(os.path.join(args.data_dir, 'FAS*.jsonl')))
-    FAS_filelist = augmentation.filter_FAS(group_daterange[args.group-1],FAS_filelist)
+
+    # convert to dates
+    x = group_daterange[args.group-1]
+    x = (datetime.datetime.strptime(x[0],'%Y-%m-%d'), datetime.datetime.strptime(x[1],'%Y-%m-%d'))
+    FAS_filelist = augmentation.filter_FAS(x,FAS_filelist)
     FAS_filelist = [i[0] for i in FAS_filelist]
 
     if args.verbose:
@@ -176,7 +185,7 @@ def main(args):
 
     if args.verbose: print('saved to {}'.format(save_filename))
 
-    sampled_df = sample_df(df, max_total = args.max_total, weights=args.weights)
+    sampled_df = sample_df(df, max_total = args.max_total, weights=args.weighted)
 
     sampled_save_filename = 'group_' + str(args.group) + '_sampled_weight_' + str(args.weights) + '_users.obj'
     sampled_save_filename = os.path.join(args.output_dir, sampled_save_filename)
