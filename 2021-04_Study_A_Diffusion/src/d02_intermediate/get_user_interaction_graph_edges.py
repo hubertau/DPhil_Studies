@@ -55,9 +55,14 @@ def process_one_tweet_object(tweet, user_list):
 
         current_tweet_id = tweet['id']
         try:
-            in_reply_to = list(tweet['in_reply_to_user_id'])
+            in_reply_to = tweet['in_reply_to_user_id']
+            if isinstance(in_reply_to,str):
+                in_reply_to=[in_reply_to]
+            elif isinstance(in_reply_to, list):
+                pass
         except KeyError:
             in_reply_to = []
+        logging.debug(in_reply_to)
 
         # if no saveable mentions, quotes, or replies are found then 
         if len(quotes) + len(replies) == 0 and len(mentions) == 0 and (str(in_reply_to) not in user_list):
@@ -126,6 +131,10 @@ def main(args):
         p = f.readlines()
         p = [str(i.replace('\n','')) for i in p]
         user_list = set(p)
+
+    # users_in_sample = [re.split('[_.]', i)[-2] for i in timeline_file_list]
+
+    # assert set(users_in_sample).issubset(user_list)
 
     assert os.path.isdir(args.output_dir)
     output_filename = os.path.join(args.output_dir, 'interactions.hdf5')
