@@ -15,27 +15,34 @@ import datetime
 import csv
 
 
-def main():
+def main(args):
 
-    # read in data. N.B. the data should come in the form of a txt file with each row as a user_id, count where count is the number of tweets in the initial FAS collection.
-    users = pd.read_csv(
-        args.user_list,
-        header=None,
-        names=['user_id','tweet_count']
-    )
+    if args.min_tweets:
+        # read in data. N.B. the data should come in the form of a txt file with each row as a user_id, count where count is the number of tweets in the initial FAS collection.
+        users = pd.read_csv(
+            args.user_list,
+            header=None,
+            names=['user_id','tweet_count']
+        )
 
-    # if continue_from_user_id has been provided, then print this and filter the data
-    users = users.iloc[users['user_id'][users['user_id']==args.continue_from_user_id].index[0]:,:]
-    print('\nContinuing from user {}. Collecting this user now.'.format(args.continue_from_user_id))
+        # if continue_from_user_id has been provided, then print this and filter the data
+        users = users.iloc[users['user_id'][users['user_id']==args.continue_from_user_id].index[0]:,:]
+        logging.info('\nContinuing from user {}. Collecting this user now.'.format(args.continue_from_user_id))
 
-    # convert tweet_count column to numeric
-    users['tweet_count'] = pd.to_numeric(users['tweet_count'])
+        # convert tweet_count column to numeric
+        users['tweet_count'] = pd.to_numeric(users['tweet_count'])
 
-    logging.info('{} users to be collected.'.format(sum(users['tweet_count']>=int(args.min_tweets))))
-    print('{} users to be collected.'.format(sum(users['tweet_count']>=int(args.min_tweets))))
-    logging.info('{} users to be dropped.'.format(sum(users['tweet_count']<int(args.min_tweets))))
-    print('{} users to be dropped.'.format(sum(users['tweet_count']<int(args.min_tweets))))
-    users = users[users['tweet_count']>=int(args.min_tweets)]
+        logging.info('{} users to be collected.'.format(sum(users['tweet_count']>=int(args.min_tweets))))
+        logging.info('{} users to be dropped.'.format(sum(users['tweet_count']<int(args.min_tweets))))
+        users = users[users['tweet_count']>=int(args.min_tweets)]
+    else:
+        users = pd.read_csv(
+            args.user_list,
+            header=None,
+            names=['user_id']
+        )
+
+        logging.info('No min tweets parameter supplied, assuming txt file is only list of user ids')
 
     # now iterate through the users
     for user_row in tqdm.tqdm(users.iterrows(), total=len(users)):
@@ -44,7 +51,7 @@ def main():
         user_id = str(user_row[1]['user_id'])
 
         # generate save filename
-        save_filename = os.path.join(args.data_dir,'timeline_' + user_id + '.jsonl')
+        save_filename = os.path.join(args.output_dir,'timeline_' + user_id + '.jsonl')
 
         # check if file already exists
         if os.path.isfile(save_filename):
@@ -69,7 +76,7 @@ def main():
 
         assert len(query) <= 1024, 'Query length too long'
 
-        print('\nQuery is: {}.\n'.format(query))
+        logging.debug(f'Query is: {query}')
 
         # generate start and end dates
         end_time = datetime.datetime.fromisoformat(args.end_time)
@@ -101,7 +108,7 @@ def main():
             save_filename]
         )
 
-        logging.info(user_id)
+        logging.info(f'{user_id} collected. Saved at {save_filename}.')
 
 if __name__ == '__main__':
 
@@ -115,12 +122,6 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '--output_dir',
-        help='directory to place outputs. defaults to current working directory',
-        default = os.getcwd()
-    )
-
-    parser.add_argument(
-        '--data_dir',
         help='where to place the data files.'
     )
 
@@ -174,17 +175,51 @@ if __name__ == '__main__':
         type=int
     )
 
-    # parse arguments
-    args = parser.parse_args()
+    parser.add_argument(
+        '--log_dir',
+        help='director to place log in. Defaults to $HOME',
+        default='$HOME'
+    )
 
+    parser.add_argument(
+        '--log_level',
+        help='logging_level',
+        type=str.upper,
+        choices=['INFO','DEBUG','WARNING','CRITICAL','ERROR','NONE'],
+        default='DEBUG'
+    )
+
+    args = parser.parse_args()
     if args.omit_hashtags:
         print("N.B. Original hashtag search queries have been omitted from collected tweets.")
 
-    # set up logging
-    logging.basicConfig(filename=os.path.join(args.output_dir, 'user_timelines.log'),
-                        encoding='utf-8',
-                        format='%(levelname)s:%(message)s',
-                        level=logging.DEBUG)
+    logging_dict = {
+        'NONE': None,
+        'CRITICAL': logging.CRITICAL,
+        'ERROR': logging.ERROR,
+        'WARNING': logging.WARNING,
+        'INFO': logging.INFO,
+        'DEBUG': logging.DEBUG
+    }
+
+    logging_level = logging_dict[args.log_level]
+
+    if logging_level is not None:
+
+        logging_fmt   = '[%(levelname)s] %(asctime)s - %(message)s'
+        today_datetime = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
+        logging_file  = os.path.join(args.log_dir, f'{today_datetime}_interaction_edges.log')
+        logging.basicConfig(
+            handlers=[
+                logging.FileHandler(filename=logging_file,mode='w'),
+                logging.StreamHandler()
+            ],
+            format=logging_fmt,
+            level=logging_level,
+            datefmt='%m/%d/%Y %I:%M:%S %p'
+        )
+
+        logging.info(f'Start time of script is {today_datetime}')
 
     # argument checks
     try:
@@ -194,6 +229,6 @@ if __name__ == '__main__':
         raise ValueError('invalid end_time string')
 
     assert os.path.isdir(args.output_dir)
-    assert os.path.isdir(args.data_dir)
+    assert os.path.isdir(args.log_dir)
 
-    main()
+    main(args)
