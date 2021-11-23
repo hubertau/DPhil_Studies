@@ -19,3 +19,4 @@ DPhil_Studies.code-workspace
 .vscode/settings.json
 *.jpg
 twarc.log
+*.hdf5
