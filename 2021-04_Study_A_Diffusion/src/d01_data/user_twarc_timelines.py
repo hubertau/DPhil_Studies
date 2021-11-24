@@ -68,7 +68,7 @@ def main(args):
             # N.B. Prepend a dash (-) to a keyword (or any operator) to negate it (NOT). For example, cat #meme -grumpy will match Tweets containing the hashtag #meme and the term cat, but only if they do not contain the term grumpy. One common query clause is -is:retweet, which will not match on Retweets, thus matching only on original Tweets, Quote Tweets, and replies. All operators can be negated, but negated operators cannot be used alone.
 
         if args.omit_hashtags:
-            with open('/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/search_hashtags.txt', newline='') as f:
+            with open(args.search_hashtags, newline='') as f:
                 terms = list(csv.reader(f))
             terms = ['-'+i[0] for i in terms]
             terms  = ' '.join(terms)
@@ -88,9 +88,9 @@ def main(args):
             start_time = datetime.datetime.fromisoformat(args.start_time)
             start_time = datetime.datetime.isoformat(start_time)
 
-
-        print('start time: {}'.format(start_time))
-        print('end_time: {}'.format(end_time))
+        logging.info('start time: {}'.format(start_time))
+        logging.info('end_time: {}'.format(end_time))
+        logging.info(f'Collecting {save_filename}.')
 
         subprocess.run(
             ['twarc2',
@@ -133,6 +133,12 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
+        '--search_hashtags',
+        help='search hashtags file',
+        default = '../../references/search_hashtags.txt'
+    )
+
+    parser.add_argument(
         '--end_time',
         help='end_time argument in format YYYY-MM-DDTHH:mm:ss (ISO format)',
         default=datetime.datetime.isoformat(datetime.datetime.now().replace(microsecond=0))
@@ -145,8 +151,7 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '--min_tweets',
-        help='The minimum frequency for user history to be collected.',
-        default=50
+        help='The minimum frequency for user history to be collected.'
     )
 
     parser.add_argument(
@@ -158,14 +163,12 @@ if __name__ == '__main__':
     parser.add_argument(
         '--omit_hashtags',
         help='Include in query to not include tweets that contain the original search hashtags. These are already collected in the FAS.',
-        default = False,
         action = "store_true"
     )
 
     parser.add_argument(
         '--omit_retweets',
         help = 'omit retweets in the query',
-        default = False,
         action = 'store_true'
     )
 
@@ -190,8 +193,6 @@ if __name__ == '__main__':
     )
 
     args = parser.parse_args()
-    if args.omit_hashtags:
-        print("N.B. Original hashtag search queries have been omitted from collected tweets.")
 
     logging_dict = {
         'NONE': None,
@@ -208,7 +209,7 @@ if __name__ == '__main__':
 
         logging_fmt   = '[%(levelname)s] %(asctime)s - %(message)s'
         today_datetime = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
-        logging_file  = os.path.join(args.log_dir, f'{today_datetime}_interaction_edges.log')
+        logging_file  = os.path.join(args.log_dir, f'{today_datetime}_twarc_timeline.log')
         logging.basicConfig(
             handlers=[
                 logging.FileHandler(filename=logging_file,mode='w'),
@@ -219,7 +220,10 @@ if __name__ == '__main__':
             datefmt='%m/%d/%Y %I:%M:%S %p'
         )
 
-        logging.info(f'Start time of script is {today_datetime}')
+        logging.info(f'Start time of twarc script is {today_datetime}')
+
+    if args.omit_hashtags:
+        logging.info("Original hashtag search queries have been omitted from collected tweets.")
 
     # argument checks
     try:
