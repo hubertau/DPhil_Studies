@@ -169,25 +169,29 @@ def main(args):
         search_hashtags = [i.rstrip('\n') for i in search_hashtags]
         search_hashtags = [i.lower() for i in search_hashtags]
 
-    # collect activity df for each user in the windows selected.
-    df = activity_df(
-            search_hashtags,
-            FAS_filelist,
-            user_list,
-            verbose = True
-        )
-
     save_filename = 'group_' + str(args.group) + '_sampling_df.obj'
     save_filename = os.path.join(args.output_dir, save_filename)
 
-    with open(save_filename, 'wb') as f:
-        pickle.dump(df, f)
+    if os.path.isfile(save_filename):
+        with open(save_filename, 'rb') as f:
+            df = pickle.load(f)
+        print('loaded file in')
+    else:
+        # collect activity df for each user in the windows selected.
+        df = activity_df(
+                search_hashtags,
+                FAS_filelist,
+                user_list,
+                verbose = True
+            )
+        with open(save_filename, 'wb') as f:
+            pickle.dump(df, f)
 
     if args.verbose: print('saved to {}'.format(save_filename))
 
     sampled_df = sample_df(df, max_total = args.max_total, weights=args.weighted)
 
-    sampled_save_filename = 'group_' + str(args.group) + '_sampled_weight_' + str(args.weights) + '_users.obj'
+    sampled_save_filename = 'group_' + str(args.group) + '_sampled_weight_' + str(args.weighted) + '_users.obj'
     sampled_save_filename = os.path.join(args.output_dir, sampled_save_filename)
 
     with open(sampled_save_filename, 'wb') as f:
@@ -195,8 +199,8 @@ def main(args):
 
     if args.verbose: print('saved to {}'.format(sampled_save_filename))
 
-    user_list_save_filename = 'group_' + str(args.group) + '_sampled_weight_' + str(args.weights) + '_users.txt'
-    user_list_save_filename = os.path.join(args.output_dir, sampled_save_filename)
+    user_list_save_filename = 'group_' + str(args.group) + '_sampled_weight_' + str(args.weighted) + '_users.txt'
+    user_list_save_filename = os.path.join(args.output_dir, user_list_save_filename)
 
     with open(user_list_save_filename, 'w') as f:
         for j in sampled_df[0]:
