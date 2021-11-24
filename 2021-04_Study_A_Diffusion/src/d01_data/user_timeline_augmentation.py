@@ -10,13 +10,14 @@ This script should be run after timeline data collection. The search parameter o
 import argparse
 import datetime
 import glob
-from collections import defaultdict
-import re
+import logging
+import pickle
 import os
-import tqdm
-import pprint
+import re
 
 import jsonlines
+import tqdm
+
 
 def timeline_file_span(timeline_file):
 
@@ -96,7 +97,7 @@ def filter_FAS(date_range, sorted_FAS_filelist):
 def main(args):
 
     # get filelist in strings
-    FAS_filelist = sort_FAS_by_daterange(glob.glob(os.path.join(args.data_dir, 'FAS*.jsonl')))
+    FAS_filelist = sort_FAS_by_daterange(glob.glob(os.path.join(args.FAS_dir, 'FAS*.jsonl')))
     FAS_filelist = [i[0] for i in FAS_filelist]
 
     # only take FAS files required:
@@ -106,42 +107,34 @@ def main(args):
 
     FAS_filelist = [i[1] for i in FAS_dates if (not i[2][0] > args.max_FAS_date) and not i[2][1] < args.min_FAS_date]
 
-    if args.verbose:
-        pp = pprint.PrettyPrinter(indent = 4)
-        pp.pprint(FAS_filelist)
-
-    timeline_filelist = glob.glob(os.path.join(args.data_dir, 'timeline*.jsonl'))
+    if args.custom_list:
+        logging.debug('Custom list supplied')
+        with open(args.custom_list, 'rb') as f:
+            timeline_filelist = pickle.load(f)
+    else:
+        logging.debug('No custom list supplied')
+        timeline_filelist = glob.glob(os.path.join(args.data_dir, 'timeline*.jsonl'))
 
     if args.subset:
         timeline_filelist = timeline_filelist[:args.subset]
 
-    if args.verbose:
-        print('Number of timeline files to be created: {}'.format(len(timeline_filelist)))
+    logging.debug('Number of augmentation files to be created: {}'.format(len(timeline_filelist)))
 
     # sort and extract date ranges
     sorted_FAS_list_with_dates = sort_FAS_by_daterange(FAS_filelist)
+    logging.debug('FAS files to scan:')
+    for i in sorted_FAS_list_with_dates:
+        logging.debug(i)
 
     # get user_ids
     user_ids = [re.split('[_.]',timeline)[-2] for timeline in timeline_filelist]
 
-    # user_scan_ranges = defaultdict(set)
-
-    # for timeline in tqdm.tqdm(timeline_filelist, desc='User Files'):
-        # 
-
-        # get user date range
-
-        # # determine the FAS files to scan
-        # FAS_files_to_scan = filter_FAS(timeline_date_range, sorted_FAS_list_with_dates)
-
-    user_tweets_to_append = defaultdict(list)
-    for i in tqdm.tqdm(sorted_FAS_list_with_dates, desc='FAS Scan. Writing to individual user jsonl in the process.'):
+    for i in sorted_FAS_list_with_dates:
+        logging.info(f'Scanning file {i}')
         with jsonlines.open(i[0]) as reader:
             for tweet_json in reader:
                 for tweet in tweet_json['data']:
                     if tweet['author_id'] in user_ids:
-                        # user_tweets_to_append[tweet['author_id']].append(tweet['id'])
-                        # user_scan_ranges[tweet['author_id']].add(i)
 
                         created_at = datetime.datetime.fromisoformat(tweet['created_at'][:-1])
 
@@ -154,23 +147,15 @@ def main(args):
                         with jsonlines.open(save_filename, 'a') as writer:
                             writer.write(tweet)
 
-    # for id in tqdm.tqdm(user_ids, desc='writing to files'):
-    #     # write out results
-    #     save_filename = 'augmented_timeline_ids_' + id + '.txt'
-    #     save_filename = os.path.join(args.data_dir, save_filename)
-
-    #     # scan_ranges = sort_FAS_by_daterange(list(user_scan_ranges[id]))
-
-    #     with open(save_filename, 'w') as f:
-    #         # f.write(scan_ranges[0]+ '\n')
-    #         # f.write(scan_ranges[1] + '\n')
-    #         for j in user_tweets_to_append[id]:
-    #             f.write(j)
-    #             f.write('\n')
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='')
+
+    parser.add_argument(
+        'FAS_dir',
+        help='full archive search files data directory'
+    )
 
     parser.add_argument(
         'data_dir',
@@ -188,18 +173,58 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
+        '--custom_list',
+        help='custom list of timeline files to collect'
+    )
+
+    parser.add_argument(
         '--subset',
         help='only run this script on a subset of the data. Used primarily for debugging.',
         type = int,
     )
 
     parser.add_argument(
-        '--verbose',
-        help='verbosity',
-        default=False,
-        action='store_true'
+        '--log_dir',
+        help='director to place log in. Defaults to $HOME',
+        default='$HOME'
+    )
+
+    parser.add_argument(
+        '--log_level',
+        help='logging_level',
+        type=str.upper,
+        choices=['INFO','DEBUG','WARNING','CRITICAL','ERROR','NONE'],
+        default='DEBUG'
     )
 
     args = parser.parse_args()
+
+    logging_dict = {
+        'NONE': None,
+        'CRITICAL': logging.CRITICAL,
+        'ERROR': logging.ERROR,
+        'WARNING': logging.WARNING,
+        'INFO': logging.INFO,
+        'DEBUG': logging.DEBUG
+    }
+
+    logging_level = logging_dict[args.log_level]
+
+    if logging_level is not None:
+
+        logging_fmt   = '[%(levelname)s] %(asctime)s - %(message)s'
+        today_datetime = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
+        logging_file  = os.path.join(args.log_dir, f'{today_datetime}_augmentation.log')
+        logging.basicConfig(
+            handlers=[
+                logging.FileHandler(filename=logging_file,mode='w'),
+                logging.StreamHandler()
+            ],
+            format=logging_fmt,
+            level=logging_level,
+            datefmt='%m/%d/%Y %I:%M:%S %p'
+        )
+
+        logging.info(f'Start time of script is {today_datetime}')
 
     main(args)
