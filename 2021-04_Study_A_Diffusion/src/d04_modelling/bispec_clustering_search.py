@@ -6,6 +6,7 @@ Script to search through different bispectral clustering parameters. Allows for 
 
 import datetime
 import glob
+import logging
 import os
 import pickle
 import pprint
@@ -32,7 +33,6 @@ class bispec_search(object):
         interval,
         min_user,
         implementation = 'Python',
-        verbose = False,
         max_workers = None
     ):
         self.ngram_range = ngram_range
@@ -42,15 +42,12 @@ class bispec_search(object):
         self.interval = interval
         self.min_user = min_user
         self.type = implementation.lower()
-        self.verbose = verbose
         self.max_workers = max_workers
 
-        if self.verbose:
-            print('Verbose output selected.')
-            print('Data/Input directory is: {}'.format(self.data_dir))
-            print('Output directory is: {}'.format(self.output_dir))
-            print('ngram range is {}'.format(self.ngram_range))
-            print('Searching over bsc cluster sizes {} with interval {} and min_user parameter {}'.format(self.bsc_range, self.interval, self.min_user))
+        logging.info('Data/Input directory is: {}'.format(self.data_dir))
+        logging.info('Output directory is: {}'.format(self.output_dir))
+        logging.info('ngram range is {}'.format(self.ngram_range))
+        logging.info('Searching over bsc cluster sizes {} with interval {} and min_user parameter {}'.format(self.bsc_range, self.interval, self.min_user))
 
         # Obtain csv file for r implementation
         if self.type == 'r':
@@ -70,8 +67,7 @@ class bispec_search(object):
             # set to the string
             self.csv_file = self.csv_file[0]
 
-            if self.verbose:
-                print('Detected csv file: {}'.format(self.csv_file))
+            logging.info('Detected csv file: {}'.format(self.csv_file))
 
     def time_function(func):
 
@@ -81,9 +77,9 @@ class bispec_search(object):
 
         def inner(*args, **kwargs):
             timefunc_start_time = datetime.datetime.now()
-            print('\nStart Time: {}'.format(timefunc_start_time))
+            logging.info('\nStart Time: {}'.format(timefunc_start_time))
             result = func(*args, **kwargs)
-            print('Total Time Taken: {}'.format(datetime.datetime.now()-timefunc_start_time))
+            logging.info('Total Time Taken: {}'.format(datetime.datetime.now()-timefunc_start_time))
             return result
         return inner
 
@@ -92,13 +88,6 @@ class bispec_search(object):
         model = SpectralCoclustering(n_clusters=cluster, random_state=0)
 
         results = model.fit(self.new_csr)
-        # score = consensus_score(model.biclusters_,
-                # (rows[:, row_idx], columns[:, col_idx]))
-
-        # print("consensus score: {:.3f}".format(score))
-
-        # fit_data = self.new_csr[np.argsort(model.row_labels_)]
-        # fit_data = self.new_csr[:, np.argsort(model.column_labels_)]
 
         save_filename = os.path.join(self.output_dir, 'bsc_python_cluster_' + str(cluster) + '_ngram_' + str(self.ngram_range[0] + self.ngram_range[1]) + '_min_' + str(self.min_user) + '.obj')
 
@@ -129,7 +118,7 @@ class bispec_search(object):
             while input('\n Do you wish to continue and overwrite? [y/n]').lower() == 'y':
                 continue
             else:
-                print('Clustering Aborted.')
+                logging.debug('Clustering Aborted.')
                 return None
 
         if self.type == 'r':
@@ -149,69 +138,37 @@ class bispec_search(object):
 
         elif self.type == 'python':
 
-            if self.verbose:
-                print('Python implementation selected.')
+            logging.info('Python implementation selected.')
 
             self.csr_path = os.path.join(self.data_dir, 'user_count_mat_ngram_' + self.ngram_range + '.obj')
 
-            if self.verbose:
-                print('Attempting to load in file {}'.format(self.csr_path))
+            logging.info('Attempting to load in file {}'.format(self.csr_path))
 
             # open the saved files
             with open(self.csr_path, 'rb') as f:
                 self.csr = pickle.load(f)
 
-            if self.verbose:
-                print('CSR loaded in.')
-
-            if self.verbose:
-                print('Filtering for min user value...')
+            logging.info('CSR loaded in.')
+            logging.info('Filtering for min user value...')
 
             self.new_csr = self.csr[:, np.array(self.csr.sum(axis=0) >= self.min_user).flatten()]
 
-            if self.verbose:
-                print('Done.')
+            logging.info('Done.')
 
             # 2021-07-14 Check NaN
             for row in range(self.new_csr.shape[0]):
                 assert np.sum(np.isnan(np.array(self.new_csr[row,:].todense()))) == 0
 
-            if self.verbose:
-                print('NaN check complete.')
-
-
+            logging.info('NaN check complete.')
+            logging.info('Beginning modelling')
             with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
                 result_messages = executor.map(
                     self.model_python,
                     range(self.bsc_range[0],self.bsc_range[1]+1,self.interval)
                 )
 
-            if self.verbose:
-                for i in result_messages:
-                    print(i)
-
-
-            # for cluster in tqdm.tqdm(range(self.bsc_range[0],self.bsc_range[1]+1,self.interval)):
-            #     # res = spectral_bicluster(self.square_mat, n_clusters=cluster)
-            #     model = SpectralCoclustering(n_clusters=cluster, random_state=0)
-
-            #     results = model.fit(self.new_csr)
-            #     # score = consensus_score(model.biclusters_,
-            #             # (rows[:, row_idx], columns[:, col_idx]))
-
-            #     # print("consensus score: {:.3f}".format(score))
-
-            #     # fit_data = self.new_csr[np.argsort(model.row_labels_)]
-            #     # fit_data = self.new_csr[:, np.argsort(model.column_labels_)]
-
-            #     save_filename = os.path.join(self.output_dir, 'bsc_python_cluster_' + str(cluster) + '_ngram_' + str(self.ngram_range[0] + self.ngram_range[1]) + '_min_' + str(self.min_user) + '.obj')
-
-            #     with open(save_filename, 'wb') as f:
-            #         pickle.dump(results, f)
-
-            #     if args.verbose:
-            #         print('saved to {}'.format(save_filename))
-
+            for i in result_messages:
+                logging.info(i)
 
 def main(args):
 
@@ -222,8 +179,7 @@ def main(args):
         args.range,
         args.interval,
         args.min_user,
-        implementation = args.implementation,
-        verbose = args.verbose
+        implementation = args.implementation
     )
 
     clusterer.cluster()
@@ -280,13 +236,49 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        '--verbose',
-        help='verbosity parameter',
-        default=False,
-        action='store_true'
+        '--log_dir',
+        help='director to place log in. Defaults to $HOME',
+        default='$HOME'
+    )
+
+    parser.add_argument(
+        '--log_level',
+        help='logging_level',
+        type=str.upper,
+        choices=['INFO','DEBUG','WARNING','CRITICAL','ERROR','NONE'],
+        default='DEBUG'
     )
 
     args = parser.parse_args()
+
+    logging_dict = {
+        'NONE': None,
+        'CRITICAL': logging.CRITICAL,
+        'ERROR': logging.ERROR,
+        'WARNING': logging.WARNING,
+        'INFO': logging.INFO,
+        'DEBUG': logging.DEBUG
+    }
+
+    logging_level = logging_dict[args.log_level]
+
+    if logging_level is not None:
+
+        logging_fmt   = '[%(levelname)s] %(asctime)s - %(message)s'
+        today_datetime = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
+        logging_file  = os.path.join(args.log_dir, f'{today_datetime}_bispectral_clustering.log')
+        logging.basicConfig(
+            handlers=[
+                logging.FileHandler(filename=logging_file,mode='w'),
+                logging.StreamHandler()
+            ],
+            format=logging_fmt,
+            level=logging_level,
+            datefmt='%m/%d/%Y %I:%M:%S %p'
+        )
+
+        logging.info(f'Start time of script is {today_datetime}')
+
 
     args.range = args.range.split('-')
     args.range = (int(args.range[0]),int(args.range[1]))
