@@ -138,6 +138,11 @@ def main(args):
 
     assert os.path.isdir(args.output_dir)
     output_filename = os.path.join(args.output_dir, 'interactions.hdf5')
+    if args.output_dataset_name:
+        output_key = args.output_dataset_name
+    else:
+        output_key = str(int(re.split('_',args.user_list_file)[-2]) + 1)
+        output_key = f'interactions_group_{output_key}'
 
     if args.max_workers is None:
         args.max_workers = os.cpu_count()
@@ -152,7 +157,7 @@ def main(args):
     results_pd = pd.DataFrame([attr.asdict(x) for x in results])
     results_pd.to_hdf(
         output_filename,
-        key='interactions_group_{}'.format(re.split('_',args.user_list_file)[-2]),
+        output_key,
         mode='a'
     )
     logging.info(f'File saved to {output_filename}')
@@ -177,6 +182,11 @@ if __name__ == '__main__':
         '--output_dir',
         help='desired output directory',
         default='../../data/02_intermediate/'
+    )
+
+    parser.add_argument(
+        '--output_dataset_name',
+        help='custom output dataset name'
     )
 
     parser.add_argument(
