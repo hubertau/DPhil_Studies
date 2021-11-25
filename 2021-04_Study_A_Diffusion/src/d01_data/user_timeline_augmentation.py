@@ -128,6 +128,7 @@ def main(args):
 
     # get user_ids
     user_ids = [re.split('[_.]',timeline)[-2] for timeline in timeline_filelist]
+    logging.debug(f'first few user ids: {user_ids[:10]}')
 
     for i in sorted_FAS_list_with_dates:
         logging.info(f'Scanning file {i}')
@@ -135,6 +136,8 @@ def main(args):
             for tweet_json in reader:
                 for tweet in tweet_json['data']:
                     if tweet['author_id'] in user_ids:
+
+                        logging.debug('potential tweet saving detected')
 
                         created_at = datetime.datetime.fromisoformat(tweet['created_at'][:-1])
 
@@ -144,6 +147,7 @@ def main(args):
                         # 2021-11-08 version: write to jsonlines files as scan is happening so that we don't have to do hold a large amount of text in memory.
                         save_filename = 'augmented_timeline_ids_' + tweet['author_id'] + '.jsonl'
                         save_filename = os.path.join(args.data_dir, save_filename)
+                        logging.debug(f'writing to {save_filename}')
                         with jsonlines.open(save_filename, 'a') as writer:
                             writer.write(tweet)
 
