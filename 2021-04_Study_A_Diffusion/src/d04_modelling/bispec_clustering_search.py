@@ -87,6 +87,8 @@ class bispec_search(object):
 
         model = SpectralCoclustering(n_clusters=cluster, random_state=0)
 
+        logging.info(f'Modelling cluster size {cluster}.')
+
         results = model.fit(self.new_csr)
 
         save_filename = os.path.join(self.output_dir, 'bsc_python_cluster_' + str(cluster) + '_ngram_' + str(self.ngram_range[0] + self.ngram_range[1]) + '_min_' + str(self.min_user) + '.obj')
@@ -95,6 +97,8 @@ class bispec_search(object):
             pickle.dump(results, f)
 
         msg = 'saved at {}'.format(save_filename)
+
+        logging.info(f'End modelling cluster size {cluster}.')
         return msg
 
     def cluster(self):
@@ -161,7 +165,12 @@ class bispec_search(object):
 
             logging.info('NaN check complete.')
             logging.info('Beginning modelling')
-            with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
+            if self.max_workers is not None:
+                workers = self.max_workers
+            else:
+                workers = os.cpu_count()
+            logging.info(f'Running with {workers} workers')
+            with ProcessPoolExecutor(max_workers=workers) as executor:
                 result_messages = executor.map(
                     self.model_python,
                     range(self.bsc_range[0],self.bsc_range[1]+1,self.interval)
