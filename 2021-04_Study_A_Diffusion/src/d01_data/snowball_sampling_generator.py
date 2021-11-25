@@ -96,8 +96,9 @@ def main(args):
 
     custom_interactions_dataset_name = f'interactions_group_{group_num}_snowball_{snowball_num}'
 
-    logging.debug(f'Custom interactions dataset name is: {custom_interactions_dataset_name}')
-    logging.debug(f'Detected group number: {group_num}')
+    logging.info(f'Snowball number is {snowball_num}')
+    logging.info(f'Custom interactions dataset name is: {custom_interactions_dataset_name}')
+    logging.info(f'Detected group number: {group_num}')
 
     interaction_py = os.path.join(dirname, 'd02_intermediate','get_user_interaction_graph_edges.py')
     def run_interactions():
@@ -159,12 +160,20 @@ def main(args):
     df['in_reply_to'] = df['in_reply_to'].apply(convert_in_reply_to)
     unique_users = list(df['in_reply_to'].unique())
 
+    # filter out users already collected (i.e. in augmented) and entries in df that had no reply to.
     users_to_sample = [i for i in unique_users if i not in augmented_filelist and i is not None]
+
+    with open(args.user_list_file, 'r') as f:
+        p = f.readlines()
+        p = [str(i.replace('\n','')) for i in p]
+        user_list = set(p)
+
+    users_to_sample = [i for i in users_to_sample if i in user_list]
 
     sample_size = min(args.num_to_sample, len(users_to_sample))
     sampled_list = random.sample(users_to_sample, sample_size)
 
-    logging.debug(f'Number of sampled users returned: {sample_size}')
+    logging.info(f'Number of sampled users returned: {sample_size}')
 
     sampled_users_txt_file = os.path.join(args.output_dir, f'group_{group_num}_snowball_{snowball_num}.txt')
 
