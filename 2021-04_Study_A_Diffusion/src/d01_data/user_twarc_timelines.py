@@ -44,11 +44,16 @@ def main(args):
 
         logging.info('No min tweets parameter supplied, assuming txt file is only list of user ids')
 
+    num_to_collect = len(users)
+
     # now iterate through the users
-    for user_row in tqdm.tqdm(users.iterrows(), total=len(users)):
+    for user_row in users.itertuples():
+
+        logging.info(f'Collecting user {user_row.Index} of {num_to_collect}: {100*user_row.Index/num_to_collect}%')
 
         # user_id
-        user_id = str(user_row[1]['user_id'])
+        user_id = user_row.user_id
+        assert isinstance(user_id, str)
 
         # generate save filename
         save_filename = os.path.join(args.output_dir,'timeline_' + user_id + '.jsonl')
