@@ -1,3 +1,51 @@
+# 2021-11-29 Notes
+* Tried Cython-ing the model eval. No real speedup because bottleneck really is accessing values from the large csr. No bueno so doing arc job submission optimisation instead
+* need also to clean code and update my own documentation today.
+
+# 2021-11-17 Notes for Meeting with Chico
+1. Sampling
+	* I have set up a pipeline to extract users not on their activity in protest networks but a balanced sampling from each hashtag group. cf. Data Feminism
+	* This guarantees a certain number from each hashtag searched.
+	* However, no internal interactions in group 1 on the initial sampling strategy! Maybe I should do a snowball sampling strategy instead? Or is that forcing the issue too much?
+	* Morover, most of the sampled users in group 1 have interactions with other users in group 1, and in multiple languages, but not amongst themselves.
+	* In retrospect that was perhaps to be expected, I'm taking the top small percentage of users into terms of protest network participation, they will have interacted a lot but not necessarily with each other. Nevertheless this is still surprising. None?
+	* Should I get more from group 1?
+2. Modelling
+	* Access to ARC. Spent some time learning that
+	* Some things are frustrating and not working but I've signed up to a training session 2 Dec
+3. Stats
+	* I think I really need to have interactions between users because that's the premise of the research question.
+	* Okay, silver lining: I don't have internal interactions but the registered interactions are still with users on the user timeline list. So I can ask; given the interactions with these other users, was there any increase in network participation? Can at least do this on activity basis.
+	* need to filter out self replies.
+	* control for account age? gender? <- could use Scott's prevoius stuff
+4. Followers
+	* Is this very slow to collect?
+5. Next steps:
+	* Clean up activity counts so that it returns each hashtag counts too.
+	* Collect data.
+	* start doing more experiments with the modelling, restricting time zones etc.
+	* Figure out ARC
+
+* no right answer with sampling
+* Linear regresssion as first go
+* need collection of evidence to show what I want. Not looking for universal law of behaviour.
+
+# 2021-11-16 MPI, ARC, BSC Eval
+* Python BSC eval didn't work becuase there's always an empty group giving inf ncut because diving by vol(cluster)
+
+# 2021-11-10 Empirical Sampling
+* [TODO] from 2021-11-08: Review sampling strategy of second period window and determine if I should do sampling based on activity but following distribution. Remember to set random seed in sampling.
+* TO ACHIEVE FOR CHICO MEETING NEXT THURS:
+	* Empirical distribution sampling with stratified sampling strategy of hashtags.
+	* Basic model for first group
+	* Possible bsc for smaller than across whole population.
+		* e.g. across only certain languages
+* Thoughts on stratified sampling:
+	* we don't know the real Twitter population of each country/language, so we can't correct for that error.
+	* we can correct for the representation of each language group that participated in their respective protest networks, though.
+* Do I weight having multiple search hashtags??
+	* groupby author would avoid duplicated sample selection. Have each column of search hashtag be binary, weight users by their participation in multiple?
+
 # 2021-11-09 Implementing Python BSC properly
 * [DONE] Set up Python Implementation.
 * [TODO] from 2021-11-08: Review sampling strategy of second period window and determine if I should do sampling based on activity but following distribution. Remember to set random seed in sampling.
