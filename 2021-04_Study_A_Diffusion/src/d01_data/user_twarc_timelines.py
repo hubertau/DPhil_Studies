@@ -49,18 +49,17 @@ def main(args):
     # now iterate through the users
     for user_row in users.itertuples():
 
-        logging.info(f'Collecting user {user_row.Index} of {num_to_collect}: {100*user_row.Index/num_to_collect}%')
+        logging.info(f'Collecting user {user_row.Index+1} of {num_to_collect}: {100*user_row.Index/num_to_collect}%')
 
         # user_id
-        user_id = user_row.user_id
-        assert isinstance(user_id, str)
+        user_id = str(user_row.user_id)
 
         # generate save filename
         save_filename = os.path.join(args.output_dir,'timeline_' + user_id + '.jsonl')
 
         # check if file already exists
         if os.path.isfile(save_filename):
-            logging.info('{} user already pulled. Continuing...'.format(user_id))
+            logging.warning('{} user already pulled. Continuing...'.format(user_id))
             continue
 
         # generate query
@@ -95,7 +94,6 @@ def main(args):
 
         logging.info('start time: {}'.format(start_time))
         logging.info('end_time: {}'.format(end_time))
-        logging.info(f'Collecting {save_filename}.')
 
         subprocess.run(
             ['twarc2',
