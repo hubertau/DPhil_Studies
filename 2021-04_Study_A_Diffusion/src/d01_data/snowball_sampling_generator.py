@@ -30,6 +30,9 @@ def main(args):
     ############################################################################
     random.seed(1)
 
+    # set group_num
+    group_num = str(int(re.split('_',args.user_list_file)[-2]) + 1)
+
     # collect user timelines and existing augmentations
     timeline_filelist = sorted(glob.glob(os.path.join(args.timeline_data_dir, 'timeline*.jsonl')))
     augmented_filelist = sorted(glob.glob(os.path.join(args.timeline_data_dir, 'augmented*.jsonl')))
@@ -37,6 +40,12 @@ def main(args):
     # set directories
     dirname = os.path.dirname(os.path.dirname(os.path.abspath((__file__))))
     logging.debug(f'this should show src/ folder: {dirname}')
+
+    # extract start and stop times from FAS peak analysis and group number
+    with h5py.File(args.FAS_peak_analysis_file, 'r') as f:
+        x = f['segments']['selected_ranges'][int(group_num)-1]
+        args.min_date = x[0].decode()
+        args.max_date = x[1].decode()
 
     if len(timeline_filelist) == len(augmented_filelist):
         logging.info('No timelines need to be augmented. Continuing...')
@@ -73,7 +82,7 @@ def main(args):
             args.log_dir,
             '--log_level',
             args.log_level
-        ], cwd=os.path.join(dirname, 'd01_data'))
+        ], cwd=os.path.join(dirname, 'd01_data'),check=True)
 
         os.remove(augmentation_obj_file)
 
@@ -82,13 +91,12 @@ def main(args):
     ############################################################################
 
     # check if interactions already exist for this group
-    group_num = str(int(re.split('_',args.user_list_file)[-2]) + 1)
     interactions_file = os.path.join(args.output_dir, 'interactions.hdf5')
     with h5py.File(interactions_file, 'r') as f:
         x = list(f.keys())
-        x = [i for i in x if 'snowball' in i]
+        x = [i for i in x if f'group_{group_num}_snowball_num' in x]
         if x:
-            snowball_nums = [int(f[i].attrs['snowball_num']) for i in x]
+            snowball_nums = [int(f[i].attrs[f'snowball_num']) for i in x]
             max_snowball = max(snowball_nums)
             snowball_num = max_snowball + 1
         else:
@@ -117,7 +125,7 @@ def main(args):
             args.log_dir,
             '--log_level',
             args.log_level
-        ],cwd=os.path.join(dirname, 'd02_intermediate'))
+        ],cwd=os.path.join(dirname, 'd02_intermediate'),check=True)
 
 
     # check if interactions for this already exist
@@ -210,13 +218,8 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        '--min_date',
-        help='min date for group'
-    )
-
-    parser.add_argument(
-        '--max_date',
-        help='max date for group'
+        '--FAS_peak_analysis_file',
+        help='FAS peak analysis hdf5'
     )
 
     parser.add_argument(
