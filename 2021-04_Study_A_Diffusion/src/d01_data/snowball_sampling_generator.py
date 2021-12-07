@@ -134,7 +134,7 @@ def main(args):
         with h5py.File(interactions_file, 'r') as f:
             x = list(f.keys())
         if custom_interactions_dataset_name in x:
-            logging.WARNING(f'Name {custom_interactions_dataset_name} already exists in hdf5 file. Moving on.')
+            logging.warning(f'Name {custom_interactions_dataset_name} already exists in hdf5 file. Moving on.')
             pass
         else:
             run_interactions()
