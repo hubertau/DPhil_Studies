@@ -22,4 +22,7 @@ twarc.log
 *.hdf5
 2021-04_Study_A_Diffusion/data/archive/user_sets_sanity_check.txt
 2021-04_Study_A_Diffusion/data/02_intermediate/02_group/group_2_sampled_weight_False_users.txt
-2021-04_Study_A_Diffusion/data/02_intermediate/02_group/group_2_snowball_*.txt
+2021-04_Study_A_Diffusion/data/02_intermediate/0*_group/group_*_snowball_*.txt
+*.jpeg
+*.JPG
+group_*_sampled*
