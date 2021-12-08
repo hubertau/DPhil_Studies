@@ -87,7 +87,7 @@ def main(args):
 
     output = m3twitter.infer(m3_input_transformed)
     logging.info('Properties inferred')
-    output_filename = os.path.join(args.output_dir, f'm3inferred_group_{args.group_num}')
+    output_filename = os.path.join(args.output_dir, f'm3inferred_group_{args.group_num}.json')
 
     with open(output_filename, 'w') as f:
         json.dump(output,f)
