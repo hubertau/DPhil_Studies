@@ -40,12 +40,14 @@ def ncut_cluster(cocluster, csr, i):
     rows, cols = cocluster.get_indices(i)
     if not (np.any(rows) and np.any(cols)):
         # return sys.float_info.max
-        return 0
+        return ncut_result(int(i), -1)
     row_complement = np.nonzero(np.logical_not(cocluster.rows_[i]))[0]
     col_complement = np.nonzero(np.logical_not(cocluster.columns_[i]))[0]
     # Note: the following is identical to X[rows[:, np.newaxis],
     # cols].sum() but much faster in scipy <= 0.16
     weight = csr[rows][:, cols].sum()
+    if weight == 0:
+        return ncut_result(int(i), -1)
     # weight = csr[rows[:, np.newaxis],cols].sum()
     cut = csr[row_complement][:, cols].sum() + csr[rows][:, col_complement].sum()
 
