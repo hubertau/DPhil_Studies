@@ -1,7 +1,7 @@
 #!/usr/bin/python3.9
 
 '''
-Script to obtain retweet edges from user timelines
+Script to obtain interaction edges from user timelines
 
 '''
 
@@ -25,6 +25,8 @@ import pandas as pd
 class Tweet_Interaction:
     tweet_id: str = attr.ib(validator=attr.validators.instance_of(str))
     author_id: str = attr.ib(validator=attr.validators.instance_of(str))
+    tweet_lang: str = attr.ib(validator=attr.validators.instance_of(str))
+    likes: int = attr.ib(validator=attr.validators.instance_of(int))
     created_at: datetime.datetime = attr.ib(converter=lambda x: datetime.datetime.fromisoformat(x[:-1]).date())
     in_reply_to: list[str] = attr.ib(factory=list, order=False, hash=False, repr=True)
     mentions: list[str] = attr.ib(factory=list, order=False, hash=False, repr=True)
@@ -73,9 +75,23 @@ def process_one_tweet_object(tweet, user_list):
         else:
             contains_hashtags = []
 
+        # get tweet language
+        tweet_lang = tweet.get('lang')
+
+        public_metrics = tweet.get('public_metrics')
+        if public_metrics:
+            likes = int(public_metrics.get('like_count'))
+        else:
+            likes = 0
+            logging.warning(
+                f'public metrics not found in tweet id {current_tweet_id}'
+            )
+
         tweet_extract = Tweet_Interaction(
             tweet_id=current_tweet_id,
             author_id=tweet['author_id'],
+            tweet_lang = tweet_lang,
+            likes = likes,
             mentions=mentions,
             quotes=quotes,
             replies=replies,
@@ -142,6 +158,7 @@ def main(args):
         output_key = args.output_dataset_name
     else:
         output_key = str(int(re.split('_',args.user_list_file)[-2]) + 1)
+        logging.info(f'group number {output_key}')
         output_key = f'interactions_group_{output_key}'
 
     if args.max_workers is None:
@@ -155,6 +172,12 @@ def main(args):
     results = [item for sublist in results for item in sublist if item is not None]
 
     results_pd = pd.DataFrame([attr.asdict(x) for x in results])
+
+    with h5py.File(output_filename, 'a') as f:
+        if output_key in f and args.overwrite:
+            del f[output_key]
+            logging.info(f'Overwrite flag set and {output_key} deleted.')
+
     results_pd.to_hdf(
         output_filename,
         output_key,
@@ -187,6 +210,12 @@ if __name__ == '__main__':
     parser.add_argument(
         '--output_dataset_name',
         help='custom output dataset name'
+    )
+
+    parser.add_argument(
+        '--overwrite',
+        help='overwrite interactions for a certain group',
+        action='store_true'
     )
 
     parser.add_argument(
