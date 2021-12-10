@@ -86,6 +86,10 @@ def main(args):
 
         os.remove(augmentation_obj_file)
 
+    if args.only_augment:
+        logging.info('Only augmentation flag set. Ending.')
+        return None
+
     ############################################################################
     # (b) Collect interactions
     ############################################################################
@@ -94,7 +98,7 @@ def main(args):
     interactions_file = os.path.join(args.output_dir, 'interactions.hdf5')
     with h5py.File(interactions_file, 'r') as f:
         x = list(f.keys())
-        x = [i for i in x if f'group_{group_num}_snowball_num' in x]
+        x = [i for i in x if f'group_{group_num}_snowball_' in i]
         if x:
             snowball_nums = [int(f[i].attrs[f'snowball_num']) for i in x]
             max_snowball = max(snowball_nums)
@@ -225,6 +229,12 @@ if __name__ == '__main__':
     parser.add_argument(
         '--user_list_file',
         help='user list file for this group'
+    )
+
+    parser.add_argument(
+        '--only_augment',
+        help='only augment files, no interactions stuff',
+        action='store_true'
     )
 
     parser.add_argument(
