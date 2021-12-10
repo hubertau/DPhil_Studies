@@ -1,3 +1,54 @@
+# 2021-12-08 Implementing some of the ideas
+
+* 6 - m3 inference needed updating to work with Twitter API v2 fields.
+* 3 - extract likes as well from interaction edges?
+
+# 2021-12-06 Things to do next
+
+1. Vocab feature: manually code? or pick out phrases of at least say length 4 that contain a search hashtag
+2. experimentation: potential operationalisation - measuring more intense periods of interaction WITHIN a hashtag version before peak
+3. experimentation: another mechanism is likes on one tweet in one interaction.
+4. movement application: interval before first tweet in another language?
+5. Data exploration:     * make lots of scatter plots, scattermatrix pandas, more GLMs
+6. Separating by organisation: m3inference
+    * just draw line on activity? threshold. Can vary parameter and check robustness obviously.
+    * That would be an honest way to separate the users
+7. Modify cluster without hashtags?
+
+* Revisiting Chabot (2010):
+
+![Diffusion](diffusion.png)
+
+* Awareness is hypothesised by Chabot to be through mass media, for example. Not operationalisable here and not really of interest either.
+* Translation is the 'meaningful' dialogue between potential transmitters and receivers. This is the key thing to operationalise and why I wanted clustering in the first place
+    * perhaps manual coding of key phrases
+	* feature measuring a single phrase
+* Experimentation
+    * This is extremely difficult to model - how can I infer from tweets whether they are 'testing' something out?
+    * Theory needs developing here for internet age - Chabot writes '[experimentation] begins with small-scale direct action campaigns and implies intensive dialogue among adoption pioneers'
+        * potential operationalisation - measuring more intense periods of interaction WITHIN a hashtag version before peak
+        * but small-scale direct action campaigns are not really operationalisable in this context.
+    * or another mechanism is likes on one tweet in one interaction.
+* Movement Application -> this is my outcome variable, operationalised as amount of integration into target hashtag version
+    * another measure - interval before first tweet in another language?
+    * make lots of scatter plots
+    * scattermatrix pandas
+    * more GLMs
+
+* Over and above all of this, who is an activist?
+    * but should we even make that distinction? and is that one for me to make? no
+    * maybe it made sense in collective action models to differentiate between those who participate in protests, for example, but doing this online is less clear.
+    * That's not to say we can't make meaningful segmentations, though. Could do Verified/not verified (there's literature to suggest that's a meaningful difference), and perhaps
+    * **think about separating by organisation**
+    * just draw line on activity? threshold. Can vary parameter and check robustness obviously.
+    * That would be an honest way to separate the users
+
+Next steps:
+
+* expand measure of activity to not be a simple aggregate of before and after a peak. Perhaps a few days before and a few days after? Segment time into weeks?
+    * or some measure of density of interactions
+* cluster without hashtags?
+
 # 2021-11-29 Notes
 * Tried Cython-ing the model eval. No real speedup because bottleneck really is accessing values from the large csr. No bueno so doing arc job submission optimisation instead
 * need also to clean code and update my own documentation today.
