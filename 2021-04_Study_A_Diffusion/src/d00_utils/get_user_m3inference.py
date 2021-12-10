@@ -150,7 +150,7 @@ if __name__ == '__main__':
 
         logging_fmt   = '[%(levelname)s] %(asctime)s - %(message)s'
         today_datetime = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
-        logging_file  = os.path.join(args.log_dir, f'{today_datetime}_activity_counts_stats.log')
+        logging_file  = os.path.join(args.log_dir, f'{today_datetime}_m3inference.log')
         if args.log_handler_level == 'both':
             handlers = [
                 logging.FileHandler(filename=logging_file,mode='w'),
