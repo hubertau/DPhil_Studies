@@ -27,3 +27,7 @@ twarc.log
 *.JPG
 group_*_sampled*
 Research*.md
+*.BMP
+*.PNG
+*.bmp
+2021-04_Study_A_Diffusion/research_logs/*
