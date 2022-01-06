@@ -12,16 +12,18 @@ import logging
 import os
 import pickle
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from os.path import isfile
 
+import h5py
 import jsonlines
 import numpy as np
 import tqdm
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 
-
+def unit_conv(val):
+    return datetime.strptime('2017-10-16', '%Y-%m-%d') + timedelta(days=int(val))
 class TweetVocabVectorizer(object):
 
     def __init__(
@@ -31,7 +33,9 @@ class TweetVocabVectorizer(object):
         subset,
         ngram_range=(2,3),
         remove_stop_words=True,
-        eot_token='eottoken'
+        eot_token='eottoken',
+        max_prominence_dates=None,
+        hashtag=None
     ):
 
         # set attributes
@@ -44,6 +48,8 @@ class TweetVocabVectorizer(object):
         self.remove_stop_words = remove_stop_words
         self.token_pattern = r"(?u)#?\b\w\w+\b"
         self.subset = subset
+        self.max_prominence_dates = max_prominence_dates
+        self.hashtag=hashtag
 
         # sanity check for user timelines and agumented tweets
         assert len(self.file_list) == len(self.augmented_file_list)
@@ -185,7 +191,23 @@ class TweetVocabVectorizer(object):
 
         return tokens
 
-    def iterator_jsonl(self):
+    def _filter_tweet_date(self, tweet_data, before=True):
+        tweet_created_at = datetime.fromisoformat(tweet_data['created_at'][:-1])
+        if before:
+            if tweet_created_at <= self.max_prominence_dates[self.hashtag]:
+                return True
+            else:
+                return False
+        elif before == False:
+            if tweet_created_at > self.max_prominence_dates[self.hashtag]:
+                return True
+            else:
+                return False
+        if before is None:
+            # TODO ADD CASE FOR NONE FOR FULL VECTORIZING
+            return True
+
+    def iterator_jsonl(self, before=True):
 
         """
         Iterator to yield a raw input string from a user file.
@@ -206,6 +228,8 @@ class TweetVocabVectorizer(object):
 
         total_files=len(self.iter_list)
 
+        logging.debug(f'Before flag for iterator is {before}')
+
         for index, input_file in enumerate(self.iter_list):
 
             if index%100 == 0:
@@ -217,13 +241,13 @@ class TweetVocabVectorizer(object):
                 for tweet_jsonl in reader:
                     tweet_list_in_file = tweet_jsonl['data']
                     for tweet_data in tweet_list_in_file:
-                        if 'text' in tweet_data:
+                        if self._filter_tweet_date(tweet_data, before) and 'text' in tweet_data:
                             user_joined_tweet_body.append(tweet_data['text'])
 
             # incorporate augmented data too.
             with jsonlines.open(self.augmented_iter_list[index]) as reader:
                 for tweet in reader:
-                    if 'text' in tweet:
+                    if self._filter_tweet_date(tweet, before) and 'text' in tweet:
                         user_joined_tweet_body.append(tweet['text'])
 
             # for the final yield, there needs to be an in-between character i can easily discard
@@ -277,7 +301,7 @@ class TweetVocabVectorizer(object):
         return hashtag_set
 
     @time_function
-    def fit(self):
+    def fit(self, before=True):
 
         # 2021-06-16: draft new CountVectorizer with proper custom analyzer
         # logic: with the right analzyer that first gets all n>1 n-grams and then drops all non-hashtag unigrams only a single pass should be required.
@@ -286,13 +310,14 @@ class TweetVocabVectorizer(object):
             analyzer=self.custom_analyzer
         )
 
-        self.user_vocab_matrix = self.vectorizer.fit_transform(self.iterator_jsonl())
+        self.user_vocab_matrix = self.vectorizer.fit_transform(self.iterator_jsonl(before=before))
 
         # set count of any token including the end_of_tweet_token to zero.
         logging.info('getting mapping between feature names and indices')
         self.mapping = self.vectorizer.get_feature_names_out()
         logging.info('getting mapping between feature names and indices... done')
 
+        self.before=before
 
     def _check_vectorizer_output(self):
 
@@ -315,14 +340,20 @@ class TweetVocabVectorizer(object):
     @time_function
     def save_files(self):
 
-        with open(os.path.join(self.output_dir,'user_count_mat_ngram_' + str(self.ngram_range[0]) + str(self.ngram_range[1]) + '.obj'), 'wb') as f:
+        before_str = '_after'
+        if self.before:
+            before_str = '_before'
+        elif self.before is None:
+            before_str = ''
+
+        with open(os.path.join(self.output_dir,f'user_count_mat_ngram_{self.ngram_range[0]}{self.ngram_range[1]}_{self.hashtag}{before_str}.obj'), 'wb') as f:
             pickle.dump(self.user_vocab_matrix,f)
-        with open(os.path.join(self.output_dir,'vectorizer_ngram_' + str(self.ngram_range[0]) + str(self.ngram_range[1]) + '.obj'), 'wb') as f:
+        with open(os.path.join(self.output_dir,f'vectorizer_ngram_{self.ngram_range[0]}{self.ngram_range[1]}_{self.hashtag}{before_str}.obj'), 'wb') as f:
             pickle.dump(self.vectorizer,f)
-        with open(os.path.join(self.output_dir,'mapping_ngram_' + str(self.ngram_range[0]) + str(self.ngram_range[1]) + '.obj'), 'wb') as f:
+        with open(os.path.join(self.output_dir,f'mapping_ngram_{self.ngram_range[0]}{self.ngram_range[1]}_{self.hashtag}{before_str}.obj'), 'wb') as f:
             pickle.dump(self.mapping,f)
 
-        print('files saved')
+        logging.info('Files Saved.')
 
 
 def main(args):
@@ -332,14 +363,29 @@ def main(args):
         args.output_dir,
         args.subset,
         ngram_range=args.ngram_range,
-        remove_stop_words=False
+        remove_stop_words=False,
+        max_prominence_dates=args.most_prominent_peaks,
+        hashtag=args.hashtag
     )
 
-    # _ = vocab_vectorizer.get_hashtag_vocab()
-    vocab_vectorizer.fit()
-    vocab_vectorizer.save_files()
-    logging.info('Fitting complete. Running Checks')
-    vocab_vectorizer._check_vectorizer_output()
+    if args.hashtag is not None:
+        # _ = vocab_vectorizer.get_hashtag_vocab()
+        vocab_vectorizer.fit(before=True)
+        vocab_vectorizer.save_files()
+        logging.info('Fitting complete for before. Running Checks')
+        vocab_vectorizer._check_vectorizer_output()
+
+        vocab_vectorizer.fit(before=False)
+        vocab_vectorizer.save_files()
+        logging.info('Fitting complete for before. Running Checks')
+        vocab_vectorizer._check_vectorizer_output()
+
+    elif args.hashtag is None:
+        vocab_vectorizer.fit(before=None)
+        vocab_vectorizer.save_files()
+        logging.info('Fitting complete for before. Running Checks')
+        vocab_vectorizer._check_vectorizer_output()
+
 
 if __name__ == '__main__':
 
@@ -359,6 +405,22 @@ if __name__ == '__main__':
         '--ngram_range',
         help='specify ngram_range. place two integers contiguously for max and min, inclusive',
         default = (3,4)
+    )
+
+    parser.add_argument(
+        '--FAS_peak_analysis_file',
+        help='FAS peak analysis file for peak locations'
+    )
+
+    parser.add_argument(
+        '--search_hashtags',
+        help='search hashtags file'
+    )
+
+    parser.add_argument(
+        '--hashtag_num',
+        help='hashtag index for which peaks to collect',
+        type=int
     )
 
     parser.add_argument(
@@ -416,6 +478,34 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     args.ngram_range = (int(args.ngram_range[0]), int(args.ngram_range[1]))
+
+    with h5py.File(args.FAS_peak_analysis_file, 'r') as f:
+        FAS_peaks = f['peak_detections']
+
+        args.most_prominent_peaks = {}
+        for name, h5obj in FAS_peaks.items():
+            if len(h5obj['prominences']) == 0:
+                continue
+            max_prominence = np.argmax(h5obj['prominences'])
+            args.most_prominent_peaks[name] = unit_conv(h5obj['peak_locations'][max_prominence])
+    logging.info('Peak prominences collected')
+
+
+    #load in search hashtags
+    with open(args.search_hashtags, 'r') as f:
+        search_hashtags = f.readlines()
+        search_hashtags = [i.replace('\n', '') for i in search_hashtags]
+        search_hashtags = [i.replace('#', '') for i in search_hashtags]
+        args.search_hashtags = [i.lower() for i in search_hashtags]
+        args.search_hashtags.remove('وأناكمان')
+
+    # check that the chosen hashtag is in the keys
+    if args.hashtag_num is not None:
+        args.hashtag = args.search_hashtags[args.hashtag_num]
+        args.hashtag = args.hashtag.lower()
+        assert args.hashtag in list(args.most_prominent_peaks.keys())
+    else:
+        args.hashtag = None
 
     main(args)
 
