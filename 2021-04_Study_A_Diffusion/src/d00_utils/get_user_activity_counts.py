@@ -44,6 +44,7 @@ def one_user_activity(timeline_file, augmented_file, date_range, search_hashtags
                 tweet_created_at = datetime.datetime.fromisoformat(tweet_data['created_at'][:-1]).date()
                 if date_range.start <= tweet_created_at <= date_range.end:
                     tweet_counts.append(tweet_created_at)
+        author_id = tweet_data['author_id']
     with jsonlines.open(augmented_file) as reader:
         for tweet in reader:
             tweet_created_at = datetime.datetime.fromisoformat(tweet['created_at'][:-1]).date()
@@ -71,6 +72,12 @@ def main(args):
     augmented_file_list = sorted(glob.glob(os.path.join(args.data_dir, 'augmented*.jsonl')))
 
     assert os.path.isdir(args.output_dir)
+
+    # extract start and stop times from FAS peak analysis and group number
+    with h5py.File(args.FAS_peak_analysis_file, 'r') as f:
+        x = f['segments']['selected_ranges'][args.group_num-1]
+        args.date_range_start = x[0].decode()
+        args.date_range_end = x[1].decode()
 
     # process date range
     date_range = DateRange(
@@ -114,7 +121,10 @@ def main(args):
 
     output_filename = os.path.join(args.output_dir, 'activity_counts.hdf5')
     with h5py.File(output_filename, 'a') as f:
-        g = f.create_group(f'group_{args.group}')
+        if args.overwrite:
+            if f'group_{args.group_num}' in f.keys():
+                del f[f'group_{args.group_num}']
+        g = f.create_group(f'group_{args.group_num}')
         for t in results:
             normal_npy = np.array([t.normal[date] for date in date_range_enumerated])
 
@@ -162,18 +172,20 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        'group',
-        help='Group number'
+        'group_num',
+        help='Group number',
+        type=int
     )
 
     parser.add_argument(
-        'date_range_start',
-        help='date range start, inclusive. Input format YYYY-MM-DD'
+        'FAS_peak_analysis_file',
+        help='FAS peak analysis hdf5'
     )
 
     parser.add_argument(
-        'date_range_end',
-        help='date range end, inclusive. Input format YYYY-MM-DD'
+        '--overwrite',
+        help='overwrite existing group',
+        action='store_true'
     )
 
     parser.add_argument(
@@ -225,5 +237,8 @@ if __name__ == '__main__':
         )
 
         logging.info(f'Start time of user activity script is {today_datetime}')
+
+    logging.info(f'group num is {args.group_num}')
+    logging.info(f'Overwrite flag is {args.overwrite=}')
 
     main(args)
