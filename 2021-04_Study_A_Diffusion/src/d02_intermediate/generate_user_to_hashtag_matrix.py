@@ -300,8 +300,36 @@ class TweetVocabVectorizer(object):
 
         return hashtag_set
 
+    def _check_overwrite(self, before=True):
+
+        # return False to NOT overwrite
+
+        if self.overwrite:
+            return False
+
+        before_str = '_after'
+        if before:
+            before_str = '_before'
+        elif before is None:
+            before_str = ''
+
+        self.mat_filename = os.path.join(self.output_dir,f'user_count_mat_ngram_{self.ngram_range[0]}{self.ngram_range[1]}_{self.hashtag}{before_str}.obj')
+
+        self.vectorizer_filename=os.path.join(self.output_dir,f'vectorizer_ngram_{self.ngram_range[0]}{self.ngram_range[1]}_{self.hashtag}{before_str}.obj')
+
+        self.mapping_filename = os.path.join(self.output_dir,f'mapping_ngram_{self.ngram_range[0]}{self.ngram_range[1]}_{self.hashtag}{before_str}.obj')
+
+        if os.path.isfile(self.mat_filename) and os.path.isfile(self.vectorizer_filename) and os.path.isfile(self.mapping_filename):
+            return True
+        else:
+            return False
+
     @time_function
     def fit(self, before=True):
+
+        if self._check_overwrite(before):
+            logging.info(f'No files written, overwrite flag is {self.overwrite} and files exist')
+            return None
 
         # 2021-06-16: draft new CountVectorizer with proper custom analyzer
         # logic: with the right analzyer that first gets all n>1 n-grams and then drops all non-hashtag unigrams only a single pass should be required.
@@ -310,7 +338,10 @@ class TweetVocabVectorizer(object):
             analyzer=self.custom_analyzer
         )
 
-        self.user_vocab_matrix = self.vectorizer.fit_transform(self.iterator_jsonl(before=before))
+        try:
+            self.user_vocab_matrix = self.vectorizer.fit_transform(self.iterator_jsonl(before=before))
+        except ValueError:
+            logging.warning('Empty vocabulary detected.')
 
         # set count of any token including the end_of_tweet_token to zero.
         logging.info('getting mapping between feature names and indices')
@@ -340,17 +371,17 @@ class TweetVocabVectorizer(object):
     @time_function
     def save_files(self):
 
-        before_str = '_after'
-        if self.before:
-            before_str = '_before'
-        elif self.before is None:
-            before_str = ''
+        if self._check_overwrite(self.before):
+            logging.info(f'No files saved.')
+            return None
 
-        with open(os.path.join(self.output_dir,f'user_count_mat_ngram_{self.ngram_range[0]}{self.ngram_range[1]}_{self.hashtag}{before_str}.obj'), 'wb') as f:
+        with open(self.mat_filename, 'wb') as f:
             pickle.dump(self.user_vocab_matrix,f)
-        with open(os.path.join(self.output_dir,f'vectorizer_ngram_{self.ngram_range[0]}{self.ngram_range[1]}_{self.hashtag}{before_str}.obj'), 'wb') as f:
+
+        with open(self.vectorizer_filename, 'wb') as f:
             pickle.dump(self.vectorizer,f)
-        with open(os.path.join(self.output_dir,f'mapping_ngram_{self.ngram_range[0]}{self.ngram_range[1]}_{self.hashtag}{before_str}.obj'), 'wb') as f:
+
+        with open(self.mapping_filename, 'wb') as f:
             pickle.dump(self.mapping,f)
 
         logging.info('Files Saved.')
@@ -429,6 +460,13 @@ if __name__ == '__main__':
         default = None,
         type = int
     )
+ 
+    parser.add_argument(
+        '--overwrite',
+        help='whether to overwrite existing files',
+        default=False,
+        action='store_true'
+    )
 
     parser.add_argument(
         '--log_dir',
@@ -506,6 +544,8 @@ if __name__ == '__main__':
         assert args.hashtag in list(args.most_prominent_peaks.keys())
     else:
         args.hashtag = None
+
+    logging.info(f'Hashtag is {args.hashtag}')
 
     main(args)
 
