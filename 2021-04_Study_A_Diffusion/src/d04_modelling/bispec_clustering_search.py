@@ -32,6 +32,9 @@ class bispec_search(object):
         bsc_range,
         interval,
         min_user,
+        before,
+        hashtag,
+        overwrite,
         implementation = 'Python',
         max_workers = None
     ):
@@ -41,6 +44,9 @@ class bispec_search(object):
         self.bsc_range = bsc_range
         self.interval = interval
         self.min_user = min_user
+        self.before = before
+        self.hashtag = hashtag
+        self.overwrite = overwrite
         self.type = implementation.lower()
         self.max_workers = max_workers
 
@@ -91,7 +97,8 @@ class bispec_search(object):
 
         results = model.fit(self.new_csr)
 
-        save_filename = os.path.join(self.output_dir, 'bsc_python_cluster_' + str(cluster) + '_ngram_' + str(self.ngram_range[0] + self.ngram_range[1]) + '_min_' + str(self.min_user) + '.obj')
+        save_filename = os.path.join(self.output_dir, f'bsc_python_cluster_{cluster}_ngram_{self.ngram_range}_min_{self.min_user}{self.hash_str}{self.before_str}.obj')
+        logging.info(f'Saving to {save_filename}')
 
         with open(save_filename, 'wb') as f:
             pickle.dump(results, f)
@@ -103,8 +110,19 @@ class bispec_search(object):
 
     def cluster(self):
 
+        if self.hashtag is None:
+            self.hash_str = ''
+        else:
+            self.hash_str = f'_{self.hashtag}'
+
+        if self.before is not None:
+            self.before_str = f'_{self.before}'
+        else:
+            self.before_str = ''
+
         # Check if user wants to continue. First glob output directory
-        existing_files = glob.glob(os.path.join(self.output_dir, 'bsc_python_cluster*' + '_ngram_' + str(self.ngram_range[0] + self.ngram_range[1]) + '_min_' + str(self.min_user) + '.obj'))
+        existing_files = glob.glob(os.path.join(self.output_dir, f'bsc_python_cluster*_ngram_{self.ngram_range}_min_{self.min_user}{self.hash_str}{self.before_str}.obj'))
+        logging.debug(f'Existing files: {existing_files}')
 
         # User may be runing bsc on a new range, so only reduce to ones that would be overwritten with this script
         existing_files = [(re.split('[_.]',i),i) for i in existing_files]
@@ -116,11 +134,8 @@ class bispec_search(object):
 
         # prompt for input
         if len(existing_files) > 0:
-            print('Files found at {}. See below:\n'.format(self.output_dir))
-            pp = pprint.PrettyPrinter(indent=4)
-            pp.pprint(existing_files)
-            while input('\n Do you wish to continue and overwrite? [y/n]').lower() == 'y':
-                continue
+            if self.overwrite:
+                pass
             else:
                 logging.debug('Clustering Aborted.')
                 return None
@@ -144,7 +159,7 @@ class bispec_search(object):
 
             logging.info('Python implementation selected.')
 
-            self.csr_path = os.path.join(self.data_dir, 'user_count_mat_ngram_' + self.ngram_range + '.obj')
+            self.csr_path = os.path.join(self.data_dir, f'user_count_mat_ngram_{self.ngram_range}{self.hash_str}{self.before_str}.obj')
 
             logging.info('Attempting to load in file {}'.format(self.csr_path))
 
@@ -188,6 +203,9 @@ def main(args):
         args.range,
         args.interval,
         args.min_user,
+        args.before,
+        args.hashtag,
+        args.overwrite,
         implementation = args.implementation
     )
 
@@ -236,6 +254,28 @@ if __name__ == '__main__':
         '--implementation',
         help='implementation to use. either python or R',
         default='R'
+    )
+
+    parser.add_argument(
+        '--overwrite',
+        help='overwrite flag',
+        default=False,
+        action='store_true'
+    )
+
+    parser.add_argument(
+        '--before',
+        help='whether input is split before and after peaks',
+        type=int,
+        choices=[0,1]
+    )
+
+    parser.add_argument(
+        '--hashtag_num'
+    )
+
+    parser.add_argument(
+        '--search_hashtags'
     )
 
     parser.add_argument(
@@ -288,6 +328,22 @@ if __name__ == '__main__':
 
         logging.info(f'Start time of script is {today_datetime}')
 
+
+    #load in search hashtags
+    with open(args.search_hashtags, 'r') as f:
+        search_hashtags = f.readlines()
+        search_hashtags = [i.replace('\n', '') for i in search_hashtags]
+        search_hashtags = [i.replace('#', '') for i in search_hashtags]
+        args.search_hashtags = [i.lower() for i in search_hashtags]
+        args.search_hashtags.remove('وأناكمان')
+
+    # check that the chosen hashtag is in the keys
+    if args.hashtag_num is not None:
+        args.hashtag = args.search_hashtags[args.hashtag_num]
+        args.hashtag = args.hashtag.lower()
+        assert args.hashtag in list(args.most_prominent_peaks.keys())
+    else:
+        args.hashtag = None
 
     args.range = args.range.split('-')
     args.range = (int(args.range[0]),int(args.range[1]))
