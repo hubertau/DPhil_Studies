@@ -1,6 +1,6 @@
 #!/bin/bash
 
-group_num=2
+group_num=3
 
 python3.9 get_user_m3inference.py \
     --data_dirs ../../data/01_raw/ \

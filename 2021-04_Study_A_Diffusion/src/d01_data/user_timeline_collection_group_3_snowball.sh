@@ -4,7 +4,7 @@
 
 group_num=3
 group_index=$((group_num-1))
-snowball_num=2
+snowball_num=3
 
 python3.9 user_twarc_timelines.py \
     ../../data/02_intermediate/0${group_num}_group/group_${group_num}_snowball_${snowball_num}.txt \
