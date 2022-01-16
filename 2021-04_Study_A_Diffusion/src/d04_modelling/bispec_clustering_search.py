@@ -15,6 +15,7 @@ import subprocess
 from argparse import ArgumentParser
 from concurrent.futures import ProcessPoolExecutor
 
+import h5py
 import numpy as np
 import scipy.sparse
 import tqdm
@@ -22,7 +23,8 @@ from numpy.core.fromnumeric import argsort, nonzero, searchsorted
 from sklearn.cluster import SpectralCoclustering
 from sklearn.metrics import consensus_score
 
-
+def unit_conv(val):
+    return datetime.datetime.strptime('2017-10-16', '%Y-%m-%d') + datetime.timedelta(days=int(val))
 class bispec_search(object):
 
     def __init__(self,
@@ -95,7 +97,10 @@ class bispec_search(object):
 
         logging.info(f'Modelling cluster size {cluster}.')
 
-        results = model.fit(self.new_csr)
+        try:
+            results = model.fit(self.new_csr)
+        except:
+            return f'Error for {cluster}. Moving on'
 
         save_filename = os.path.join(self.output_dir, f'bsc_python_cluster_{cluster}_ngram_{self.ngram_range}_min_{self.min_user}{self.hash_str}{self.before_str}.obj')
         logging.info(f'Saving to {save_filename}')
@@ -164,8 +169,12 @@ class bispec_search(object):
             logging.info('Attempting to load in file {}'.format(self.csr_path))
 
             # open the saved files
-            with open(self.csr_path, 'rb') as f:
-                self.csr = pickle.load(f)
+            try:
+                with open(self.csr_path, 'rb') as f:
+                    self.csr = pickle.load(f)
+            except FileNotFoundError:
+                logging.warning('No File Found. Ending...')
+                return None
 
             logging.info('CSR loaded in.')
             logging.info('Filtering for min user value...')
@@ -253,7 +262,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--implementation',
         help='implementation to use. either python or R',
-        default='R'
+        default='python'
     )
 
     parser.add_argument(
@@ -271,7 +280,14 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        '--hashtag_num'
+        '--hashtag_num',
+        help='index of hashtag',
+        type=int
+    )
+
+    parser.add_argument(
+        '--FAS_peak_analysis_file',
+        help='FAS peak analysis file for peak locations'
     )
 
     parser.add_argument(
@@ -328,6 +344,24 @@ if __name__ == '__main__':
 
         logging.info(f'Start time of script is {today_datetime}')
 
+
+    if args.before==0:
+        args.before='after'
+    elif args.before==1:
+        args.before='before'
+    logging.info(f'b/a is {args.before}')
+
+    # load in peak prominences
+    with h5py.File(args.FAS_peak_analysis_file, 'r') as f:
+        FAS_peaks = f['peak_detections']
+
+        args.most_prominent_peaks = {}
+        for name, h5obj in FAS_peaks.items():
+            if len(h5obj['prominences']) == 0:
+                continue
+            max_prominence = np.argmax(h5obj['prominences'])
+            args.most_prominent_peaks[name] = unit_conv(h5obj['peak_locations'][max_prominence])
+    logging.info('Peak prominences collected')
 
     #load in search hashtags
     with open(args.search_hashtags, 'r') as f:
