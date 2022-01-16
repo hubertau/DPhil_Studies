@@ -59,10 +59,19 @@ def ncut_cluster(cocluster, csr, i):
 
 def main(args):
 
-    with open(args.results_file, 'rb') as f:
-        model = pickle.load(f)
+    args.results_file = f'{args.results_file_base}{args.hashtag_str}{args.before_str}.obj'
 
-    with open(args.csr, 'rb') as f:
+    try:
+        with open(args.results_file, 'rb') as f:
+            model = pickle.load(f)
+    except FileNotFoundError:
+        logging.warning(f'File {args.results_file} not found. Ending...')
+        return None
+
+    args.csr_filename = os.path.join(args.csr_dir, f'user_count_mat_ngram_{args.ngram_range}{args.hashtag_str}{args.before_str}.obj')
+    logging.debug(f'CSR file detected is {args.csr_filename}')
+
+    with open(args.csr_filename, 'rb') as f:
         csr = pickle.load(f)
 
     if args.max_workers is None:
@@ -87,14 +96,19 @@ def main(args):
         g = f.require_group(f'group_{args.group_num}')
         n = g.require_group(f'ngram_{ngram_range}')
         x = n.require_group(f'min_{min_user}')
-        d = x.create_dataset(f'{model.n_clusters}', data = results)
+        if args.hashtag_str == '':
+            d = x.create_dataset(f'{model.n_clusters}', data = results)
+        else:
+            y = x.require_group(args.hashtag)
+            z = y.require_group(args.before_str[1:])
+            d = z.create_dataset(f'{model.n_clusters}', data = results)
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Evaluate the best bispectral clustering result')
 
     parser.add_argument(
-        'results_file',
+        'results_file_base',
         help='particular .obj model file to load in'
     )
 
@@ -104,12 +118,33 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        'csr',
+        'csr_dir',
         help='csr matrix after vectorizing'
     )
 
     parser.add_argument(
+        'ngram_range'
+    )
+
+
+    parser.add_argument(
         'group_num'
+    )
+
+    parser.add_argument(
+        'hashtag_num',
+        help='index of hashtag',
+        type=int
+    )
+
+    parser.add_argument(
+        'search_hashtags'
+    )
+
+    parser.add_argument(
+        '--before',
+        type=int,
+        choices=[0,1]
     )
 
     parser.add_argument(
@@ -176,6 +211,34 @@ if __name__ == '__main__':
         )
 
         logging.info(f'Start time of script is {today_datetime}')
+
+
+    with open(args.search_hashtags, 'r') as f:
+        search_hashtags = f.readlines()
+        search_hashtags = [i.replace('\n', '') for i in search_hashtags]
+        search_hashtags = [i.replace('#', '') for i in search_hashtags]
+        args.search_hashtags = [i.lower() for i in search_hashtags]
+        args.search_hashtags.remove('وأناكمان')
+
+    # check that the chosen hashtag is in the keys
+    if args.hashtag_num is not None:
+        args.hashtag = args.search_hashtags[args.hashtag_num]
+        args.hashtag = args.hashtag.lower()
+        # assert args.hashtag in list(args.most_prominent_peaks.keys())
+    else:
+        args.hashtag = ''
+
+    if args.before==0:
+        args.before_str='_before'
+    elif args.before==1:
+        args.before_str='_after'
+    else:
+        args.before_str=''
+
+    if args.hashtag != '':
+        args.hashtag_str = f'_{args.hashtag}'
+    else:
+        args.hashtag_str = ''
 
     try:
         main(args)
