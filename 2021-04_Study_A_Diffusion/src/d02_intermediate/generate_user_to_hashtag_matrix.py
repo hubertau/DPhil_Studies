@@ -21,6 +21,7 @@ import numpy as np
 import tqdm
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.exceptions import NotFittedError
 
 def unit_conv(val):
     return datetime.strptime('2017-10-16', '%Y-%m-%d') + timedelta(days=int(val))
@@ -35,7 +36,8 @@ class TweetVocabVectorizer(object):
         remove_stop_words=True,
         eot_token='eottoken',
         max_prominence_dates=None,
-        hashtag=None
+        hashtag=None,
+        overwrite=False
     ):
 
         # set attributes
@@ -50,6 +52,7 @@ class TweetVocabVectorizer(object):
         self.subset = subset
         self.max_prominence_dates = max_prominence_dates
         self.hashtag=hashtag
+        self.overwrite=overwrite
 
         # sanity check for user timelines and agumented tweets
         assert len(self.file_list) == len(self.augmented_file_list)
@@ -327,6 +330,9 @@ class TweetVocabVectorizer(object):
     @time_function
     def fit(self, before=True):
 
+        self.before=before
+        self.fitted=False
+
         if self._check_overwrite(before):
             logging.info(f'No files written, overwrite flag is {self.overwrite} and files exist')
             return None
@@ -340,17 +346,29 @@ class TweetVocabVectorizer(object):
 
         try:
             self.user_vocab_matrix = self.vectorizer.fit_transform(self.iterator_jsonl(before=before))
+            self.fitted=True
         except ValueError:
             logging.warning('Empty vocabulary detected.')
 
         # set count of any token including the end_of_tweet_token to zero.
         logging.info('getting mapping between feature names and indices')
-        self.mapping = self.vectorizer.get_feature_names_out()
+        try:
+            self.mapping = self.vectorizer.get_feature_names_out()
+        except NotFittedError:
+            logging.warning('Not fitted because empty vocabulary.')
         logging.info('getting mapping between feature names and indices... done')
 
-        self.before=before
+
 
     def _check_vectorizer_output(self):
+
+        if not self.fitted:
+            logging.warning('Fitting not complete. No checking is conducted')
+            return None
+
+        if self._check_overwrite(self.before):
+            logging.info(f'No vectorizer output checked because file exists.')
+            return None
 
         def assert_helper(condition, true_msg='Condition Fulfilled', false_msg='Error'):
             assert(condition), false_msg
@@ -370,6 +388,10 @@ class TweetVocabVectorizer(object):
 
     @time_function
     def save_files(self):
+
+        if not self.fitted:
+            logging.warning('No files saved. No fitting was done.')
+            return None
 
         if self._check_overwrite(self.before):
             logging.info(f'No files saved.')
@@ -396,26 +418,27 @@ def main(args):
         ngram_range=args.ngram_range,
         remove_stop_words=False,
         max_prominence_dates=args.most_prominent_peaks,
-        hashtag=args.hashtag
+        hashtag=args.hashtag,
+        overwrite=args.overwrite
     )
 
     if args.hashtag is not None:
         # _ = vocab_vectorizer.get_hashtag_vocab()
         vocab_vectorizer.fit(before=True)
+        vocab_vectorizer._check_vectorizer_output()
         vocab_vectorizer.save_files()
         logging.info('Fitting complete for before. Running Checks')
-        vocab_vectorizer._check_vectorizer_output()
 
         vocab_vectorizer.fit(before=False)
+        vocab_vectorizer._check_vectorizer_output()
         vocab_vectorizer.save_files()
         logging.info('Fitting complete for before. Running Checks')
-        vocab_vectorizer._check_vectorizer_output()
 
     elif args.hashtag is None:
         vocab_vectorizer.fit(before=None)
+        vocab_vectorizer._check_vectorizer_output()
         vocab_vectorizer.save_files()
         logging.info('Fitting complete for before. Running Checks')
-        vocab_vectorizer._check_vectorizer_output()
 
 
 if __name__ == '__main__':
