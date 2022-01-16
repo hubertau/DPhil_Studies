@@ -340,13 +340,20 @@ class BSCresults(object):
 
 def main(args):
 
-    python_output_files = glob.glob(os.path.join(args.results_dir, 'bsc_python*'))
-    python_output_files = sorted(python_output_files, key=lambda x: int(re.split('[_.]', x)[-6]))
+    if args.hashtag != '':
+        args.hashtag_str = f'_{args.hashtag}'
+
+    python_output_files = glob.glob(os.path.join(args.results_dir, f'bsc_python_cluster_*{args.hashtag_str}*.obj'))
+    python_output_files = sorted(python_output_files, key=lambda x: int(re.split('[_.]', x)[3]))
+    logging.debug(f'Detected files: {python_output_files}')
 
     if args.subset:
         python_output_files = python_output_files[:args.subset]
 
-    with open(args.csr, 'rb') as f:
+    #user_count_mat_ngram_34_kutoo_before.obj
+    args.csr_filename = os.path.join(args.csr_dir, f'user_count_mat_ngram_{args.ngram_range}{args.hashtag_str}{args.before_str}.obj')
+    logging.debug(f'CSR file deteted is {args.csr_filename}')
+    with open(args.csr_filename, 'rb') as f:
         csr = pickle.load(f)
 
     def process_one_model_result(file):
@@ -430,7 +437,9 @@ def main(args):
         metadata = {
             'min_cluster_size': min(cluster_sizes),
             'max_cluster_size': max(cluster_sizes),
-            'interval': cluster_sizes[1] - cluster_sizes[0]
+            'interval': cluster_sizes[1] - cluster_sizes[0],
+            'hashtag': args.hashtag,
+            'before': args.before
         }
 
         dset.attrs.update(metadata)
@@ -450,13 +459,8 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        'csr',
-        help='csr matrix after vectorizing'
-    )
-
-    parser.add_argument(
-        'mapping_file',
-        help='mapping or feature names file',
+        'csr_dir',
+        help='csr directory'
     )
 
     parser.add_argument(
@@ -471,6 +475,27 @@ if __name__ == '__main__':
         default='python',
         type=str
     )
+
+    parser.add_argument(
+        '--hashtag_num',
+        help='index of hashtag',
+        type=int
+    )
+
+    parser.add_argument(
+        '--search_hashtags'
+    )
+
+    parser.add_argument(
+        '--before',
+        type=int,
+        choices=[0,1]
+    )
+
+    parser.add_argument(
+        '--ngram_range'
+    )
+
 
     parser.add_argument(
         '--max_workers',
@@ -523,6 +548,29 @@ if __name__ == '__main__':
         )
 
         logging.info(f'Start time of script is {today_datetime}')
+
+
+    with open(args.search_hashtags, 'r') as f:
+        search_hashtags = f.readlines()
+        search_hashtags = [i.replace('\n', '') for i in search_hashtags]
+        search_hashtags = [i.replace('#', '') for i in search_hashtags]
+        args.search_hashtags = [i.lower() for i in search_hashtags]
+        args.search_hashtags.remove('وأناكمان')
+
+    # check that the chosen hashtag is in the keys
+    if args.hashtag_num is not None:
+        args.hashtag = args.search_hashtags[args.hashtag_num]
+        args.hashtag = args.hashtag.lower()
+        assert args.hashtag in list(args.most_prominent_peaks.keys())
+    else:
+        args.hashtag = ''
+
+    if args.before==0:
+        args.before_str='_before'
+    elif args.before==1:
+        args.before_str='_after'
+    else:
+        args.before_str=''
 
     try:
         main(args)
