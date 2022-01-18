@@ -95,7 +95,7 @@ class bispec_search(object):
 
         model = SpectralCoclustering(n_clusters=cluster, random_state=0)
 
-        logging.info(f'Modelling cluster size {cluster}.')
+        logging.info(f'Modelling cluster size {cluster}. Before is {self.before}')
 
         try:
             results = model.fit(self.new_csr)
@@ -186,6 +186,16 @@ class bispec_search(object):
             # 2021-07-14 Check NaN
             for row in range(self.new_csr.shape[0]):
                 assert np.sum(np.isnan(np.array(self.new_csr[row,:].todense()))) == 0
+
+            # 2022-01-13 remove 0 rows
+            indices = []
+            for i,mx in enumerate(self.new_csr):
+                if np.sum(mx, axis=1) == 0:
+                    indices.append(i)
+
+            mask = np.ones(self.new_csr.shape[0], dtype=bool)
+            mask[indices] = False
+            self.new_csr = self.new_csr[mask]
 
             logging.info('NaN check complete.')
             logging.info('Beginning modelling')
