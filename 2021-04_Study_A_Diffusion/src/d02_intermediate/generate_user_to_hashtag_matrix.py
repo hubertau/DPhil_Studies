@@ -14,17 +14,26 @@ import pickle
 import re
 from datetime import datetime, timedelta
 from os.path import isfile
+from typing import NamedTuple
 
 import h5py
 import jsonlines
 import numpy as np
 import tqdm
 from nltk.corpus import stopwords
-from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.exceptions import NotFittedError
+from sklearn.feature_extraction.text import CountVectorizer
+
 
 def unit_conv(val):
     return datetime.strptime('2017-10-16', '%Y-%m-%d') + timedelta(days=int(val))
+
+def reverse_unit_conv(date):
+    return (datetime.strptime(date, '%Y-%m-%d') - datetime.strptime('2017-10-16', '%Y-%m-%d')).days
+
+class daterange(NamedTuple):
+    start: str
+    end: str
 class TweetVocabVectorizer(object):
 
     def __init__(
@@ -472,6 +481,10 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
+        '--group_num'
+    )
+
+    parser.add_argument(
         '--hashtag_num',
         help='hashtag index for which peaks to collect',
         type=int
@@ -540,17 +553,26 @@ if __name__ == '__main__':
 
     args.ngram_range = (int(args.ngram_range[0]), int(args.ngram_range[1]))
 
+    #obtain peak times again
     with h5py.File(args.FAS_peak_analysis_file, 'r') as f:
         FAS_peaks = f['peak_detections']
+        x = f['segments']['selected_ranges'][int(args.group_num)-1]
+        group_date_range = daterange(
+            start = x[0].decode(),
+            end = x[1].decode()
+        )
 
         args.most_prominent_peaks = {}
         for name, h5obj in FAS_peaks.items():
-            if len(h5obj['prominences']) == 0:
-                continue
-            max_prominence = np.argmax(h5obj['prominences'])
-            args.most_prominent_peaks[name] = unit_conv(h5obj['peak_locations'][max_prominence])
-    logging.info('Peak prominences collected')
 
+            peak_locations = h5obj['peak_locations']
+            peak_locations = [(i,e) for i,e in enumerate(h5obj['peak_locations']) if (unit_conv(e) > datetime.strptime(group_date_range.start, '%Y-%m-%d')) and (unit_conv(e) < datetime.strptime(group_date_range.end, '%Y-%m-%d'))]
+            peak_indices = [i[0] for i in peak_locations]
+            prominences = [element for index, element in enumerate(h5obj['prominences']) if index in peak_indices]
+            if len(prominences) == 0:
+                continue
+            max_prominence = np.argmax(prominences)
+            args.most_prominent_peaks[name] = unit_conv(peak_locations[max_prominence][1])
 
     #load in search hashtags
     with open(args.search_hashtags, 'r') as f:
@@ -564,12 +586,14 @@ if __name__ == '__main__':
     if args.hashtag_num is not None:
         args.hashtag = args.search_hashtags[args.hashtag_num]
         args.hashtag = args.hashtag.lower()
-        assert args.hashtag in list(args.most_prominent_peaks.keys())
     else:
         args.hashtag = None
 
     logging.info(f'Hashtag is {args.hashtag}')
 
-    main(args)
+    if args.hashtag not in list(args.most_prominent_peaks.keys()):
+        logging.warning(f'{args.hashtag} is not in keys for this group. Ending.')
+    else:
+        main(args)
 
 
