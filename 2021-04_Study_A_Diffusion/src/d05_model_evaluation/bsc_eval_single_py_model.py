@@ -97,10 +97,14 @@ def main(args):
         n = g.require_group(f'ngram_{ngram_range}')
         x = n.require_group(f'min_{min_user}')
         if args.hashtag_str == '':
+            if args.overwrite and f'{model.n_clusters}' in x.keys():
+                del x[f'{model.n_clusters}']
             d = x.create_dataset(f'{model.n_clusters}', data = results)
         else:
             y = x.require_group(args.hashtag)
             z = y.require_group(args.before_str[1:])
+            if args.overwrite and f'{model.n_clusters}' in z.keys():
+                del z[f'{model.n_clusters}']
             d = z.create_dataset(f'{model.n_clusters}', data = results)
 
 if __name__ == '__main__':
@@ -145,6 +149,13 @@ if __name__ == '__main__':
         '--before',
         type=int,
         choices=[0,1]
+    )
+
+    parser.add_argument(
+        '--overwrite',
+        help='whether to overwrite',
+        default=False,
+        action='store_true'
     )
 
     parser.add_argument(
