@@ -361,6 +361,10 @@ if __name__ == '__main__':
         args.before='before'
     logging.info(f'b/a is {args.before}')
 
+
+    # print overwrite flag
+    logging.info(f'Overwrite flag is {args.overwrite}')
+
     # load in peak prominences
     with h5py.File(args.FAS_peak_analysis_file, 'r') as f:
         FAS_peaks = f['peak_detections']
