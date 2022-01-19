@@ -312,12 +312,7 @@ class TweetVocabVectorizer(object):
 
         return hashtag_set
 
-    def _check_overwrite(self, before=True):
-
-        # return False to NOT overwrite
-
-        if self.overwrite:
-            return False
+    def _no_overwrite(self, before=True):
 
         before_str = '_after'
         if before:
@@ -331,7 +326,8 @@ class TweetVocabVectorizer(object):
 
         self.mapping_filename = os.path.join(self.output_dir,f'mapping_ngram_{self.ngram_range[0]}{self.ngram_range[1]}_{self.hashtag}{before_str}.obj')
 
-        if os.path.isfile(self.mat_filename) and os.path.isfile(self.vectorizer_filename) and os.path.isfile(self.mapping_filename):
+        # return False to overwrite
+        if os.path.isfile(self.mat_filename) and os.path.isfile(self.vectorizer_filename) and os.path.isfile(self.mapping_filename) and not self.overwrite:
             return True
         else:
             return False
@@ -342,7 +338,7 @@ class TweetVocabVectorizer(object):
         self.before=before
         self.fitted=False
 
-        if self._check_overwrite(before):
+        if self._no_overwrite(before):
             logging.info(f'No files written, overwrite flag is {self.overwrite} and files exist')
             return None
 
@@ -375,7 +371,7 @@ class TweetVocabVectorizer(object):
             logging.warning('Fitting not complete. No checking is conducted')
             return None
 
-        if self._check_overwrite(self.before):
+        if self._no_overwrite(self.before):
             logging.info(f'No vectorizer output checked because file exists.')
             return None
 
@@ -402,7 +398,7 @@ class TweetVocabVectorizer(object):
             logging.warning('No files saved. No fitting was done.')
             return None
 
-        if self._check_overwrite(self.before):
+        if self._no_overwrite(self.before):
             logging.info(f'No files saved.')
             return None
 
@@ -590,6 +586,7 @@ if __name__ == '__main__':
         args.hashtag = None
 
     logging.info(f'Hashtag is {args.hashtag}')
+    logging.info(f'Overwrite flag is{args.overwrite}')
 
     if args.hashtag not in list(args.most_prominent_peaks.keys()):
         logging.warning(f'{args.hashtag} is not in keys for this group. Ending.')
