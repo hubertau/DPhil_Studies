@@ -25,12 +25,18 @@ class ncut_result(NamedTuple):
 
 # Function handling the intelligent hdf5 file opening
 def open_hdf5(filename, *args, **kwargs):
+    time_waited = 0
+    time_to_wait = 10
     while True:
         try:
             hdf5_file = h5py.File(filename, *args, **kwargs)
             break  # Success!
         except OSError:
-            sleep(5)  # Wait a bit
+            logging.info('Waiting required.')
+            sleep(time_to_wait)  # Wait a bit
+            time_waited+=time_to_wait
+            if time_waited % 60 == 0:
+                logging.info(f'waited {time_waited} seconds to write')
     return hdf5_file
 
 def ncut_cluster(cocluster, csr, i):
@@ -40,6 +46,7 @@ def ncut_cluster(cocluster, csr, i):
     rows, cols = cocluster.get_indices(i)
     if not (np.any(rows) and np.any(cols)):
         # return sys.float_info.max
+        logging.info(f'Empty cluster so no result. Ending Processing no. {i}')
         return ncut_result(int(i), -1)
     row_complement = np.nonzero(np.logical_not(cocluster.rows_[i]))[0]
     col_complement = np.nonzero(np.logical_not(cocluster.columns_[i]))[0]
@@ -60,6 +67,7 @@ def ncut_cluster(cocluster, csr, i):
 def main(args):
 
     args.results_file = f'{args.results_file_base}{args.hashtag_str}{args.before_str}.obj'
+    logging.debug(f'Results file is {args.results_file}')
 
     try:
         with open(args.results_file, 'rb') as f:
@@ -85,8 +93,10 @@ def main(args):
     results = list(results)
     results = np.array(sorted(results, key=lambda x: x.cluster_number))
 
-    ngram_range = re.split('[_.]', args.results_file)[-4]
-    min_user    = re.split('[_.]', args.results_file)[-2]
+    ngram_range = re.split('[_.]', os.path.split(args.results_file)[-1])[5]
+    logging.debug(f'DETECTED NGRAM RANGE: {ngram_range}')
+    min_user    = re.split('[_.]', os.path.split(args.results_file)[-1])[7]
+    logging.debug(f'DETECTED MIN_USER: {min_user}')
 
     save_file = os.path.join(args.output_dir, 'bispec_cluster_eval.hdf5')
     logging.info(f'Writing to file {save_file}')
@@ -96,16 +106,35 @@ def main(args):
         g = f.require_group(f'group_{args.group_num}')
         n = g.require_group(f'ngram_{ngram_range}')
         x = n.require_group(f'min_{min_user}')
+
+        # no hashtag specified, this is evaluation on all timelines in group date range.
         if args.hashtag_str == '':
-            if args.overwrite and f'{model.n_clusters}' in x.keys():
-                del x[f'{model.n_clusters}']
-            d = x.create_dataset(f'{model.n_clusters}', data = results)
+
+            if f'{model.n_clusters}' in x.keys():
+                if args.overwrite:
+                    del x[f'{model.n_clusters}']
+                    d = x.create_dataset(f'{model.n_clusters}', data = results)
+                else:
+                    logging.warning(f'{model.n_clusters} key already exists and overwrite is {args.overwrite}. Not writing.')
+            else:
+                d = x.create_dataset(f'{model.n_clusters}', data = results)
+
+        # if doing for hashtags
         else:
+
             y = x.require_group(args.hashtag)
             z = y.require_group(args.before_str[1:])
-            if args.overwrite and f'{model.n_clusters}' in z.keys():
-                del z[f'{model.n_clusters}']
-            d = z.create_dataset(f'{model.n_clusters}', data = results)
+
+            if f'{model.n_clusters}' in z.keys():
+                if args.overwrite:
+                    del z[f'{model.n_clusters}']
+                    d = z.create_dataset(f'{model.n_clusters}', data = results)
+                else:
+                    logging.warning(f'{model.n_clusters} key already exists and overwrite is {args.overwrite}. Not writing.')
+            else:
+                d = z.create_dataset(f'{model.n_clusters}', data = results)
+
+    logging.info('Writing complete. Ending.')
 
 if __name__ == '__main__':
 
@@ -239,9 +268,9 @@ if __name__ == '__main__':
     else:
         args.hashtag = ''
 
-    if args.before==0:
+    if args.before==1:
         args.before_str='_before'
-    elif args.before==1:
+    elif args.before==0:
         args.before_str='_after'
     else:
         args.before_str=''
@@ -250,6 +279,8 @@ if __name__ == '__main__':
         args.hashtag_str = f'_{args.hashtag}'
     else:
         args.hashtag_str = ''
+
+    logging.info(f'overwrite flag is {args.overwrite}')
 
     try:
         main(args)
