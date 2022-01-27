@@ -197,8 +197,14 @@ class bispec_search(object):
             mask[indices] = False
             self.new_csr = self.new_csr[mask]
 
+            mask_savename=os.path.join(self.output_dir, f'mask_bsc_python_cluster_ngram_{self.ngram_range}_min_{self.min_user}{self.hash_str}{self.before_str}.obj')
+            with open(mask_savename, 'wb') as f:
+                pickle.dump(mask, f)
+
+            logging.info(f'saving MASK to {mask_savename}')
             logging.info('NaN check complete.')
             logging.info('Beginning modelling')
+
             if self.max_workers is not None:
                 workers = self.max_workers
             else:
