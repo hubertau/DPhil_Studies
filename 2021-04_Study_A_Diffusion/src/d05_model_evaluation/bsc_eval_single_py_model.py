@@ -98,7 +98,7 @@ def main(args):
     min_user    = re.split('[_.]', os.path.split(args.results_file)[-1])[7]
     logging.debug(f'DETECTED MIN_USER: {min_user}')
 
-    save_file = os.path.join(args.output_dir, 'bispec_cluster_eval.hdf5')
+    save_file = os.path.join(args.output_dir, f'bispec_cluster_eval_{ngram_range}_min_{min_user}{args.hashtag_str}.hdf5')
     logging.info(f'Writing to file {save_file}')
     # How to use the function
     with open_hdf5(save_file, mode = 'a') as f:
@@ -281,6 +281,7 @@ if __name__ == '__main__':
         args.hashtag_str = ''
 
     logging.info(f'overwrite flag is {args.overwrite}')
+    logging.info(f'hashtag is {args.hashtag}')
 
     try:
         main(args)
