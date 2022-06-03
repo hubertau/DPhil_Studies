@@ -11,41 +11,52 @@ import matplotlib.pyplot as plt
 import re
 import pandas as pd
 import numpy as np
+import h5py
 import glob
 
 def main():
 
     FAS_object_folder = '../../data/02_intermediate/'
-    FAS_object_path = FAS_object_folder + 'FAS_plot_data_padded.obj'
-    FAS_peak_results = FAS_object_folder + 'FAS_peak_detections.obj'
+    FAS_object = os.path.join(FAS_object_folder, 'FAS_peak_analysis.hdf5')
     FAS_peak_plot_folder = '../../results/'
 
-    with open(FAS_object_path,'rb') as f:
-        data = pickle.load(f)
-    with open(FAS_peak_results, 'rb') as f:
-        results = pickle.load(f)
+    data = pd.read_hdf(FAS_object, key='plot_data')
+    with h5py.File(FAS_object,'rb') as f:
+        peak_detections = f['peak_detections']
 
-    skipped = 0
-    for index,peakdetection in enumerate(results):
+    most_prominent_peaks = {}
+    for name, h5obj in FAS_peaks.items():
 
-        x = data[data['hashtag']==peakdetection[0]].loc[:,['vocab:#']] 
-
-        # just check if figures already exist
-        filename = FAS_peak_plot_folder + peakdetection[0] +'.jpg'
-
-        if os.path.isfile(filename):
-            skipped+=1
+        peak_locations = h5obj['peak_locations']
+        peak_locations = [(i,e) for i,e in enumerate(h5obj['peak_locations']) if (unit_conv(e) > datetime.datetime.strptime(group_date_range.start, '%Y-%m-%d')) and (unit_conv(e) < datetime.datetime.strptime(group_date_range.end, '%Y-%m-%d'))]
+        peak_indices = [i[0] for i in peak_locations]
+        prominences = [element for index, element in enumerate(h5obj['prominences']) if index in peak_indices]
+        if len(prominences) == 0:
             continue
+        max_prominence = np.argmax(prominences)
+        most_prominent_peaks[name] = unit_conv(peak_locations[max_prominence][1])
 
-        f = plt.figure()
-        f.set_figwidth(15)
-        f.set_figheight(10)
-        plt.plot(x.reset_index().loc[:,'vocab:#'])
-        plt.plot(results[index][1], x.reset_index().loc[results[index][1],'vocab:#'].values.flatten(),"x")
-        plt.savefig(filename,bbox_inches='tight')
-        plt.close()
+    # skipped = 0
+    # for index,peakdetection in enumerate(results):
 
-    print('{} plots skipped because they already existed.'.format(skipped))
+    #     x = data[data['hashtag']==peakdetection[0]].loc[:,['vocab:#']] 
+
+    #     # just check if figures already exist
+    #     filename = FAS_peak_plot_folder + peakdetection[0] +'.jpg'
+
+    #     if os.path.isfile(filename):
+    #         skipped+=1
+    #         continue
+
+    #     f = plt.figure()
+    #     f.set_figwidth(15)
+    #     f.set_figheight(10)
+    #     plt.plot(x.reset_index().loc[:,'vocab:#'])
+    #     plt.plot(results[index][1], x.reset_index().loc[results[index][1],'vocab:#'].values.flatten(),"x")
+    #     plt.savefig(filename,bbox_inches='tight')
+    #     plt.close()
+
+    # print('{} plots skipped because they already existed.'.format(skipped))
 
     # continuity check
     for hashtag in data['hashtag'].unique():
@@ -62,10 +73,10 @@ def main():
     # print(FAS_dates('FAS_2017-10-16_2017-11-16.jsonl'))
 
     # now sanity check: which dates are inclusive?
-    flist = glob.glob('/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/collection_results_2021_06_19_16_21/data/FAS*.jsonl')
+    flist = glob.glob('/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/data/FAS*.jsonl')
 
     # quick bit of code to determine the index of the main metoo peak results
-    for i,e in enumerate(results):
+    for i,e in enumerate(peak_detections):
         if e[0] == 'metoo':
             metoo_index = i
             break
@@ -79,7 +90,7 @@ def main():
 
     ranges = []
     width = 21 # number of days to collect before and after each peak
-    for index, peak in enumerate(results[metoo_index][1]):
+    for index, peak in enumerate(peak_detections[metoo_index][1]):
         ranges.append((max(0,peak-width), min(peak+width, 1096)))
 
     if verbose:

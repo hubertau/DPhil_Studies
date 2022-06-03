@@ -5,19 +5,33 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Bispec Clustering Eval",
+            "name": "Primary HT",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d05_model_evaluation/bispec_clustering_eval.py",
+            "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d02_intermediate/primary_hashtags.py",
+            "console": "integratedTerminal",
+            "args": [
+                "/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/data/01_raw/",
+                "/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/data/03_processed/",
+                "/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/references/search_hashtags.txt",
+                "--log_dir",
+                "${workspaceFolder}/2021-04_Study_A_Diffusion/"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "Bsc eval hdf5 collect",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d05_model_evaluation/bsc_hdf5_collect.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d05_model_evaluation/",
             "args": [
-                "../../data/05_model_output/01_group/",
-                "../../data/06_reporting/01_group",
-                "../../data/02_intermediate/01_group/user_count_mat_ngram_23.obj",
-                "../../data/02_intermediate/01_group/mapping_ngram_23.obj",
-                "--log_level",
-                "NONE"
+                "../../data/05_model_output/",
+                "../../data/05_model_output/bsc_cluster_eval.hdf5",
+                "3",
+                "--log_dir",
+                "${workspaceFolder}/2021-04_Study_A_Diffusion/"
             ]
         },
         {

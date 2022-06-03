@@ -1,0 +1,30 @@
+\begin{center}
+\begin{tabular}{lclc}
+\toprule
+\textbf{Dep. Variable:}     & interval\_minutes & \textbf{  No. Observations:  } &      813    \\
+\textbf{Model:}             &        GLM        & \textbf{  Df Residuals:      } &      805    \\
+\textbf{Model Family:}      &  NegativeBinomial & \textbf{  Df Model:          } &        7    \\
+\textbf{Link Function:}     &        log        & \textbf{  Scale:             } &    1.0000   \\
+\textbf{Method:}            &        IRLS       & \textbf{  Log-Likelihood:    } &   -8112.5   \\
+\textbf{Date:}              &  Sun, 20 Feb 2022 & \textbf{  Deviance:          } &    814.22   \\
+\textbf{Time:}              &      13:58:13     & \textbf{  Pearson chi2:      } &     635.    \\
+\textbf{No. Iterations:}    &         9         & \textbf{  Pseudo R-squ. (CS):} &  0.01028    \\
+\textbf{Covariance Type:}   &     nonrobust     & \textbf{                     } &             \\
+\bottomrule
+\end{tabular}
+\begin{tabular}{lcccccc}
+                            & \textbf{coef} & \textbf{std err} & \textbf{z} & \textbf{P$> |$z$|$} & \textbf{[0.025} & \textbf{0.975]}  \\
+\midrule
+\textbf{Intercept}          &       4.5759  &        0.051     &    90.262  &         0.000        &        4.477    &        4.675     \\
+\textbf{lang\_diff[T.True]} &       4.5759  &        0.051     &    90.262  &         0.000        &        4.477    &        4.675     \\
+\textbf{age[T.30-39]}       &      -0.2628  &        0.155     &    -1.693  &         0.090        &       -0.567    &        0.041     \\
+\textbf{age[T.<=18]}        &      -0.0930  &        0.145     &    -0.640  &         0.522        &       -0.378    &        0.192     \\
+\textbf{age[T.$>$=40]}      &      -0.1933  &        0.123     &    -1.567  &         0.117        &       -0.435    &        0.048     \\
+\textbf{gender[T.True]}     &       0.1045  &        0.102     &     1.021  &         0.307        &       -0.096    &        0.305     \\
+\textbf{int\_pre\_peak}     &    5.925e-05  &        0.015     &     0.004  &         0.997        &       -0.029    &        0.029     \\
+\textbf{likes\_std}         &      -0.3982  &        0.374     &    -1.065  &         0.287        &       -1.131    &        0.335     \\
+\textbf{act\_pre\_peak}     &      -0.0029  &        0.014     &    -0.208  &         0.835        &       -0.030    &        0.024     \\
+\bottomrule
+\end{tabular}
+%\caption{Generalized Linear Model Regression Results}
+\end{center}

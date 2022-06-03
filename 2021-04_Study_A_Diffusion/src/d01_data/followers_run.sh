@@ -1,6 +1,6 @@
 #!/bin/bash
 
-group_num=1
+group_num=2
 group_index=$((group_num-1))
 
 python3.9 followers.py \

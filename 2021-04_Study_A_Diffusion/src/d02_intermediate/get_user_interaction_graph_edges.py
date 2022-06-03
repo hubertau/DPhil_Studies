@@ -26,7 +26,11 @@ class Tweet_Interaction:
     tweet_id: str = attr.ib(validator=attr.validators.instance_of(str))
     author_id: str = attr.ib(validator=attr.validators.instance_of(str))
     tweet_lang: str = attr.ib(validator=attr.validators.instance_of(str))
+    text: str = attr.ib(validator=attr.validators.instance_of(str))
     likes: int = attr.ib(validator=attr.validators.instance_of(int))
+    reply_count: attr.ib(validator=attr.validators.instance_of(int))
+    quote_count: attr.ib(validator=attr.validators.instance_of(int))
+    retweet_count: attr.ib(validator=attr.validators.instance_of(int))
     created_at: datetime.datetime = attr.ib(converter=lambda x: datetime.datetime.fromisoformat(x[:-1]).date())
     in_reply_to: list[str] = attr.ib(factory=list, order=False, hash=False, repr=True)
     mentions: list[str] = attr.ib(factory=list, order=False, hash=False, repr=True)
@@ -81,17 +85,32 @@ def process_one_tweet_object(tweet, user_list):
         public_metrics = tweet.get('public_metrics')
         if public_metrics:
             likes = int(public_metrics.get('like_count'))
+            reply_count = int(public_metrics.get('reply_count'))
+            quote_count = int(public_metrics.get('quote_count'))
+            retweet_count = int(public_metrics.get('retweet_count'))
         else:
             likes = 0
+            reply_count=0
+            quote_count=0
+            retweet_count=0
             logging.warning(
                 f'public metrics not found in tweet id {current_tweet_id}'
             )
+
+        try:
+            tw_text = tweet['text']
+        except:
+            tw_text = ''
 
         tweet_extract = Tweet_Interaction(
             tweet_id=current_tweet_id,
             author_id=tweet['author_id'],
             tweet_lang = tweet_lang,
+            text = tw_text,
             likes = likes,
+            reply_count = reply_count,
+            quote_count = quote_count,
+            retweet_count = retweet_count,
             mentions=mentions,
             quotes=quotes,
             replies=replies,
@@ -173,17 +192,41 @@ def main(args):
 
     results_pd = pd.DataFrame([attr.asdict(x) for x in results])
 
-    with h5py.File(output_filename, 'a') as f:
-        if output_key in f and args.overwrite:
-            del f[output_key]
-            logging.info(f'Overwrite flag set and {output_key} deleted.')
+    # to avoid overflow error for dataframes too large, split into chunks
+    n = 5000000
+    if len(results_pd) > n:
+        logging.warning('Results dataframe is too large. ')
+        list_df = [results_pd[i:i+n] for i in range(0,results_pd.shape[0],n)]
 
-    results_pd.to_hdf(
-        output_filename,
-        output_key,
-        mode='a'
-    )
-    logging.info(f'File saved to {output_filename}')
+        # results_keys=list(range(len(list_df)))
+
+        with h5py.File(output_filename, 'a') as f:
+            for i,_ in enumerate(list_df):
+                output_key_extended = f'{output_key}_part_{i}'
+                if output_key_extended in f and args.overwrite:
+                    del f[output_key_extended]
+
+        for i, df_part in enumerate(list_df):
+            output_key_extended = f'{output_key}_part_{i}'
+            logging.info(f'Saving key is {output_key_extended}')
+            df_part.to_hdf(
+                output_filename,
+                output_key_extended,
+                mode='a'
+            )
+
+    else:
+        with h5py.File(output_filename, 'a') as f:
+            if output_key in f and args.overwrite:
+                del f[output_key]
+                logging.info(f'Overwrite flag set and {output_key} deleted.')
+
+        results_pd.to_hdf(
+            output_filename,
+            output_key,
+            mode='a'
+        )
+        logging.info(f'File saved to {output_filename}')
 
 if __name__ == '__main__':
 

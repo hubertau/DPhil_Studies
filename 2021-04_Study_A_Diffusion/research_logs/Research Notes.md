@@ -1,7 +1,184 @@
+# 2022-05-27 and 2022-05-31
+
+* Ideas from ICA Preconference:
+	* Investigate jackson 2017 abm
+	* Yang et al 2022
+	* Framing schemes for war - none available for neteworked connective action
+	* Xixhuan ZHang paper from ICA
+	* Yena Lee Paper ICA
+		* can cite this paper as 
+	* Topic models in ABM? Not really applicable to a dialogue. Also changing over the interaction so definitely not with a model that builds up
+	* HDDM: Drifting model
+		* Example from Jason: https://colab.research.google.com/drive/1etlUiPk1KBJnpCu6Wuk35KHiUCM5cDYV?usp=sharing#scrollTo=AUow3N_9SOsB
+		* package: https://github.com/hddm-devs/hddm
+		* python package: https://docs.pymc.io/en/v3/ for general bayesian modelling
+* Ideas from ICA itself:
+	* from Yung's panel: Dan Mercea had done something on Facebook and geolocation, evidence of collective identity building. Like every sds project ever there was network analysis and natural language processing
+	* Big focus on COVID-19 generally at ICA.
+	* How to incorporate text input?
+		* might be easy to incorporate a BERT embedding of tweets, for example, but does that do anything? Maybe I can see if BERT embeddings get closer in space
+		* https://huggingface.co/finiteautomata/bertweet-base-emotion-analysis?text=I+like+you.+I+love+you
+		* would be easy to implement with huggingface stuff
+		* Reading Subakti et al. https://doi.org/10.1186/s40537-022-00564-9 on performance of BERT for topic modelling
+			* BERT has better performance for sure, but these were also tested on longer text. Not clear these would necessarily perform better on short text, and well bi-spectral clustering has had testing in this sphere.
+		* another alternative would be framing schemes people have developed. But this is not applicable to social movements and coding is a very intensive task
+
+* Focusing ABM:
+	Agent-based modelling should have a few key things in mind [@jacksonAgentBasedModelingGuide2017]:
+
+	1. What are your world's dimensions?
+		* To do with space. e.g. you could be modelling spatial moving due to preference like [@schellingDynamicModelsSegregation1971]
+	2. How do agents meet?
+		* Agents meet by interacting with someone they follow. This approximates the exposure they have to other tweets.
+	3. How do agents behave?
+		* where do agents meet?
+		* In any ABM, it is crucial that researchers should ensure that agents' behaviour approximates the relevant phenomena of social interest.
+	4. What is the payoff?
+		* In some, there will be no payoff system.
+	5. How do agents change?
+		* for example, in economics you might 'remember' a bad trade or a sour business relationship.
+		* In social groups you might become closer with some individuals and more distant from others.
+	6. How long does your world last?
+	7. What do you want to learn from your world?
+
+* also using BERT to do latent vector stuff is possibly missing the point: you don't need 
+
+# 2022-05-10
+
+* Thoughts from Harvard: need to justify the categories better. Or at least make it more expclicit for any STWangS audience.
+
+* TODO: add attributes to graph?
+	* Add follows - DONE
+* ABM configs:
+	* reciprocal interactions - DONE
+	* languages - DONE
+	* TODO: likes standard deviation - needs some more consideration. How to incorporate more data from the actual dataframe?
+		* could instead of random choice of a list within agent, could draw fromt eh graph object. Then graph object can store information about the individual interactions.
+		* or calcualte general parameters of the interactions and apply them into model.
+	* TODO: set up variation of setup and thresholds
+	* TODO: generate suitable visualisations
+
+* try having (1-p) contagion model kind of thing.
+
+# 2022-04-27 ABM more notes
+* first config gave (1,3009)
+
+# 2022-04-08 ABM notes
+
+* Outline of email to Chico:
+	* implementing ABM
+	* circling back to language clustering from before: this was useful as a measure of 'frame' or an alignment in the language usage of users. How might I interpret this in the context of ABM?
+	* y-axis?
+	* PCA -> components?
+
+# 2022-03-10 Social Contagion notes
+* Muhlmeyer et al. (2019):
+	* ISR model (infected, susceptible, recovered).
+	* Most likely easy to implement
+	* estimation of a couple parameters that also allow for volume estimation
+	* Not really at a user level though
+	* Do take into account trigger events.
+	* code is available and looks straightforward enough
+* Aral and Nicolaides (2017)
+	* Code is available but in MATLAB
+* Monsted et al.(2017)
+	* No code available
+	* 
+* guide from Alberto Acerbi
+	* https://acerbialberto.com/IBM-cultevo/social-network-structure.html#gossip-diffusion-in-networked-populations
+	* but no 
+* Iacopini (2019)
+	* really interesting model, and code available but really complex
+	* https://www.nature.com/articles/s41467-019-10431-6
+	* not exactly clear how to implement
+	* also seems to be global property of network density rather than individual level predictions again.
+
+
+# 2022-03-02 Small notes:
+* Group 1:
+	* 779091151127138304 (https://twitter.com/monimonica_san) does have strong prositive effect
+		* lots of posting images
+		* interactions with other japanese speakers but clearly overseas as well, discussions about women in workplace
+
+# 2022-02-03 Meeting with Chico notes:
+
+* Timeline
+	* going to Egypt in just over 2 weeks, so want a bad draft by then
+	* I've started writing up some sections
+	* In the next week, I want to create a number of 
+* Paper outline
+	* Research Questions
+		* split participation and movement application
+* Submission places:
+	* IC2S2?
+	* have you heard of social informatics?
+* Modelling:
+	* Variables
+		* Want to include some more variables to do specifically with interaction
+			* So one variable with text
+			* One variable about reciprocal interactions
+	* Dependent Variables
+		* Interval between first tweet in the target hashtag language
+		* Activity in the hashtag post peak
+		* Change of people who are now in the same cluster
+			* which means previous clustering probably doesn't make much sense
+* Text analysis? How to do
+	* Balazs wanted this trace of a line
+	* but not really how it should be expected to look.
+* Baseline - how to do? I suppose this is act norm post peak.
+
+
+* feedback from Chico meeting:
+	* negative result is fine, but more analysis is needed:
+	* is any aggregate effect negligible but small , 'n=1' effects large?
+	* need displays of this
+	
+
+# 2022-02-01 Modelling results:
+* It seems like all the models are negative. But increasingly I need to have more independent variables
+* Extra variable: some measure of density of interaction and not just count of interaction. -> cumulative frequency? Get a measure of whether or not there was a cluster of interactions
+* or perhaps repeated phrases in interactions? Needs text in interaction df, not collected by default. Collecting now.
+* reciprocal interactions? -> number of reciprocal interactions
+
+* Possible expansion: add getting user ids from quotes.
+
+# 2022-01-27 NOTABLE OTHER ANALYSES ANGLES:
+* STILL NEED TO DO NGRAM ANALYSIS
+* ALSO HOW ABOUT SPECIFIC DIFFUSION DIRECTIONS???
+* ALSO HOW ABOUT SPECIFIC VOCAB? A "FRENCH" FRAME FOR EXAMPLE
+
+# 2022-01-26 Modelling notes:
+
+* Group 1:
+	* noticed that no user where lang diff is true has same cluster as interacted users afterwards. This probably reflects the language clustering of users.
+	* overall result: little evidence that interactions increase diffusion.
+
+# 2022-01-11 Ideas for modelling
+* number of interactions with cluster words?
+* interval between interactions and peak?
+* interval between interactions and participation, regardless of peak
+* what proportion of volume are these users responsible for?
+
+* to get influence of frame:
+	* are users in the same cluster after where they were not before?
+	* can we pick out key phrases in the before clusters and see if there is an increase after?
+	* 	increased vocab overlap?
+
+* IMPORTANT:
+	* for each user, we can see if there is an increase in the number of users they interacted with that they are now in the same cluster with after a peak.
+
+# 2022-01-05 Vectorizer Changes
+* Idea for implementation of vectorizer:
+	* read in FAS peak analysis
+	* add option to pick betwen before and after peak analysis.
+	* so for each hashtag we have 2 .obj files.
+	* then measure of adoption can be overlap between clusters of different hashtag peaks.
+
 # 2021-12-08 Implementing some of the ideas
 
-* 6 - m3 inference needed updating to work with Twitter API v2 fields.
-* 3 - extract likes as well from interaction edges?
+* 6 - m3 inference needed updating to work with Twitter API v2 fields. DONE
+* 3 - extract likes as well from interaction edges? DONE
+* to include - followers.
 
 # 2021-12-06 Things to do next
 
