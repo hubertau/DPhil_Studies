@@ -216,6 +216,8 @@ class Agent(object):
                 if verbose:
                     logging.info(f'Agent {self.ID} has spoken a lot to Agent {other.ID} and now supports {other.primary_ht}')
 
+                return True
+
         elif model_num == 2:
 
             # Model 2:
@@ -230,6 +232,8 @@ class Agent(object):
 
                 if verbose:
                     logging.info(f'Agent {self.ID} has spoken a lot to Agent {other.ID} and now supports {other.primary_ht}')
+
+                return True
 
         elif model_num == 3:
 
@@ -247,6 +251,8 @@ class Agent(object):
 
                 if verbose:
                     logging.info(f'Agent {self.ID} has spoken a lot to Agent {other.ID} and now supports {other.primary_ht}')
+
+                return True
 
         elif model_num == 4:
 
@@ -270,6 +276,8 @@ class Agent(object):
                 if verbose:
                     logging.info(f'Agent {self.ID} has spoken a lot to Agent {other.ID} and now supports {other.primary_ht}')
 
+                return True
+
         elif model_num == 5:
 
             # Model 5:
@@ -291,6 +299,8 @@ class Agent(object):
 
                 if verbose:
                     logging.info(f'Agent {self.ID} has spoken a lot to Agent {other.ID} and now supports {other.primary_ht}')
+
+                return True
 
         elif model_num == 6:
 
@@ -314,6 +324,8 @@ class Agent(object):
                 if verbose:
                     logging.info(f'Agent {self.ID} has spoken a lot to Agent {other.ID} and now supports {other.primary_ht}')
 
+                return True
+
             elif (self.interaction_counter[other.ID] > interact_threshold) and \
                  (other.primary_ht == self.primary_ht) and \
                  (other.interaction_counter[self.ID] > interact_threshold):
@@ -332,9 +344,12 @@ class Agent(object):
 
                 if verbose:
                     logging.info(f'Agent {self.ID} has influenced someone of their own primary ht community.')
+                return True
 
         elif model_num is None:
             pass
+
+        return False
 
     def forget_all_interactions(self):
         self.interaction_counter = defaultdict(int)
@@ -408,6 +423,9 @@ def run_model(
     # 2022-06-09: using this Generator is faster than np.random directly apparently. cf. https://github.com/numpy/numpy/issues/2764
     gen = np.random.default_rng()
 
+    # Create the transaction history object:
+    history = []
+
     for time in range(args.daterange_length):
         if verbose:
             logging.info(f'Starting interactions on day {time+1}')
@@ -418,16 +436,21 @@ def run_model(
 
                 other_agent = agents[gen.choice(agent.interacts_with)]
 
+                # by default, no interaction occurs.
+                interact_result = None
+
                 # interact with them
                 if gen.uniform()<=(params['interact_prob'])*params['interact_prob_multiplier']**(agent.interaction_counter[other_agent.ID]):
                     agent.interact(other_agent, params['experimentation_chance'])
 
                     # if you've interacted with them many times recently, say something
-                    agent.maybe_join(
+                    interact_result = agent.maybe_join(
                         other_agent,
                         params['interact_threshold'],
                         model_num = params['model_num'],
                         verbose=verbose)
+
+                history.append((agent.ID, other_agent.ID, time, interact_result))
 
                 agent.update_tracker()
 
@@ -436,7 +459,7 @@ def run_model(
                 agent.update_tracker()
                 continue
 
-    return agents
+    return (agents, history)
 
 def reset_and_run_model(args, agents, current_params_tuple):
 
@@ -455,7 +478,7 @@ def reset_and_run_model(args, agents, current_params_tuple):
         peak_delta_init=current_params['peak_delta_init'])
 
     logging.info(f'Running model {index}...')
-    modelled_agents = run_model(
+    modelled_agents, history = run_model(
             agents,
             current_params,
             verbose = False
@@ -467,7 +490,7 @@ def reset_and_run_model(args, agents, current_params_tuple):
         agent.simulate(current_search_hashtag_propensity)
     logging.info(f'Simulating {index} complete.')
 
-    return (current_params, modelled_agents)
+    return (current_params, modelled_agents, history)
 
 def main(args):
 
@@ -705,7 +728,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '--batch_num',
         help = 'For ARC usage, to determine which batch the node running this script should use.',
-        type = int
+        type = int,
+        default=None
     )
 
     parser.add_argument(
@@ -838,10 +862,15 @@ if __name__ == '__main__':
     args.param_grid = list(ParameterGrid(args.params))
     if args.debug_len:
         args.param_grid = args.param_grid[:args.debug_len]
-    args.param_grid = list(chunks(args.param_grid, 48))
-    args.total_param_list = len(args.param_grid)
-    args.param_grid = args.param_grid[args.batch_num]
-    if args.batch_num >= args.total_param_list-1:
+    if args.batch_num:
+        args.param_grid = list(chunks(args.param_grid, 48))
+        args.total_param_list = len(args.param_grid)
+        args.param_grid = args.param_grid[args.batch_num]
+    else:
+        args.total_param_list = len(args.param_grid)
+
+
+    if args.batch_num and args.batch_num >= args.total_param_list-1:
         logging.warning(f'Out of range for param_grid. Ending...')
     else:
         logging.info(f'Number of combinations: {args.total_param_list}. This is batch number {args.batch_num}')
