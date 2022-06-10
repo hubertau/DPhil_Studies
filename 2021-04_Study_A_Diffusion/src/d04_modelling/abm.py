@@ -13,13 +13,16 @@ from concurrent.futures import ProcessPoolExecutor
 from typing import NamedTuple
 
 import h5py
-from hamcrest import none
 import networkx as nx
 import numpy as np
 import pandas as pd
 import tqdm
 from sklearn.model_selection import ParameterGrid
 
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
 
 def load_in_search_ht(search_hashtags_path):
     #load in search hashtags
@@ -160,6 +163,7 @@ class Agent(object):
         self.individual_propensity = np.zeros(shape=(35,1))
         self.experimentation_count = 0
 
+
     def update_tracker(self):
 
         support_update_array = np.array(list(self.supporting_metoo_dict.values())).reshape(-1,1)
@@ -171,7 +175,7 @@ class Agent(object):
         keys = list(self.supporting_metoo_dict.keys())
         propensities = np.array([search_hashtag_propensity[i] for i in keys])
 
-        self.probability_matrix = np.power(1-propensities.reshape(-1,1),self.support_tracker)
+        self.probability_matrix = 1-np.power(1-propensities.reshape(-1,1),self.support_tracker)
 
         self.simulated = np.random.binomial(1, self.probability_matrix)
 
@@ -362,46 +366,38 @@ def reset_abm(
         agent.propensity_params = search_hashtag_propensity
 
 
+    group_start_date = datetime.datetime.strptime(args.group_date_range.start, '%Y-%m-%d')
+
     # Alternate second step: activate everyone above a certain activity threshold before the daterange. This activation will be done by primary language they have expressed some 
-    pre_val = {}
-    for user_id, agent in agents.items():
+    # pre_val = {}
+    with h5py.File(args.activity_file, 'r') as f:
 
-        pre_val[user_id] = {}
+        # read in feature order before iteration. More efficient.
+        feature_order = f[f'group_{args.group_num}'][user_id]['hashtagged'].attrs['feature_order']
+        feature_order = feature_order.split(';')
 
-        # obtain user activity
-        with h5py.File(args.activity_file, 'r') as f:
-            activity = f[f'group_{args.group_num}'][user_id]['hashtagged'][:]
-            feature_order = f[f'group_{args.group_num}'][user_id]['hashtagged'].attrs['feature_order']
-            feature_order = feature_order.split(';')
+        activity_base = f[f'group_{args.group_num}']
+        for user_id, agent in agents.items():
+
+            # obtain user activity
+            activity = activity_base[user_id]['hashtagged'][:]
 
             # obtain values for the hashtags that have peaks in this time period
             for hashtag_in_period in args.most_prominent_peaks:
                 hashtag_in_period_index = feature_order.index(hashtag_in_period)
 
                 # obtain the index offset from the detected peak of the hashtag to collect initial time window.
-                offset_index = (args.most_prominent_peaks[hashtag_in_period] - datetime.datetime.strptime(args.group_date_range.start, '%Y-%m-%d')).days
+                offset_index = args.most_prominent_peaks[hashtag_in_period] - group_start_date
+                offset_index = offset_index.days
                 offset_index -= peak_delta_init
                 offset_index = max(0,offset_index)+1
                 # logging.info(f'Offset for {hashtag_in_period} is {offset_index}')
 
-                pre_val[user_id][hashtag_in_period_index]= np.sum(activity[hashtag_in_period_index,:offset_index])
+                if np.sum(activity[hashtag_in_period_index,:offset_index]) > initial_activity_threshold:
+                    agent.supporting_metoo = True
+                    agent.supporting_metoo_dict[hashtag_in_period] = True
 
-    pre_val = pd.DataFrame.from_dict(pre_val, orient='index').reset_index()
-    pre_val.columns = ['user_id'] + list(args.most_prominent_peaks.keys())
-
-    init_count = set()
-    for _, row in pre_val.iterrows():
-        for hashtag_in_period in args.most_prominent_peaks:
-            if row[hashtag_in_period] > initial_activity_threshold:
-                init_count.add(row['user_id'])
-                agent_in_question = agents[row['user_id']]
-                agent_in_question.supporting_metoo=True
-                agent_in_question.supporting_metoo_dict[hashtag_in_period] = True
-
-    logging.info(f'Total initally set to support: {len(init_count)}')
-
-    return pre_val
-
+    return None
 
 def run_model(
         agents,
@@ -409,7 +405,10 @@ def run_model(
         verbose = False
     ):
 
-    for time in tqdm.tqdm(range(args.daterange_length)):
+    # 2022-06-09: using this Generator is faster than np.random directly apparently. cf. https://github.com/numpy/numpy/issues/2764
+    gen = np.random.default_rng()
+
+    for time in range(args.daterange_length):
         if verbose:
             logging.info(f'Starting interactions on day {time+1}')
         for _, agent in agents.items():
@@ -417,10 +416,10 @@ def run_model(
             # pick a random person that the agent interacts with
             try:
 
-                other_agent = agents[np.random.choice(agent.interacts_with)]
+                other_agent = agents[gen.choice(agent.interacts_with)]
 
                 # interact with them
-                if np.random.uniform()<=(params['interact_prob'])*params['interact_prob_multiplier']**(agent.interaction_counter[other_agent.ID]):
+                if gen.uniform()<=(params['interact_prob'])*params['interact_prob_multiplier']**(agent.interaction_counter[other_agent.ID]):
                     agent.interact(other_agent, params['experimentation_chance'])
 
                     # if you've interacted with them many times recently, say something
@@ -439,31 +438,36 @@ def run_model(
 
     return agents
 
-def reset_and_run_model(args, agents, current_params):
+def reset_and_run_model(args, agents, current_params_tuple):
 
-    current_search_hashtag_propensity = {k: current_params['search_hashtag_propensity'] for k, _ in args.search_hashtag_propensity_base}
+    index          = current_params_tuple[0]
+    current_params = current_params_tuple[1]
+
+    logging.info(f'RUNNING NUMBER {index}')
+
+    current_search_hashtag_propensity = {k: current_params['search_hashtag_propensity'] for k, _ in args.search_hashtag_propensity_base.items()}
 
     logging.info(f'BEGIN for param set: {current_params}')
-    logging.info(f'with')
     logging.info('Setting initial support for agents for ABM:')
     _ = reset_abm(args, agents,
         initial_activity_threshold=current_params['initial_activity_threshold'],
         search_hashtag_propensity=current_search_hashtag_propensity,
         peak_delta_init=current_params['peak_delta_init'])
 
-    logging.info(f'Running model...')
+    logging.info(f'Running model {index}...')
     modelled_agents = run_model(
             agents,
-            args.params,
+            current_params,
             verbose = False
         )
-    logging.info(f'Modelling complete.')
+    logging.info(f'Modelling complete for {index}.')
 
-    logging.info('Simulating...')
+    logging.info(f'Simulating {index}...')
     for _, agent in modelled_agents.items():
-        agent.simulate(args.search_hashtag_propensity)
+        agent.simulate(current_search_hashtag_propensity)
+    logging.info(f'Simulating {index} complete.')
 
-    return modelled_agents
+    return (current_params, modelled_agents)
 
 def main(args):
 
@@ -578,17 +582,17 @@ def main(args):
     if os.path.isfile(args.agents_savepath) and agents_overwrite:
         logging.info('Agent Creation: File exists and overwriting')
         agents = produce_agents(df, args.search_hashtags)
-        with open(args.agents_savepath, 'wb') as f:
-            pickle.dump(agents, f)
+        # with open(args.agents_savepath, 'wb') as f:
+            # pickle.dump(agents, f)
     elif os.path.isfile(args.agents_savepath) and agents_read_in:
         logging.info('Agent Creation: reading in')
         with open(args.agents_savepath, 'rb') as f:
             agents = pickle.load(f)
     elif not os.path.isfile(args.agents_savepath):
         logging.info('Agent Creation: producing agents for the first time')
-        agents = produce_agents()
-        with open(args.agents_savepath, 'wb') as f:
-            pickle.dump(agents, f)
+        agents = produce_agents(df, args.search_hashtags)
+        # with open(args.agents_savepath, 'wb') as f:
+            # pickle.dump(agents, f)
 
     logging.info('Agent Creation: Complete.')
 
@@ -603,18 +607,24 @@ def main(args):
     # Run ABM
     ############################################################################
 
-    with ProcessPoolExecutor(max_workers = args.max_workers) as executor:
-        logging.info(f'Beginning ProcessPool Executor with {args.max_workers} workers.')
+    if args.line_profiler:
+        for param_tuple in enumerate(args.param_grid):
+            modelled_agents = reset_and_run_model(args, agents, param_tuple)
+    else:
+        with ProcessPoolExecutor(max_workers = args.max_workers) as executor:
+            logging.info(f'Beginning ProcessPool Executor with {args.max_workers} workers.')
 
-        ########################################################################
-        # Reset ABM
-        ########################################################################
+            ########################################################################
+            # Reset ABM
+            ########################################################################
 
-        results = executor.map(reset_and_run_model, repeat(args), repeat(agents), args.param_grid)
+            results = executor.map(reset_and_run_model, repeat(args), repeat(agents), enumerate(args.param_grid))
 
-    logging.info(f'Attempting to save at {args.model_output_savepath}')
-    with open(args.model_output_savepath, 'wb') as f:
-        pickle.dump(results, f)
+        collected_results = list(results)
+
+        logging.info(f'Attempting to save at {args.model_output_savepath}')
+        with open(args.model_output_savepath, 'wb') as f:
+            pickle.dump(collected_results, f)
 
     # logging.info(f'Saving to {args.model_output_savepath}')
     # with open(args.model_output_savepath, 'wb') as f:
@@ -674,8 +684,28 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
+        '--line_profiler',
+        help='whether to switch to non ProcessPoolExecutor for line profiling.',
+        default = False,
+        action='store_true'
+    )
+
+    parser.add_argument(
+        '--debug_len',
+        default=None,
+        type=int
+    )
+
+    parser.add_argument(
         '--max_workers',
-        default=None
+        default=None,
+        type=int
+    )
+
+    parser.add_argument(
+        '--batch_num',
+        help = 'For ARC usage, to determine which batch the node running this script should use.',
+        type = int
     )
 
     parser.add_argument(
@@ -699,6 +729,7 @@ if __name__ == '__main__':
         choices = ['both','file','stream']
     )
 
+    # parse args
     args = parser.parse_args()
 
     logging_dict = {
@@ -737,6 +768,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    logging.info(f'GROUP NUM: {args.group_num}')
+
     # process search hashtags.
     args.search_hashtags = load_in_search_ht(args.search_hashtags)
 
@@ -756,11 +789,11 @@ if __name__ == '__main__':
     args.agents_savepath = os.path.join(args.data_path, f'06_reporting/ABM_agents_group_{args.group_num}.obj')
     logging.info(f'Agents savepath is {args.agents_savepath}')
 
-    args.model_output_savepath = os.path.join(args.data_path, f'06_reporting/ABM_output_group_{args.group_num}.obj')
+    args.model_output_savepath = os.path.join(args.output_path, f'abm/0{args.group_num}_group/ABM_output_group_{args.group_num}_batch_{args.batch_num}.obj')
     logging.info(f'Model output savepath is {args.model_output_savepath}')
 
     # read in params
-    with open(args.params, 'r') as f:
+    with open(args.params_file, 'r') as f:
         args.params = json.load(f)
 
     args.search_hashtag_propensity_base =  {
@@ -802,6 +835,19 @@ if __name__ == '__main__':
     }
 
     # process param combinations:
-    args.param_grid = ParameterGrid(args.params)
+    args.param_grid = list(ParameterGrid(args.params))
+    if args.debug_len:
+        args.param_grid = args.param_grid[:args.debug_len]
+    args.param_grid = list(chunks(args.param_grid, 48))
+    args.total_param_list = len(args.param_grid)
+    args.param_grid = args.param_grid[args.batch_num]
+    if args.batch_num >= args.total_param_list-1:
+        logging.warning(f'Out of range for param_grid. Ending...')
+    else:
+        logging.info(f'Number of combinations: {args.total_param_list}. This is batch number {args.batch_num}')
 
-    main(args)
+        # print if line profiling
+        if args.line_profiler:
+            logging.warning(f'Line Profiler mode activated. Not running multiprocessing pipeline.')
+
+        main(args)
