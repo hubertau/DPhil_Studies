@@ -32,3 +32,6 @@ Research*.md
 *.bmp
 2021-04_Study_A_Diffusion/research_logs/*
 2021-04_Study_A_Diffusion/data/01_raw/*
+2021-04_Study_A_Diffusion/src/d04_modelling/python3.9.lprof
+2021-04_Study_A_Diffusion/src/d04_modelling/abm.py.lprof
+2021-04_Study_A_Diffusion/src/d04_modelling/abm_run.sh
