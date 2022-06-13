@@ -450,7 +450,8 @@ def run_model(
                         model_num = params['model_num'],
                         verbose=verbose)
 
-                history.append((agent.ID, other_agent.ID, time, interact_result))
+                if args.history_logging:
+                    history.append((agent.ID, other_agent.ID, time, interact_result))
 
                 agent.update_tracker()
 
@@ -697,6 +698,13 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
+        '--history_logging',
+        help='whether to log each interaction. Use only for individual param configs are the output is large.',
+        default=False,
+        action='store_true'
+    )
+
+    parser.add_argument(
         '--output_path',
         help='Directory to place outputs.'
     )
@@ -860,23 +868,34 @@ if __name__ == '__main__':
 
     # process param combinations:
     args.param_grid = list(ParameterGrid(args.params))
+
+    # obtain full number of unrolled combinations
+    args.full_len = len(args.param_grid)
+
+    # if debugging/line profiling, restrict to the set amount:
     if args.debug_len:
         args.param_grid = args.param_grid[:args.debug_len]
-    if args.batch_num:
+
+    # now if batching on ARC, check that batch num is supplied and split accordingly
+    if args.batch_num is not None:
         args.param_grid = list(chunks(args.param_grid, 48))
-        args.total_param_list = len(args.param_grid)
+        args.total_batch_count = len(args.param_grid)
         args.param_grid = args.param_grid[args.batch_num]
+
+    # otherwise, if line profiling we just need the number we're running
     else:
-        args.total_param_list = len(args.param_grid)
+        args.total_batch_count = len(args.param_grid)
 
 
-    if args.batch_num and args.batch_num >= args.total_param_list-1:
+    if args.batch_num and args.batch_num >= args.total_batch_count-1:
         logging.warning(f'Out of range for param_grid. Ending...')
     else:
-        logging.info(f'Number of combinations: {args.total_param_list}. This is batch number {args.batch_num}')
+        logging.info(f'Number of combinations: {args.total_batch_count} for a total of {args.full_len}. This is batch number {args.batch_num}')
 
         # print if line profiling
         if args.line_profiler:
             logging.warning(f'Line Profiler mode activated. Not running multiprocessing pipeline.')
+
+        logging.info(f'History logging is {args.history_logging}')
 
         main(args)
