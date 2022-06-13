@@ -1,3 +1,20 @@
+# 2022-06-09 ABM Line Profiler
+
+*    421   5090400  218646874.0     43.0     45.8                  other_agent = agents[np.random.choice(agent.interacts_with)]
+* surprisingly np random choice is slow. Try solution: https://github.com/numpy/numpy/issues/2764
+* 
+
+
+# 2022-06-05 ABM
+
+* What does it mean that the simulation suggests that people should be participating in more than I have detected peaks for?
+* It might mean that those with primary ht OUTSIDE of the detected peak ones in a group (e.g. group 2) are already interacting lots and participating in different languages. Interesting! That might be evidence that previous interactions worked well, either in a previous peak period or in between.
+
+* FOR WRITEUP: also mention cascade analyses - Xixuan Zhang paper from ICA, also previous cascade work.
+
+* FOR WRITEUP: How to consider in-group and out-group aversion? this modelling is unique in that it's quite specifically about non-in-group interacitons. But I can build in a mechanism for in-group interaction.
+
+
 # 2022-05-27 and 2022-05-31
 
 * Ideas from ICA Preconference:
