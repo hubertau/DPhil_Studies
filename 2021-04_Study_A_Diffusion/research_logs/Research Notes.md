@@ -1,8 +1,10 @@
+# 2022-06-13 ABM Results summary
+* Don't forget to mention the robustness check with interaction prob variable.
+
 # 2022-06-09 ABM Line Profiler
 
 *    421   5090400  218646874.0     43.0     45.8                  other_agent = agents[np.random.choice(agent.interacts_with)]
 * surprisingly np random choice is slow. Try solution: https://github.com/numpy/numpy/issues/2764
-* 
 
 
 # 2022-06-05 ABM
