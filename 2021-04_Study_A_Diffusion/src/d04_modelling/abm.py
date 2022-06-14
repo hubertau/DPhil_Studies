@@ -14,10 +14,17 @@ from typing import NamedTuple
 
 import h5py
 import networkx as nx
+import jsonlines
 import numpy as np
 import pandas as pd
 import tqdm
 from sklearn.model_selection import ParameterGrid
+
+class Interaction_Record(NamedTuple):
+    source: str
+    target: str
+    time: int
+    interact_result : bool
 
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
@@ -451,7 +458,7 @@ def run_model(
                         verbose=verbose)
 
                 if args.history_logging:
-                    history.append((agent.ID, other_agent.ID, time, interact_result))
+                    history.append(Interaction_Record(agent.ID, other_agent.ID, time, interact_result))
 
                 agent.update_tracker()
 
@@ -644,11 +651,37 @@ def main(args):
 
             results = executor.map(reset_and_run_model, repeat(args), repeat(agents), enumerate(args.param_grid))
 
-        collected_results = list(results)
+        # collected_results = list(results)
 
         logging.info(f'Attempting to save at {args.model_output_savepath}')
-        with open(args.model_output_savepath, 'wb') as f:
-            pickle.dump(collected_results, f)
+        # with open(args.model_output_savepath, 'wb') as f:
+            # pickle.dump(collected_results, f)
+
+        full_history = []
+        with h5py.File(args.model_output_savepath, 'a') as f:
+            counter = 0
+            for current_params, modelled_agents, history in results:
+                counter += 1
+                full_history.append((current_params, history))
+                g = f.create_group(f'{counter}')
+                g.attrs.update(current_params)
+
+                inside_counter = 0
+                for _,agent in modelled_agents.items():
+                    g.create_dataset(f'{agent.ID}', data=agent.support_tracker)
+                    g.create_dataset(f'{agent.ID}_simulated', data=agent.simulated)
+                    if inside_counter == 0:
+                        inside_counter += 1
+                        g.attrs['key_order'] = np.array(list(agent.supporting_metoo_dict.values()))
+
+        if args.history_logging:
+            logging.info(f'Complete. Writing to history file...')
+            # with jsonlines.open(args.model_output_jsonl) as writer:
+            #     for h in history:
+            #         writer.write([i.to_dict()])
+            with open(args.model_output_history, 'wb') as f:
+                pickle.dump(full_history, f)
+
 
     # logging.info(f'Saving to {args.model_output_savepath}')
     # with open(args.model_output_savepath, 'wb') as f:
@@ -821,8 +854,12 @@ if __name__ == '__main__':
     args.agents_savepath = os.path.join(args.data_path, f'06_reporting/ABM_agents_group_{args.group_num}.obj')
     logging.info(f'Agents savepath is {args.agents_savepath}')
 
-    args.model_output_savepath = os.path.join(args.output_path, f'abm/0{args.group_num}_group/ABM_output_group_{args.group_num}_batch_{args.batch_num}.obj')
+    args.model_output_savepath = os.path.join(args.output_path, f'abm/0{args.group_num}_group/ABM_output_group_{args.group_num}_batch_{args.batch_num}.hdf5')
     logging.info(f'Model output savepath is {args.model_output_savepath}')
+
+    if args.history_logging:
+        args.model_output_history = os.path.join(args.output_path, f'abm/0{args.group_num}_group/ABM_output_group_{args.group_num}_batch_{args.batch_num}_history.obj')
+        logging.info(f'History output savepath is {args.model_output_history}')
 
     # read in params
     with open(args.params_file, 'r') as f:
