@@ -672,7 +672,7 @@ def main(args):
                     g.create_dataset(f'{agent.ID}_simulated', data=agent.simulated)
                     if inside_counter == 0:
                         inside_counter += 1
-                        g.attrs['key_order'] = np.array(list(agent.supporting_metoo_dict.values()))
+                        g.attrs['key_order'] = str(list(agent.supporting_metoo_dict.keys()))
 
         if args.history_logging:
             logging.info(f'Complete. Writing to history file...')
