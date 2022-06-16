@@ -4,6 +4,8 @@
 
 from abm import *
 import glob
+import h5py
+import functools
 from concurrent.futures import ProcessPoolExecutor
 
 def print_abm_results(agents_dict, model_num=None):
@@ -28,14 +30,14 @@ def print_abm_results(agents_dict, model_num=None):
     return output_df
 
 
-def reference_results(args, agents):
+def reference_results(args, agent_list):
     act_val = {}
     with h5py.File(args.activity_file, 'r') as f:
         activity_base = f[f'group_{args.group_num}']
-        feature_order = f[f'group_{args.group_num}'][list(agents.keys())[0]]['hashtagged'].attrs['feature_order']
+        feature_order = f[f'group_{args.group_num}'][agent_list[0]]['hashtagged'].attrs['feature_order']
         feature_order = feature_order.split(';')
 
-        for user_id, agent in agents.items():
+        for user_id in agent_list:
             # obtain user activity
             act_val[user_id] = {}
             activity = activity_base[user_id]['hashtagged'][:]
@@ -58,46 +60,56 @@ def reference_results(args, agents):
 
     return act_val
 
-def process_one_abm_res_file(res_pointer):
+def process_one_abm_res_file(args, res_pointer):
 
     logging.info(f'Processing {res_pointer}')
-    with open(res_pointer, 'rb') as f:
-        temp = pickle.load(f)
 
     results = []
-    for tup in temp:
-        params = tup[0]
-        agents = tup[1]
-        res = print_abm_results(agents)
-        num_supporting = res.iloc[:,1:].sum(axis=0)
-        num_supporting = num_supporting[num_supporting>0]
-        num_supporting = num_supporting.to_frame().reset_index()
-        num_supporting.columns = ['index', 'abm']
+    counter = 0
+    with h5py.File(res_pointer, 'r') as f:
 
-        # comparison = act_val_df.merge(num_supporting, on='index', how='right').fillna(0)
+        for param_results_group in f.keys():
+            counter += 1
+            if counter == 24:
+                logging.debug(f'HALFWAY DONE for {res_pointer}')
+            params = {k:v for k,v in f[param_results_group].attrs.items()}
+            output_array = []
+            for user_id in [i for i in f[param_results_group].keys() if '_' not in i]:
+                output_array.append((f[param_results_group][user_id][:,-1]>0).astype(int))
 
-        results.append((params, num_supporting))
+            output_array = functools.reduce(lambda a,b: a+b, output_array)
+
+            num_supporting = pd.DataFrame({'index' : args.search_hashtags, 'abm' : output_array})
+
+            # comparison = act_val_df.merge(num_supporting, on='index', how='right').fillna(0)
+
+            results.append((params, num_supporting))
 
     return results
 
 def main(args):
 
+    # collect group information
     args.most_prominent_peaks, args.group_date_range, args.daterange_length = group_peaks_and_daterange(args.peak_analysis_file, args.group_num)
 
-    args.results_list = glob.glob(os.path.join(args.data_path, f'abm/0{args.group_num}_group/ABM_*.obj' ))
+    # collect results to process
+    args.results_list = glob.glob(os.path.join(args.data_path, f'abm/0{args.group_num}_group/ABM_*.hdf5' ))
+    args.history_list = glob.glob(os.path.join(args.data_path, f'abm/0{args.group_num}_group/ABM_*.obj'))
     assert len(args.results_list) > 0
+    assert len(args.history_list) > 0
     logging.info(f'To assess: {len(args.results_list)} files.')
 
-    with open(args.results_list[0], 'rb') as f:
-        res = pickle.load(f)
-        first_agents = res[0][1]
-    act_val = reference_results(args, first_agents)
+    with h5py.File(args.results_list[0], 'r') as f:
+        # filter out 'simulated' in keys
+        list_of_users = [i for i in list(f['1'].keys()) if '_' not in i]
+        abm_feature_order = list({i:0 for i in args.search_hashtags}.keys())
+    act_val = reference_results(args, list_of_users)
     act = (act_val.iloc[:,1:]>2).sum(axis=0).to_frame().reset_index()
     act.columns = ['index', 'actual']
 
     logging.info ('Running process pool executor...')
     with ProcessPoolExecutor(max_workers = args.max_workers) as executor:
-        output = executor.map(process_one_abm_res_file, args.results_list)
+        output = executor.map(process_one_abm_res_file, repeat(args), args.results_list)
 
     logging.info ('Collecting results...')
     final = list(output) + [('act_val_reference', act)]
