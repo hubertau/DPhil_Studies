@@ -865,6 +865,16 @@ if __name__ == '__main__':
     with open(args.params_file, 'r') as f:
         args.params = json.load(f)
 
+    # allow for repetition of particular parameter combination
+    if 'repeat' in args.params:
+        logging.info(f'Repeat parameter detected.')
+        args.repeat_num = int(args.params['repeat'])
+        args.params.pop('repeat')
+        assert 'repeat' not in args.params
+    else:
+        logging.info(f'Repeat parameter not detected and is therefore set to 0.')
+        args.repeat_num = 1
+
     args.search_hashtag_propensity_base =  {
         "metoo":                    0.1,
         "balancetonporc":           0.1,
@@ -904,7 +914,7 @@ if __name__ == '__main__':
     }
 
     # process param combinations:
-    args.param_grid = list(ParameterGrid(args.params))
+    args.param_grid = list(ParameterGrid(args.params))*args.repeat_num
 
     # obtain full number of unrolled combinations
     args.full_len = len(args.param_grid)
@@ -924,7 +934,7 @@ if __name__ == '__main__':
         args.total_batch_count = len(args.param_grid)
 
 
-    if args.batch_num and args.batch_num >= args.total_batch_count-1:
+    if args.batch_num and args.batch_num >= args.total_batch_count:
         logging.warning(f'Out of range for param_grid. Ending...')
     else:
         logging.info(f'Number of combinations: {args.total_batch_count} for a total of {args.full_len}. This is batch number {args.batch_num}')
