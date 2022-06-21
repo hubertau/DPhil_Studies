@@ -666,13 +666,30 @@ def main(args):
                 g = f.create_group(f'{counter}')
                 g.attrs.update(current_params)
 
+                # dimensions of output array: num_of_agents * hashtags_to_support * days_to_model
+                full_result_array = np.zeros(shape = (len(agents), len(args.search_hashtags), args.daterange_length+1))
+                # full_result_array_simulate = np.zeros(shape = (args.batch_size, len(agents), len(args.search_hashtags), len(args.daterange_length)+1))
+                logging.debug(f'shape of output array: {full_result_array.shape}')
+                agent_order = []
                 inside_counter = 0
                 for _,agent in modelled_agents.items():
-                    g.create_dataset(f'{agent.ID}', data=agent.support_tracker)
-                    g.create_dataset(f'{agent.ID}_simulated', data=agent.simulated)
+
                     if inside_counter == 0:
-                        inside_counter += 1
                         g.attrs['key_order'] = str(list(agent.supporting_metoo_dict.keys()))
+
+                    agent_order.append(agent.ID)
+
+                    # previous
+                    # g.create_dataset(f'{agent.ID}', data=agent.support_tracker)
+                    # g.create_dataset(f'{agent.ID}_simulated', data=agent.simulated)
+
+                    full_result_array[counter] = agent.support_tracker
+                    # full_result_array_simulate[counter, inside_counter] = agent.simulated
+                    inside_counter += 1
+
+                g.create_dataset('param_result', data = full_result_array, compression='gzip', compression_opts=9)
+                g.create_dataset('param_agent_order', data = agent_order)
+
 
         if args.history_logging:
             logging.info(f'Complete. Writing to history file...')
@@ -763,6 +780,12 @@ if __name__ == '__main__':
     parser.add_argument(
         '--max_workers',
         default=None,
+        type=int
+    )
+
+    parser.add_argument(
+        '--batch_size',
+        default=48,
         type=int
     )
 
@@ -925,7 +948,7 @@ if __name__ == '__main__':
 
     # now if batching on ARC, check that batch num is supplied and split accordingly
     if args.batch_num is not None:
-        args.param_grid = list(chunks(args.param_grid, 48))
+        args.param_grid = list(chunks(args.param_grid, args.batch_size))
         args.total_batch_count = len(args.param_grid)
         args.param_grid = args.param_grid[args.batch_num]
 
