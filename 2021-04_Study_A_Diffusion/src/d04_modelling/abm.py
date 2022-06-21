@@ -651,44 +651,62 @@ def main(args):
 
             results = executor.map(reset_and_run_model, repeat(args), repeat(agents), enumerate(args.param_grid))
 
-        # collected_results = list(results)
-
         logging.info(f'Attempting to save at {args.model_output_savepath}')
-        # with open(args.model_output_savepath, 'wb') as f:
-            # pickle.dump(collected_results, f)
 
-        full_history = []
+        if args.history_logging:
+            full_history = []
         with h5py.File(args.model_output_savepath, 'a') as f:
-            counter = 0
-            for current_params, modelled_agents, history in results:
-                counter += 1
-                full_history.append((current_params, history))
-                g = f.create_group(f'{counter}')
-                g.attrs.update(current_params)
 
-                # dimensions of output array: num_of_agents * hashtags_to_support * days_to_model
-                full_result_array = np.zeros(shape = (len(agents), len(args.search_hashtags), args.daterange_length+1))
-                # full_result_array_simulate = np.zeros(shape = (args.batch_size, len(agents), len(args.search_hashtags), len(args.daterange_length)+1))
-                logging.debug(f'shape of output array: {full_result_array.shape}')
-                agent_order = []
-                inside_counter = 0
-                for _,agent in modelled_agents.items():
+            # dimensions of output array: batch_size * num_of_agents * hashtags_to_support * days_to_model
+            batch_result_array = np.zeros(shape = (args.batch_size, len(agents), len(args.search_hashtags), args.daterange_length+1))
+
+            # create dataset
+            batch_array_hdf5 = f.create_dataset('batch_result',batch_result_array.shape, compression = 'gzip', compression_opts=9)
+
+            logging.debug(f'shape of BATCH RESULT output array: {batch_result_array.shape}')
+
+            # create corresponding params dataset
+            params_result_array = np.zeros(shape = (args.batch_size, len(args.param_grid[0])))
+
+            # give the param order as an attribute of the params array
+            params_array_hdf5 = f.create_dataset('params_array', params_result_array.shape)
+            params_array_hdf5.attrs['param_order'] = str(list(args.param_grid[0].keys()))
+            logging.debug(f'shape of PARAM output array: {params_array_hdf5.shape}')
+
+            # now iterate over the results in the batch, this is a length of batch_size
+            logging.debug(f'begin iterating over batch results:')
+            for counter, current_results in enumerate(results):
+
+                # expand tuple of current results
+                current_params, modelled_agents, history = current_results
+
+                # assign agent order to its own dataset
+                if counter == 0:
+                    f.create_dataset('agent_order', data=list(modelled_agents.keys()))
+
+                # keep track of full history
+                if args.history_logging:
+                    full_history.append((current_params, history))
+
+                # update params results coutner with the current set of param values
+                params_result_array[counter] = np.array(list(current_params.values()))
+
+                # iterate over agents and assign the right slice to batch_result_array
+                for inside_counter, current_agent_item in enumerate(modelled_agents.items()):
+
+                    _, agent = current_agent_item
 
                     if inside_counter == 0:
-                        g.attrs['key_order'] = str(list(agent.supporting_metoo_dict.keys()))
+                        batch_array_hdf5.attrs['key_order'] = str(list(agent.supporting_metoo_dict.keys()))
 
-                    agent_order.append(agent.ID)
+                    batch_result_array[counter, inside_counter] = agent.support_tracker
 
-                    # previous
-                    # g.create_dataset(f'{agent.ID}', data=agent.support_tracker)
-                    # g.create_dataset(f'{agent.ID}_simulated', data=agent.simulated)
+            # finally, assign the arrays to the hdf5 objects.
+            logging.debug(f'assigning arrays to respective hdf5 outputs...')
+            batch_array_hdf5[:] = batch_result_array
+            params_array_hdf5[:] = params_result_array
 
-                    full_result_array[counter] = agent.support_tracker
-                    # full_result_array_simulate[counter, inside_counter] = agent.simulated
-                    inside_counter += 1
-
-                g.create_dataset('param_result', data = full_result_array, compression='gzip', compression_opts=9)
-                g.create_dataset('param_agent_order', data = agent_order)
+        logging.info(f'Writing results to hdf5 complete.')
 
 
         if args.history_logging:
