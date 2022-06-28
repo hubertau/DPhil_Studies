@@ -493,10 +493,13 @@ def reset_and_run_model(args, agents, current_params_tuple):
         )
     logging.info(f'Modelling complete for {index}.')
 
-    logging.info(f'Simulating {index}...')
-    for _, agent in modelled_agents.items():
-        agent.simulate(current_search_hashtag_propensity)
-    logging.info(f'Simulating {index} complete.')
+    if args.simulate:
+        logging.info(f'Simulating {index}...')
+        for _, agent in modelled_agents.items():
+            agent.simulate(current_search_hashtag_propensity)
+        logging.info(f'Simulating {index} complete.')
+    else:
+        logging.info(f'Simulating OFF. Ending...')
 
     return (current_params, modelled_agents, history)
 
@@ -812,6 +815,12 @@ if __name__ == '__main__':
         help = 'For ARC usage, to determine which batch the node running this script should use.',
         type = int,
         default=None
+    )
+
+    parser.add_argument(
+        '--simulate',
+        default=False,
+        action='store_true'
     )
 
     parser.add_argument(
