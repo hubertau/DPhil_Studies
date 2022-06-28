@@ -29,7 +29,6 @@ def print_abm_results(agents_dict, model_num=None):
     # print(num_not_supporting)
     return output_df
 
-
 def reference_results(args, agent_list):
     act_val = {}
     with h5py.File(args.activity_file, 'r') as f:
@@ -64,28 +63,40 @@ def process_one_abm_res_file(args, res_pointer):
 
     logging.info(f'Processing {res_pointer}')
 
-    results = []
-    counter = 0
+
     with h5py.File(res_pointer, 'r') as f:
 
-        for param_results_group in f.keys():
-            counter += 1
-            if counter == 24:
-                logging.debug(f'HALFWAY DONE for {res_pointer}')
-            params = {k:v for k,v in f[param_results_group].attrs.items()}
-            output_array = []
-            for user_id in [i for i in f[param_results_group].keys() if '_' not in i]:
-                output_array.append((f[param_results_group][user_id][:,-1]>0).astype(int))
+        params = f['params_array'][:]
+        results = f['batch_result'][:,:,:,-1]
 
-            output_array = functools.reduce(lambda a,b: a+b, output_array)
+    return (params, results)
 
-            num_supporting = pd.DataFrame({'index' : args.search_hashtags, 'abm' : output_array})
 
-            # comparison = act_val_df.merge(num_supporting, on='index', how='right').fillna(0)
+    # results = []
+    # counter = 0
+    # with h5py.File(res_pointer, 'r') as f:
 
-            results.append((params, num_supporting))
 
-    return results
+    #     for param_results_group in f.keys():
+    #         counter += 1
+    #         if counter == 24:
+    #             logging.debug(f'HALFWAY DONE for {res_pointer}')
+    #         params = {k:v for k,v in f[param_results_group].attrs.items()}
+    #         # output_array = []
+    #         # for user_id in [i for i in f[param_results_group].keys() if '_' not in i]:
+    #         #     output_array.append((f[param_results_group][user_id][:,-1]>0).astype(int))
+
+    #         # output_array = functools.reduce(lambda a,b: a+b, output_array)
+
+    #         output_array = f[param_results_group]['param_result'][:].sum(axis=(0,2))
+
+    #         num_supporting = pd.DataFrame({'index' : args.search_hashtags, 'abm' : output_array})
+
+    #         # comparison = act_val_df.merge(num_supporting, on='index', how='right').fillna(0)
+
+    #         results.append((params, num_supporting))
+
+    # return results
 
 def main(args):
 
@@ -160,6 +171,12 @@ if __name__ == '__main__':
         '--debug_len',
         default=None,
         type=int
+    )
+
+    parser.add_argument(
+        '--repeat',
+        default=False,
+        action='store_true'
     )
 
     parser.add_argument(
@@ -247,6 +264,8 @@ if __name__ == '__main__':
     args.search_hashtags = load_in_search_ht(args.search_hashtags)
 
     args.eval_output_savepath = os.path.join(args.output_path, f'ABM_summary_group_{args.group_num}.obj')
+    if args.repeat:
+        args.eval_output_savepath = os.path.join(args.output_path, f'ABM_summary_group_{args.group_num}_repeat.obj')
     logging.info(f'Summary output savepath is {args.eval_output_savepath}')
 
     # read in params
