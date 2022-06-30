@@ -301,7 +301,7 @@ class Agent(object):
             if  (self.interaction_counter[other.ID] > interact_threshold) and \
                 (other.primary_ht != self.primary_ht) and \
                 (self.supporting_metoo_dict[other.primary_ht] == 0) and \
-                (other.interaction_counter[self.ID] > interact_threshold or self.experimentation_success):
+                ((other.interaction_counter[self.ID] > interact_threshold) or self.experimentation_success):
 
                 self.supporting_metoo_dict[other.primary_ht] += 1
 
@@ -325,7 +325,8 @@ class Agent(object):
             if  (self.interaction_counter[other.ID] > interact_threshold) and \
                 (other.primary_ht != self.primary_ht) and \
                 (self.supporting_metoo_dict[other.primary_ht] == 0) and \
-                (other.interaction_counter[self.ID] > interact_threshold):
+                ((other.interaction_counter[self.ID] > interact_threshold) or \
+                self.experimentation_success):
 
                 self.supporting_metoo_dict[other.primary_ht] += 1
 
