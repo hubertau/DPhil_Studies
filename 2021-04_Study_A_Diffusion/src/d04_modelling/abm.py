@@ -24,6 +24,7 @@ class Interaction_Record(NamedTuple):
     source: str
     target: str
     time: int
+    experimentation_success: bool
     interact_result : bool
 
 def chunks(lst, n):
@@ -223,7 +224,7 @@ class Agent(object):
                 if verbose:
                     logging.info(f'Agent {self.ID} has spoken a lot to Agent {other.ID} and now supports {other.primary_ht}')
 
-                return True
+                return True, other.primary_ht
 
         elif model_num == 2:
 
@@ -240,7 +241,7 @@ class Agent(object):
                 if verbose:
                     logging.info(f'Agent {self.ID} has spoken a lot to Agent {other.ID} and now supports {other.primary_ht}')
 
-                return True
+                return True, other.primary_ht
 
         elif model_num == 3:
 
@@ -259,7 +260,7 @@ class Agent(object):
                 if verbose:
                     logging.info(f'Agent {self.ID} has spoken a lot to Agent {other.ID} and now supports {other.primary_ht}')
 
-                return True
+                return True, other.primary_ht
 
         elif model_num == 4:
 
@@ -283,7 +284,7 @@ class Agent(object):
                 if verbose:
                     logging.info(f'Agent {self.ID} has spoken a lot to Agent {other.ID} and now supports {other.primary_ht}')
 
-                return True
+                return True, other.primary_ht
 
         elif model_num == 5:
 
@@ -307,7 +308,7 @@ class Agent(object):
                 if verbose:
                     logging.info(f'Agent {self.ID} has spoken a lot to Agent {other.ID} and now supports {other.primary_ht}')
 
-                return True
+                return True, other.primary_ht
 
         elif model_num == 6:
 
@@ -331,7 +332,7 @@ class Agent(object):
                 if verbose:
                     logging.info(f'Agent {self.ID} has spoken a lot to Agent {other.ID} and now supports {other.primary_ht}')
 
-                return True
+                return True, other.primary_ht
 
             elif (self.interaction_counter[other.ID] > interact_threshold) and \
                  (other.primary_ht == self.primary_ht) and \
@@ -347,16 +348,17 @@ class Agent(object):
                         k=1
                     )
 
+                    # random.choices returns a list so take first index
                     self.supporting_metoo_dict[sampled_ht_for_influence[0]] += 1
 
                 if verbose:
                     logging.info(f'Agent {self.ID} has influenced someone of their own primary ht community.')
-                return True
+                return True, sampled_ht_for_influence[0]
 
         elif model_num is None:
             pass
 
-        return False
+        return False, None
 
     def forget_all_interactions(self):
         self.interaction_counter = defaultdict(int)
@@ -431,7 +433,13 @@ def run_model(
     gen = np.random.default_rng()
 
     # Create the transaction history object:
-    history = []
+    # history = []
+    history = nx.DiGraph()
+    if args.history_logging:
+        logging.info(f'Populating history graph...')
+        for _, agent in agents.items():
+            history.add_node(agent.ID, primary_ht = agent.primary_ht)
+
 
     for time in range(args.daterange_length):
         if verbose:
@@ -451,14 +459,15 @@ def run_model(
                     agent.interact(other_agent, params['experimentation_chance'])
 
                     # if you've interacted with them many times recently, say something
-                    interact_result = agent.maybe_join(
+                    interact_result, interact_ht = agent.maybe_join(
                         other_agent,
                         params['interact_threshold'],
                         model_num = params['model_num'],
                         verbose=verbose)
 
                 if args.history_logging:
-                    history.append(Interaction_Record(agent.ID, other_agent.ID, time, interact_result))
+                    # history.append(Interaction_Record(agent.ID, other_agent.ID, time, agent.experimentation_success, interact_result))
+                    history.add_edge(other_agent.ID, agent.ID, interact_result = interact_result, time = time, experimentation_success=agent.experimentation_sucess, ht=interact_ht)
 
                 agent.update_tracker()
 
