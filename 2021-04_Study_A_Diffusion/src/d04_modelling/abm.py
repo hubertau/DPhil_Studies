@@ -352,9 +352,12 @@ class Agent(object):
                     # random.choices returns a list so take first index
                     self.supporting_metoo_dict[sampled_ht_for_influence[0]] += 1
 
-                if verbose:
-                    logging.info(f'Agent {self.ID} has influenced someone of their own primary ht community.')
-                return True, sampled_ht_for_influence[0]
+                    if verbose:
+                        logging.info(f'Agent {self.ID} has influenced someone of their own primary ht community.')
+
+                    return True, sampled_ht_for_influence[0]
+
+                return False, None
 
         elif model_num is None:
             pass
@@ -454,6 +457,7 @@ def run_model(
 
                 # by default, no interaction occurs.
                 interact_result = None
+                interact_ht = None
 
                 # interact with them
                 if gen.uniform()<=(params['interact_prob'])*params['interact_prob_multiplier']**(agent.interaction_counter[other_agent.ID]):
@@ -465,10 +469,12 @@ def run_model(
                         params['interact_threshold'],
                         model_num = params['model_num'],
                         verbose=verbose)
+                else:
+                    agent.experimentation_success=False
 
                 if args.history_logging:
                     # history.append(Interaction_Record(agent.ID, other_agent.ID, time, agent.experimentation_success, interact_result))
-                    history.add_edge(other_agent.ID, agent.ID, interact_result = interact_result, time = time, experimentation_success=agent.experimentation_sucess, ht=interact_ht)
+                    history.add_edge(other_agent.ID, agent.ID, interact_result = interact_result, time = time, experimentation_success=agent.experimentation_success, ht=interact_ht)
 
                 agent.update_tracker()
 
