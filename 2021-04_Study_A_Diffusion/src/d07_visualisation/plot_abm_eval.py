@@ -97,7 +97,132 @@ def reference_results(most_prominent_peaks, group_date_range, group_num, agent_l
 
     return act_val
 
+def score(result_np_array, key_order, params, reference_values, kind = 'percentage', avg=False):
+
+
+    '''
+    Function: process an np array of consolidated results to a score for each parameter combination. This can be by the average results of each combination, or the best one.
+    '''
+
+    # TO CHANGE LATER: REMOVE 0 VALUES
+    reference_df = reference_values[reference_values['actual']>0]
+
+    # sort refernece df
+    reference_df = reference_df.sort_values(by='actual', ascending=False)
+
+    # np.unique returns the unique values in an array and can return their indices to reconstruct the original array.
+    unq, indices= np.unique(params, axis=0, return_inverse=True)
+
+    # indices of hashtags needed for this group
+    x = np.array([np.where(np.array(key_order)==x)[0][0] for x in reference_df['index']])
+    # print(reference_df['index'])
+    # print(x)
+
+    # use these unique incides to extract the desired processed result
+    # result_np_array_processed = np.zeros(shape = (len(unq), len(x)))
+
+    # filter down necessary results to just those found in the line before
+    result_np_array_processed = result_np_array[:,x]
+    # print(result_np_array_processed.shape)
+    # print(reference_df['actual'].shape)
+    # print((result_np_array_processed-np.array(reference_df['actual'])).shape)
+
+    # create output array
+    evaluated = np.zeros(len(unq))
+
+    if avg:
+
+        if kind == 'percentage':
+
+            # calc percentages
+            result_np_array_processed = np.abs((result_np_array_processed-np.array(reference_df['actual']))/np.array(reference_df['actual']))
+
+            # assign appropriate value in output array
+            for i in range(len(unq)):
+                evaluated[i] = result_np_array_processed[indices==i].sum().mean()
+
+    else:
+
+        if kind == 'percentage':
+
+            # calc percentages: percentage difference between the actual result and the abm predictions at the end of the process.
+            result_np_array_processed = np.abs((result_np_array_processed-np.array(reference_df['actual']))/np.array(reference_df['actual']))
+
+            # assign appropriate value in output array
+            for i in range(len(unq)):
+                evaluated[i] = result_np_array_processed[indices==i].sum().min()
+
+        elif kind == 'rank':
+
+            # assign score to each rank depending on its distance with actual ranking. Ideal (i.e. matching all ranks) is a 0 score.
+            rank_array_sorted = np.argsort(result_np_array_processed, axis=1)[:,::-1]
+            rank_array_temp = (np.abs(rank_array_sorted - np.arange(len(x)))).sum(axis=1)
+            # print(np.argsort(result_np_array_processed, axis=1).shape)
+            # print(rank_array_temp.shape)
+
+            for i in range(len(unq)):
+                evaluated[i] = rank_array_temp[indices==i].min()
+
+        elif kind == 'top_rank':
+
+            # assign score to each rank depending on its distance with actual ranking. Only keep top rank.
+            rank_array_sorted = np.argsort(result_np_array_processed, axis=1)[:,::-1]
+            rank_array_top_check = rank_array_sorted[:,0]==0
+
+            # result is the number of times out of 10 repetitions the top rank is correct
+            for i in range(len(unq)):
+                evaluated[i] = rank_array_top_check[indices==i].sum()
+
+        elif kind == 'by_far':
+
+            # like top rank, check if English #MeToo is the top
+            # assign score to each rank depending on its distance with actual ranking. Only keep top rank.
+            rank_array_sorted = np.argsort(result_np_array_processed, axis=1)[:,::-1]
+            rank_array_top_check = rank_array_sorted[:,0]==0
+
+            # reference threshold
+            ref_percent = (reference_df['actual'].iloc[0]-reference_df['actual'].iloc[0])/reference_df['actual'].iloc[1]
+
+            # get data percentage
+            top_by_far_check = (result_np_array_processed[:,0]-result_np_array_processed[:,1])/result_np_array_processed[:,1]
+
+            # compare
+            compared_top_by_far = (ref_percent - top_by_far_check)>0
+            for i in range(len(unq)):
+                evaluated[i] = compared_top_by_far[indices==i].sum()
+
+
+    return reference_df['index'], evaluated, unq, indices
+
+
+def extract_directions(graph):
+    output = nx.DiGraph()
+    for i in tqdm.tqdm(graph.edges(data=True)):
+        subject_id = graph.nodes(data=True)[i[0]]['primary_ht']
+        object_id  = graph.nodes(data=True)[i[1]]['primary_ht']
+        if output.has_edge(subject_id, object_id):
+            # we added this one before, just increase the weight by one
+            output[subject_id][object_id]['weight'] += 1
+        else:
+            # new edge. add with weight=1
+            output.add_edge(subject_id, object_id, weight=1)
+        # output.add_edge(G.nodes(data=True)[i[0]]['primary_ht'], G.nodes(data=True)[i[1]]['primary_ht'])
+    return output
+
 def main(args):
+
+    # if the clear flag is up clear all the graphs
+    if args.clear:
+        abm_to_remove = glob.glob(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/data/06_reporting/0{args.group_num}_group/abm*.png')
+        for abm_plot in abm_to_remove:
+            try:
+                os.remove(abm_plot)
+            except OSError:
+                print(f'Error while deleting {abm_plot}')
+
+    ############################################################################
+    # Initial opening of files and collecting relevant information like reference results
+    ############################################################################
 
     # set group number
     group_num = args.group_num
@@ -114,6 +239,7 @@ def main(args):
         results = f['result'][:]
         key_order = f['result'].attrs['key_order'].strip('[]').replace("'",'').split(', ')
         params = f['params'][:]
+        param_order = f['params'].attrs['param_order'].strip('[]').replace("'",'').split(', ')
 
     # dummy file ref. This is just for collecting agent order.
     hdf5_res_file_dummy = os.path.join(abm_results_path, f'0{group_num}_group/ABM_output_group_{group_num}_batch_0.hdf5')
@@ -137,11 +263,16 @@ def main(args):
         with open(graph_savepath, 'rb') as f:
             G = pickle.load(f)
 
+    ############################################################################
+    # Process history evaluation - THEORETICAL Tests
+    ############################################################################
+
+
     # load in history evaluation objects:
     with open(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/data/06_reporting/ABM_history_eval_group_{group_num}.obj', 'rb') as f:
         history_eval_obj = pickle.load(f)
 
-    print(len(history_eval_obj))
+    # print(len(history_eval_obj))
 
     # flatten history_eval_list
     history_eval_flattened = [item for sublist in history_eval_obj for item in sublist]
@@ -160,7 +291,7 @@ def main(args):
 
     # convert into DF
     history_eval_df = pd.DataFrame.from_dict(history_eval_collated_list)
-    print(len(history_eval_df))
+    # print(len(history_eval_df))
 
     param_names = ['experimentation_chance',
         'initial_activity_threshold',
@@ -221,6 +352,94 @@ def main(args):
         plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{args.group_num}_group/abm_histogram_{measure}.png', bbox_inches='tight')
         plt.close()
 
+    ############################################################################
+    # Process DATA evaluation tasks
+    ############################################################################
+
+    print('Processing Data Evaluation')
+
+    # reference_values is 
+    act = (reference_values.iloc[:,1:]>2).sum(axis=0).to_frame().reset_index()
+    act.columns = ['index', 'actual']
+
+    # calculate results
+    top_rank_eval   = score(results, key_order, params, act, kind='top_rank')
+    top_by_far_eval = score(results, key_order, params, act, kind='by_far')
+    rank_eval       = score(results, key_order, params, act, kind='rank')
+    percent_eval    = score(results, key_order, params, act, kind='percentage')
+
+    # create dataplot df
+    unq_params        = rank_eval[2] # could equally have used the other ranks
+    dataplot_np = np.concatenate(
+        (unq_params, top_rank_eval[1].reshape(-1,1), top_by_far_eval[1].reshape(-1,1), rank_eval[1].reshape(-1,1), percent_eval[1].reshape(-1,1)),
+        axis=1
+    )
+
+    # dataplot colnames
+    eval_colnames = ['top_rank_eval', 'top_by_far_eval', 'rank_eval', 'percent_eval']
+    colnames = param_order + eval_colnames
+
+    dataplot_df = pd.DataFrame(
+        data=dataplot_np,
+        index=None,
+        columns = colnames
+    )
+
+    # Test 1: how many combinations have top rank as correct?
+    plt.figure(figsize=(15,8))
+    sns.boxplot(
+        x='top_rank_eval',
+        data=dataplot_df
+    )
+    plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{args.group_num}_group/abm_data_eval_boxplot.png', bbox_inches='tight')
+    plt.close() 
+
+    ############################################################################
+    # Metric table output
+    ############################################################################
+
+    # convert to LaTeX?
+
+
+    ############################################################################
+    # Influence matrix results
+    ############################################################################
+
+    # INSERT GRAPH CODE HERE
+    print('Processing Graph')
+
+    d_graph = extract_directions(G)
+    d_graph.remove_edges_from(nx.selfloop_edges(d_graph))
+
+    degree_dict = dict(d_graph.out_degree)
+
+    # fixing the size of the figure
+    plt.figure(figsize =(15, 10))
+
+    node_color = [d_graph.out_degree(v) for v in d_graph]
+    # node colour is a list of degrees of nodes
+
+    # node_size = [0.0005 * nx.get_node_attributes(d_graph, 'population')[v] for v in d_graph]
+    # size of node is a list of population of cities
+
+    edge_width = [0.0005 * d_graph[u][v]['weight'] for u, v in d_graph.edges()]
+    # width of edge is a list of weight of edges
+
+    nx.draw_networkx(d_graph,
+                    pos = nx.spring_layout(d_graph, k=20),
+                    node_color = node_color,
+                    with_labels = True,
+                    #  width = edge_width,
+                    node_size = [v * 500 for v in degree_dict.values()],
+                    cmap = plt.cm.Blues,
+                    font_size = 20)
+
+    plt.axis('off')
+    plt.tight_layout();
+    plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{args.group_num}_group/abm_graph_original.png', transparent=True, bbox_inches='tight')
+    plt.close()
+
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
@@ -228,6 +447,13 @@ if __name__ == '__main__':
     parser.add_argument(
         'group_num',
         help='Group number'
+    )
+
+    parser.add_argument(
+        '--clear',
+        help='Clear previous graphs with abm prefix',
+        default=False,
+        action='store_true'
     )
 
     args = parser.parse_args()
