@@ -9,6 +9,7 @@ import os
 import glob
 import re
 import pickle
+import networkx as nx
 from typing import NamedTuple
 from concurrent.futures import ProcessPoolExecutor
 
@@ -63,8 +64,8 @@ def score_graph(history_graph, kind='awareness'):
             if datadict['interact_result']:
                 if source_primary_ht != target_primary_ht:
                     awareness_count += 1
-                    if (datadict['ht'] != source_primary_ht) and (datadict['ht'] != target_primary_ht):
-                        application_count += 1
+                elif datadict['ht'] != source_primary_ht:
+                    application_count +=1
                 if datadict['experimentation_success']:
                     experimentation_count += 1
 
@@ -74,6 +75,7 @@ def score_graph(history_graph, kind='awareness'):
             experimentation_count=experimentation_count,
             application_count=application_count
         )
+
 
 def process_one_history_file(history_file_tuple):
 
@@ -131,6 +133,13 @@ if __name__ == '__main__':
     parser.add_argument(
         '--lineprofile',
         help='whether kernprof lineprofiler is being run.',
+        default=False,
+        action='store_true'
+    )
+
+    parser.add_argument(
+        '--only_graph_density',
+        help='Only calculate graph density metric',
         default=False,
         action='store_true'
     )

@@ -13,6 +13,16 @@ import pandas as pd
 import numpy as np
 import h5py
 import glob
+from typing import NamedTuple
+import sys
+
+sys.path.append('../../src/d04_modelling')
+
+from abm import *
+class daterange(NamedTuple):
+    start: str
+    end: str
+
 
 def main():
 
@@ -24,17 +34,17 @@ def main():
     with h5py.File(FAS_object,'rb') as f:
         peak_detections = f['peak_detections']
 
-    most_prominent_peaks = {}
-    for name, h5obj in FAS_peaks.items():
+        most_prominent_peaks = {}
+        for name, h5obj in f.items():
 
-        peak_locations = h5obj['peak_locations']
-        peak_locations = [(i,e) for i,e in enumerate(h5obj['peak_locations']) if (unit_conv(e) > datetime.datetime.strptime(group_date_range.start, '%Y-%m-%d')) and (unit_conv(e) < datetime.datetime.strptime(group_date_range.end, '%Y-%m-%d'))]
-        peak_indices = [i[0] for i in peak_locations]
-        prominences = [element for index, element in enumerate(h5obj['prominences']) if index in peak_indices]
-        if len(prominences) == 0:
-            continue
-        max_prominence = np.argmax(prominences)
-        most_prominent_peaks[name] = unit_conv(peak_locations[max_prominence][1])
+            peak_locations = h5obj['peak_locations']
+            peak_locations = [(i,e) for i,e in enumerate(h5obj['peak_locations']) if (unit_conv(e) > datetime.datetime.strptime(group_date_range.start, '%Y-%m-%d')) and (unit_conv(e) < datetime.datetime.strptime(group_date_range.end, '%Y-%m-%d'))]
+            peak_indices = [i[0] for i in peak_locations]
+            prominences = [element for index, element in enumerate(h5obj['prominences']) if index in peak_indices]
+            if len(prominences) == 0:
+                continue
+            max_prominence = np.argmax(prominences)
+            most_prominent_peaks[name] = unit_conv(peak_locations[max_prominence][1])
 
     # skipped = 0
     # for index,peakdetection in enumerate(results):

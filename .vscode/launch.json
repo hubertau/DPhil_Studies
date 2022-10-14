@@ -5,6 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Plot ABM Eval",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d07_visualisation/plot_abm_eval.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d07_visualisation/",
+            "args":[
+                "3"
+            ],
+            "justMyCode": true
+        },
+        {
             "name": "Primary HT",
             "type": "python",
             "request": "launch",

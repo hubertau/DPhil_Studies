@@ -1,5 +1,51 @@
+# Massive Data README
+
+* $DATA/data/: data at different stages of modelling and reporting.
+	* 
+* $DATA/data/output/: RAW ARC outputs, some of which 
+
+
+# 2022-06-22 Evaluating ABMs:
+
+* rerunning a number of times to account for probabilistic elements.
+* how to evaluate? Chico sent some references
+	* some complicated Euclidean + Bayesian inference
+	* L1 'distance to data'
+	* Our own version:
+		*  “the number of #MeToo versions that were predicted within X% of the actual number”? Note that this doesn’t account for those where the actual number was zero. But perhaps something like that?
+		* Total percentage difference instead of counting ones within a threshold? which is sort of a 'distance to data' but deals with the different magnitudes better
+		* evaluate on best run vs. average values?
+
+* ideas for evaluation:
+	* given there's no canonical way, then (1) see if there's a list of features that you think the data has the model also should have. Does the model show that? e.g. the network that I showed on the ppt
+	* the other approach is are there features of the diffusion of SM that should be present? Make a list of these features. This gives you a list of tests. Score is test it passes.
+	* e.g. density for the network?
+	* how much of it happens through experimentations?
+	* not predicting things the data doesn't do? e.g. 0 values for actual.
+	* 'does it spread'
+	* awareness -> are people talking to each other
+	* translation -> 
+	* experimentation -> are people convincing each other
+	* application -> is the new tag spreading
+* Einstein analogy with application
+	* secondary transmission
+
+* comparison to data:
+	* did for #metoo specifically grow to close enough?
+	* ranking?
+		* is english top of the rank
+		* is it by far?
+		* is it interesting to predict the order of 2,3,4,5? or is ie better to look at the set.
+	* percentage within results?
+
+# 2022-06-15 Things to revise for PaCSS
+* Chabot's examples
+* Sampling methodology 
+
 # 2022-06-13 ABM Results summary
 * Don't forget to mention the robustness check with interaction prob variable.
+* DON'T FORGET why are mitu and russian tag 0? This is likely due to sampling. Not every user was sampled in a group. Code for collecitng primary ht is correct and setting reference and initial values do not overlap.
+* why <1 interact prob multiplier?
 
 # 2022-06-09 ABM Line Profiler
 
