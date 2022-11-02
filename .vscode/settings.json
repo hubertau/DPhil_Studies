@@ -6,5 +6,6 @@
         "./2021-04_Study_A_Diffusion/src/d04_modelling"
     ],
     "jupyter.jupyterServerType": "local",
-    "python.analysis.useImportHeuristic": true
+    "python.analysis.useImportHeuristic": true,
+    "python.terminal.activateEnvironment": true
 }

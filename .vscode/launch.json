@@ -5,13 +5,31 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Study_B: Mediacloud Collect",
+            "type": "python",
+            "request": "launch",
+            "program": "/home/hubert/DPhil_Studies/2022-10-Study_B/src/mediacloud_collect.py",
+            "console": "integratedTerminal",
+            "args":[
+                "--outfile",
+                "test_out.json",
+                "--query",
+                "#metoo",
+                "--start",
+                "2016-10-17",
+                "--end",
+                "2020-10-17"
+            ],
+            "justMyCode": true
+        },
+        {
             "name": "Plot ABM Eval",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d07_visualisation/plot_abm_eval.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d07_visualisation/",
-            "args":[
+            "args": [
                 "3"
             ],
             "justMyCode": true
