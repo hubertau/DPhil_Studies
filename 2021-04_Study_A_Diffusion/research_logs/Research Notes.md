@@ -1,8 +1,45 @@
 # Massive Data README
 
 * $DATA/data/: data at different stages of modelling and reporting.
-	* 
-* $DATA/data/output/: RAW ARC outputs, some of which 
+  * 01_raw
+    * FAS_*.jsonl files are the Full Archive Search jsonl results.
+    * timeline_*.jsonl files are the timelines of individual users that DO NOT include seed terms. cf. src/d01_data/user_twarc_timelines.py
+    * Therefore augmented files are generated: augmented_*.jsonl for each user that are their tweets with the seed hashtags.
+  * 02_intermediate
+  * 03_processed
+  * 04_models
+  * 05_model_output
+  * 06_reporting
+* $DATA/output/: RAW ARC outputs, some of which are copied to $DATA/data/
+  * ABM summary files:
+    * ABM_summary_group_1_repeat.obj
+    * ABM_summary_group_1_norepeat.obj
+    * ABM_history_eval_group_1.obj
+    * ABM_history_eval_group_2.obj
+    * ABM_summary_group_2_batch_None.obj
+    * ABM_history_eval_group_3.obj
+    * ABM_summary_group_2_repeat.obj
+    * ABM_output_consolidated_group_1.hdf5
+    * ABM_summary_group_3.obj
+    * ABM_summary_group_3_repeat.obj
+    * ABM_output_consolidated_group_3.hdf5
+    * activity_counts.hdf5
+    * group_2_snowball_2021_11_24_16_40_18.txt 
+    * group_3_snowball_3.txt
+    * bispec_cluster_eval.hdf5
+    * group_2_snowball_2.txt
+    * int_df_1
+    * group_2_snowball_3.txt
+    * interactions.hdf5
+    * group_2_snowball_4.txt
+    * combined_analysis.hdf5
+    * group_3_snowball_1.txt
+    * group_2_snowball_1.txt
+    * group_3_snowball_2.txt
+  * bsc/
+  * bsc_eval/
+  * vectorizer/
+  * abm/
 
 
 # 2022-06-22 Evaluating ABMs:
