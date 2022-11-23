@@ -98,7 +98,7 @@ def main(
     retry_count = 0
 
     # if the outfile already exists, then resume from the last collected point
-    if os.path.isfile(outfile):
+    if os.path.isfile(outfile) and not count:
         max_id = 0
         with jsonlines.open(outfile, 'r') as f:
             for line in f:
