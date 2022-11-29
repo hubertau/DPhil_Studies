@@ -95,6 +95,7 @@ def main(infile, outfile, continue_from, log_level, log_dir, log_handler_level):
             except:
                 logger.warning(f'FAILED TO READ IN: {story}')
         assert set(enriched_stories).issubset(set(processed_stories))
+        logger.info(f'To collect: {total_infile - len(enriched_stories)}')
 
     with jsonlines.open(infile, 'r') as reader:
         with jsonlines.open(outfile, 'a') as json_writer:
@@ -126,7 +127,7 @@ def main(infile, outfile, continue_from, log_level, log_dir, log_handler_level):
                     json_writer.write(story)
                     count += 1
                     if count%100==0:
-                        logger.info(f'Collected {count}')
+                        logger.info(f'PROGRESS: Collected {count} out of {total_infile-len(enriched_stories)} = {100*count/(total_infile-len(enriched_stories)):.2f}%')
                 except Exception:
                     logger.info(f'Failed to collect {story.get("processed_stories_id")}')
                     continue
