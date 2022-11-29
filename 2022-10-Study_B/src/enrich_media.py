@@ -84,11 +84,15 @@ def main(infile, outfile, log_level, log_dir, log_handler_level):
                     continue
                 total_infile += 1
                 processed_stories.append(story.get('processed_stories_id'))
+        logger.info(f"Stories to enrich: {total_infile}")
         with jsonlines.open(outfile, 'r') as json_reader:
-            for story in json_reader:
-                if 'query' in story:
-                    continue
-                enriched_stories.append(story.get('processed_stories_id'))
+            try:
+                for story in json_reader:
+                    if 'query' in story:
+                        continue
+                    enriched_stories.append(story.get('processed_stories_id'))
+            except:
+                logger.warning(f'FAILED TO READ IN: {story}')
         assert set(enriched_stories).issubset(set(processed_stories))
 
     with jsonlines.open(infile, 'r') as reader:
