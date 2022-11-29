@@ -10,6 +10,7 @@ import logging
 @click.command()
 @click.option('--infile', required=True, help='input JSONL file of stories collected from MediaCloud.')
 @click.option('--outfile', required=False, help='output file name. Can be left blank and will be [infile]_enriched.jsonl.gz2')
+@click.option('--continue_from', required=False, help='Continue from this processed story id.', type=int)
 @click.option('--log_level',
     required=False,
     default='INFO',
@@ -26,7 +27,7 @@ import logging
     type=click.Choice(['both', 'file', 'stream']),
     help='Whether to log to both a file and stream to console, or just one.'
 )
-def main(infile, outfile, log_level, log_dir, log_handler_level):
+def main(infile, outfile, continue_from, log_level, log_dir, log_handler_level):
 
     logging_dict = {
             'NONE': None,
@@ -109,8 +110,15 @@ def main(infile, outfile, log_level, log_dir, log_handler_level):
                     already_enriched += 1
                     logger.info(f'Story ID {story.get("processed_stories_id")} already enriched. Continuing...')
                     continue
+                elif continue_from and story.get('processed_stories_id',0) < continue_from:
+                    logger.info(f'Story ID {story.get("processed_stories_id")} lower than continue from id {continue_from}')
+                    continue
+                elif story.get('url').lower().strip('/').endswith('json'):
+                    logger.warning(f'Story ID {story.get("processed_stories_id")} has url {story.get("url")} ending with .json -> do not collect for memory reasons')
+                    continue
 
                 try:
+                    logger.debug(f"Collecting {story.get('processed_stories_id')}")
                     article = newspaper.Article(story.get('url'))
                     article.download()
                     article.parse()
