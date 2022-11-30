@@ -25,6 +25,7 @@ def collect_one_url(story):
 @click.option('--outfile', required=False, help='output file name. Can be left blank and will be [infile]_enriched.jsonl.gz2')
 @click.option('--continue_from', required=False, help='Continue from this processed story id.', type=int)
 @click.option('--multithread', is_flag=True, required=False)
+@click.option('--workers', default=25, type=int, help='number of threads', required=False)
 @click.option('--log_level',
     required=False,
     default='INFO',
@@ -41,7 +42,7 @@ def collect_one_url(story):
     type=click.Choice(['both', 'file', 'stream']),
     help='Whether to log to both a file and stream to console, or just one.'
 )
-def main(infile, outfile, continue_from, multithread, log_level, log_dir, log_handler_level):
+def main(infile, outfile, continue_from, multithread, workers, log_level, log_dir, log_handler_level):
 
     logging_dict = {
             'NONE': None,
@@ -136,12 +137,12 @@ def main(infile, outfile, continue_from, multithread, log_level, log_dir, log_ha
 
 
                 if multithread:
-                    if len(multithread_stories_to_collect)<10:
+                    if len(multithread_stories_to_collect)<workers:
                         multithread_stories_to_collect.append(story)
                         count+=1
                     else:
                         # logger.info(f'Processing {count} of {total_infile - len(enriched_stories)} = {count*100/(total_infile - len(enriched_stories)):.2f}%')
-                        with ThreadPoolExecutor(max_workers=10) as executor:
+                        with ThreadPoolExecutor(max_workers=workers) as executor:
                             results = executor.map(collect_one_url, multithread_stories_to_collect)
 
                         for ind, story_text in enumerate(results):
@@ -170,7 +171,7 @@ def main(infile, outfile, continue_from, multithread, log_level, log_dir, log_ha
 
             # wrap up remaining stories at the end
             if multithread:
-                with ThreadPoolExecutor(max_workers=10) as executor:
+                with ThreadPoolExecutor(max_workers=workers) as executor:
                     results = executor.map(collect_one_url, multithread_stories_to_collect)
 
                 for ind, story_text in enumerate(results):
