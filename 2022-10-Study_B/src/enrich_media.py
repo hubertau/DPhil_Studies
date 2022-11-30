@@ -121,7 +121,7 @@ def main(infile, outfile, continue_from, multithread, workers, log_level, log_di
             multithread_stories_to_collect = []
             for story in reader.iter(skip_invalid=True, skip_empty=True):
                 if 'query' in story:
-                    if query_already_written:
+                    if not query_already_written:
                         json_writer.write(story)
                     continue
                 if story.get('processed_stories_id') in enriched_stories:
