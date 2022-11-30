@@ -16,7 +16,8 @@ def collect_one_url(story):
         article.parse()
         return article.text
     except:
-        logger.info('Failed to collect {story.get("processed_stories_id")}')
+        logger.info(f'Failed to collect {story.get("processed_stories_id")}')
+        return None
 
 
 @click.command()
@@ -89,20 +90,20 @@ def main(infile, outfile, continue_from, multithread, log_level, log_dir, log_ha
     processed_stories = []
     enriched_stories = []
     query_already_written = False
+    with jsonlines.open(infile, 'r') as reader:
+        for story in reader:
+            if 'query' in story:
+                continue
+            total_infile += 1
+            processed_stories.append(story.get('processed_stories_id'))
+    logger.info(f"Stories to enrich: {total_infile}")
     if os.path.isfile(outfile):
         logger.info('Outfile detected as existing. Reading in already enriched stories...')
-        with jsonlines.open(infile, 'r') as reader:
-            for story in reader:
-                if 'query' in story:
-                    query_already_written = True
-                    continue
-                total_infile += 1
-                processed_stories.append(story.get('processed_stories_id'))
-        logger.info(f"Stories to enrich: {total_infile}")
         with jsonlines.open(outfile, 'r') as json_reader:
             try:
                 for story in json_reader:
                     if 'query' in story:
+                        query_already_written = True
                         continue
                     enriched_stories.append(story.get('processed_stories_id'))
             except:
@@ -118,10 +119,10 @@ def main(infile, outfile, continue_from, multithread, log_level, log_dir, log_ha
             already_enriched = 0
             multithread_stories_to_collect = []
             for story in reader.iter(skip_invalid=True, skip_empty=True):
-                if 'query' in story and not query_already_written:
-                    json_writer.write(story)
+                if 'query' in story:
+                    if query_already_written:
+                        json_writer.write(story)
                     continue
-
                 if story.get('processed_stories_id') in enriched_stories:
                     already_enriched += 1
                     logger.info(f'Story ID {story.get("processed_stories_id")} already enriched. Continuing...')
@@ -135,22 +136,22 @@ def main(infile, outfile, continue_from, multithread, log_level, log_dir, log_ha
 
 
                 if multithread:
-                    while len(multithread_stories_to_collect)<10:
+                    if len(multithread_stories_to_collect)<10:
                         multithread_stories_to_collect.append(story)
                         count+=1
-                        continue
-                    logger.info(f'Processing {count} of {total_infile - len(enriched_stories)} = {count*100/(total_infile - len(enriched_stories)):.2f}')
-                    with ThreadPoolExecutor(max_workers=10) as executor:
-                        results = executor.map(collect_one_url, multithread_stories_to_collect)
+                    else:
+                        # logger.info(f'Processing {count} of {total_infile - len(enriched_stories)} = {count*100/(total_infile - len(enriched_stories)):.2f}%')
+                        with ThreadPoolExecutor(max_workers=10) as executor:
+                            results = executor.map(collect_one_url, multithread_stories_to_collect)
 
-                    for story_text in results:
-                        for story in multithread_stories_to_collect:
-                            story['text'] = story_text
-                            json_writer.write(story)
-                            success += 1
-                            if count%100==0:
-                                logger.info(f'PROGRESS: Processed {count}, successfully {success}, out of {total_infile-len(enriched_stories)}. Scan progress = {100*count/(total_infile-len(enriched_stories)):.2f}%, Scan success rate = {100*success/count:.2f}%')
-                    multithread_stories_to_collect = []
+                        for ind, story_text in enumerate(results):
+                            if story_text is not None:
+                                multithread_stories_to_collect[ind]['text'] = story_text
+                                json_writer.write(multithread_stories_to_collect[ind])
+                                success += 1
+                        if count%100==0:
+                            logger.info(f'PROGRESS: Processed {count}, successfully {success}, out of {total_infile-len(enriched_stories)}. Scan progress = {100*count/(total_infile-len(enriched_stories)):.2f}%, Scan success rate = {100*success/count:.2f}%')
+                        multithread_stories_to_collect = [story]
 
                 else:
                     try:
@@ -166,6 +167,17 @@ def main(infile, outfile, continue_from, multithread, log_level, log_dir, log_ha
                     except Exception:
                         logger.info(f'Failed to collect {story.get("processed_stories_id")}')
                         continue
+
+            # wrap up remaining stories at the end
+            if multithread:
+                with ThreadPoolExecutor(max_workers=10) as executor:
+                    results = executor.map(collect_one_url, multithread_stories_to_collect)
+
+                for ind, story_text in enumerate(results):
+                    if story_text is not None:
+                        multithread_stories_to_collect[ind]['text'] = story_text
+                        json_writer.write(multithread_stories_to_collect[ind])
+                        success += 1
 
 
     logger.info(f'Total time taken: {time.time()-start_time:.2f}s for {count} scanned out of {total_infile-len(enriched_stories)}. Scanned {100*count/total_infile:.2f}%, Scan success rate = {100*success/count:.2f}, Overall collect success rate {100*success/(total_infile-len(enriched_stories)):.2f}%')
