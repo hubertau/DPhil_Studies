@@ -6,11 +6,24 @@ import os
 import jsonlines
 import datetime
 import logging
+from concurrent.futures import ThreadPoolExecutor
+
+def collect_one_url(story):
+    logger = logging.getLogger(__name__)
+    try:
+        article = newspaper.Article(story.get('url'))
+        article.download()
+        article.parse()
+        return article.text
+    except:
+        logger.info('Failed to collect {story.get("processed_stories_id")}')
+
 
 @click.command()
 @click.option('--infile', required=True, help='input JSONL file of stories collected from MediaCloud.')
 @click.option('--outfile', required=False, help='output file name. Can be left blank and will be [infile]_enriched.jsonl.gz2')
 @click.option('--continue_from', required=False, help='Continue from this processed story id.', type=int)
+@click.option('--multithread', is_flag=True, required=False)
 @click.option('--log_level',
     required=False,
     default='INFO',
@@ -27,7 +40,7 @@ import logging
     type=click.Choice(['both', 'file', 'stream']),
     help='Whether to log to both a file and stream to console, or just one.'
 )
-def main(infile, outfile, continue_from, log_level, log_dir, log_handler_level):
+def main(infile, outfile, continue_from, multithread, log_level, log_dir, log_handler_level):
 
     logging_dict = {
             'NONE': None,
@@ -101,7 +114,9 @@ def main(infile, outfile, continue_from, log_level, log_dir, log_handler_level):
         with jsonlines.open(outfile, 'a') as json_writer:
             logger.info('Collecting article text')
             count = 0
+            success = 0
             already_enriched = 0
+            multithread_stories_to_collect = []
             for story in reader.iter(skip_invalid=True, skip_empty=True):
                 if 'query' in story and not query_already_written:
                     json_writer.write(story)
@@ -114,24 +129,46 @@ def main(infile, outfile, continue_from, log_level, log_dir, log_handler_level):
                 elif continue_from and story.get('processed_stories_id',0) < continue_from:
                     logger.info(f'Story ID {story.get("processed_stories_id")} lower than continue from id {continue_from}')
                     continue
-                elif story.get('url').lower().strip('/').endswith('json'):
+                elif story.get('url', 'nourl').lower().strip('/').endswith('json'):
                     logger.warning(f'Story ID {story.get("processed_stories_id")} has url {story.get("url")} ending with .json -> do not collect for memory reasons')
                     continue
 
-                try:
-                    logger.debug(f"Collecting {story.get('processed_stories_id')}")
-                    article = newspaper.Article(story.get('url'))
-                    article.download()
-                    article.parse()
-                    story['text'] = article.text
-                    json_writer.write(story)
-                    count += 1
-                    if count%100==0:
-                        logger.info(f'PROGRESS: Collected {count} out of {total_infile-len(enriched_stories)} = {100*count/(total_infile-len(enriched_stories)):.2f}%')
-                except Exception:
-                    logger.info(f'Failed to collect {story.get("processed_stories_id")}')
-                    continue
-    logger.info(f'Total time taken: {time.time()-start_time:.2f}s for {count}/{total_infile}= {100*count/total_infile:.2f}%')
+
+                if multithread:
+                    while len(multithread_stories_to_collect)<10:
+                        multithread_stories_to_collect.append(story)
+                        count+=1
+                        continue
+                    logger.info(f'Processing {count} of {total_infile - len(enriched_stories)} = {count*100/(total_infile - len(enriched_stories)):.2f}')
+                    with ThreadPoolExecutor(max_workers=10) as executor:
+                        results = executor.map(collect_one_url, multithread_stories_to_collect)
+
+                    for story_text in results:
+                        for story in multithread_stories_to_collect:
+                            story['text'] = story_text
+                            json_writer.write(story)
+                            success += 1
+                            if count%100==0:
+                                logger.info(f'PROGRESS: Processed {count}, successfully {success}, out of {total_infile-len(enriched_stories)}. Scan progress = {100*count/(total_infile-len(enriched_stories)):.2f}%, Scan success rate = {100*success/count:.2f}%')
+                    multithread_stories_to_collect = []
+
+                else:
+                    try:
+                        logger.debug(f"Collecting {story.get('processed_stories_id')}")
+                        article = newspaper.Article(story.get('url'))
+                        article.download()
+                        article.parse()
+                        story['text'] = article.text
+                        json_writer.write(story)
+                        success += 1
+                        if count%100==0:
+                            logger.info(f'PROGRESS: Processed {count}, successfully {success}, out of {total_infile-len(enriched_stories)}. Scan progress = {100*count/(total_infile-len(enriched_stories)):.2f}%, Scan success rate = {100*success/count:.2f}%')
+                    except Exception:
+                        logger.info(f'Failed to collect {story.get("processed_stories_id")}')
+                        continue
+
+
+    logger.info(f'Total time taken: {time.time()-start_time:.2f}s for {count} scanned out of {total_infile-len(enriched_stories)}. Scanned {100*count/total_infile:.2f}%, Scan success rate = {100*success/count:.2f}, Overall collect success rate {100*success/(total_infile-len(enriched_stories)):.2f}%')
     return None
 
 if __name__ == '__main__':
