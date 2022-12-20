@@ -1,7 +1,10 @@
 #!/bin/bash
 
+start="2014-10-17"
+end="2017-03-10"
+
 python mediacloud_collect.py \
-  --outfile ../data/01_raw/pilot.jsonl \
+  --outfile ../data/01_raw/collect_${start}_to_${end}.jsonl \
   --query "( \
     ((#metoo OR #ricebunny) AND language:en) OR \
     (#JoTambe AND (language:ca OR language:es)) OR \
@@ -27,8 +30,8 @@ python mediacloud_collect.py \
     ((\"anklaget\" OR \"påstått\") AND (\"seksuell trakasering\" OR \"seksuelle overgrep\" OR \"voldta\" OR \"voldtekt\")) OR \
     ((\"syytettynä\" OR \"syyttää\" OR \"väitetystä\" OR \"väitetty\") AND (\"seksuaalinen ahdistelu\" OR \"seksuaalista väkivaltaa\" OR \"raiskata\")) \
   )" \
-  --start 2017-10-17 \
-  --end 2017-10-24 \
+  --start ${start} \
+  --end ${end} \
   --log_dir ../logs/ \
   --log_handler_level both \
   # --count \
