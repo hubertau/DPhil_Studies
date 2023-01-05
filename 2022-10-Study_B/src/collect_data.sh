@@ -1,7 +1,7 @@
 #!/bin/bash
 
 start="2014-10-17"
-end="2017-03-10"
+end="2017-10-17"
 
 python mediacloud_collect.py \
   --outfile ../data/01_raw/collect_${start}_to_${end}.jsonl \
