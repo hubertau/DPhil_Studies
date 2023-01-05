@@ -25,15 +25,21 @@ class FAS_Collector(object):
         self.start_time                 = args.start_time
         self.OUTPUT_PATH                = args.output_dir
         self.search_query_txt           = args.search_query_txt
+        self.raw                        = args.raw
         self.DATA_PATH                  = args.data_dir
 
         # obtain search terms
-        with open(self.search_query_txt, newline='') as f:
-            self.terms = list(csv.reader(f))
+        if not self.raw:
+            with open(self.search_query_txt, newline='') as f:
+                self.terms = list(csv.reader(f))
 
-        # unroll list
-        self.terms = [i[0] for i in self.terms]
-        self.search_query = ' OR '.join(self.terms)
+            # unroll list
+            self.terms = [i[0] for i in self.terms]
+            self.search_query = ' OR '.join(self.terms)
+        else:
+            with open(self.search_query_txt) as f:
+                self.search_query = f.read().strip('\n')
+        print(self.search_query)
         assert len(self.search_query) <= 1024, 'Search query is above 1024 characters in length'
 
         print('Collector Instance Created. Terms: {}'.format(self.terms))
@@ -165,6 +171,13 @@ def main():
     parser.add_argument(
         '--data_dir',
         help='where to place the scraped data.'
+    )
+
+    parser.add_argument(
+        '--raw',
+        help='Whether the full query is in one line on the search_query text file',
+        default=False,
+        action='store_true'
     )
 
     args = parser.parse_args()
