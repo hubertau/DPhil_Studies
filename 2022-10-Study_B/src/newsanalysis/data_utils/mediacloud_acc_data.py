@@ -3,7 +3,7 @@ Quick script to show the rate limits left for an account
 """
 
 import requests
-import constants
+import newsanalysis.data_utils.constants
 import json
 
 def main():

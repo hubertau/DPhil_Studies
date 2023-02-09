@@ -6,6 +6,7 @@ import os
 import numpy as np
 from dataclasses import dataclass, asdict, field
 from collections import Counter
+import unicodedata
 
 @dataclass(frozen=True)
 class publisher:
@@ -13,6 +14,12 @@ class publisher:
     id: str = field(compare=True)
     url: str = field(compare=False)
     language: str = field(compare=True)
+
+@dataclass(frozen=True)
+class storyclass:
+    id: str=field(compare=True)
+    lang: str=field(compare=False)
+    length: int=field(compare=False, default=None)
 
 def retrieve_pubs(file):
 
@@ -32,6 +39,60 @@ def retrieve_pubs(file):
     records = [{**asdict(k),**{'story_count':v}} for k, v in all_pubs.items()]
 
     df = pd.DataFrame.from_records(records)
+
+    return df
+
+def calc_story_len(text, lang):
+
+    length = 0
+    if lang in ['zh', 'ko', 'ja']:
+        for i in text:
+            if unicodedata.name(i, False):
+                length+=1
+    else:
+        length = len(text.split(' '))
+    return length
+
+def retrieve_story_and_lang(file):
+    '''Extract just language and story id from data file.'''
+
+    all_stories = []
+    with jsonlines.open(file, 'r') as reader:
+        for story in reader.iter(skip_empty=True, skip_invalid=True):
+            if 'query' in story:
+                continue
+            else:
+                all_stories.append(storyclass(
+                    id     = story.get('processed_stories_id'),
+                    lang   = story.get('language')
+                ))
+
+    df = pd.DataFrame.from_records([asdict(k) for k in all_stories])
+
+    return df
+
+def retrieve_story_lens(file):
+    '''Extract information about story length from data file.
+
+    Note that different languages will need different counting strategies
+    '''
+
+    all_stories = []
+    with jsonlines.open(file, 'r') as reader:
+        for story in reader.iter(skip_empty=True, skip_invalid=True):
+            if 'query' in story:
+                continue
+            else:
+                all_stories.append(storyclass(
+                    id     = story.get('processed_stories_id'),
+                    lang   = story.get('language'),
+                    length = calc_story_len(
+                        story.get('text'),
+                        story.get('language')
+                    )
+                ))
+
+    df = pd.DataFrame.from_records([asdict(k) for k in all_stories])
 
     return df
 
@@ -117,3 +178,15 @@ def plot_enriched_count_by_lang_and_time(df, savedir, min_count = 0):
     # g.set_xticklabels(g.get_xticklabels(), rotation=45)
     plt.xticks(rotation=45, ha='right')
     plt.savefig(os.path.join(savedir, 'desc_enrichment_count_by_lang_and_time.png'), bbox_inches='tight', dpi=300)
+
+def plot_story_length_boxplot(df, savedir):
+
+    fig = plt.figure(figsize=(15,8))
+    sns.set_theme()
+    g = sns.boxplot(
+        x = df['length']
+    )
+    plt.savefig(os.path.join(savedir, 'desc_story_len_boxplot.png'), bbox_inches='tight', dpi=300)
+
+def plot_story_length_barplot_by_lang(df, savedir):
+    pass

@@ -3,7 +3,7 @@
 """
 import mediacloud.error
 import mediacloud.api
-import constants
+import newsanalysis.data_utils.constants
 import datetime
 import os
 import time
