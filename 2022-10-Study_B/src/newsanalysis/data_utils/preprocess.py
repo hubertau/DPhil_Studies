@@ -67,7 +67,7 @@ def deduplicate(file, savepath, gpu=False):
         logger.info(f'Processing {l}')
         m_list = grouped.loc[l]
         logger.info(len(m_list))
-        ordered_ids = story_iter(file, only_text = False, match_list=m_list)
+        ordered_ids = list(story_iter(file, only_text = False, match_list=m_list))
         vectorizer = TfidfVectorizer(
             analyzer='word',
             norm='l2',
