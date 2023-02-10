@@ -12,13 +12,11 @@ Script to preprocess obtained and enriched MediaCloud data. The enriching steps 
 import numpy as np
 import pandas as pd
 import os
-import itertools
-import click
+from loguru import logger
 import jsonlines
 from time import perf_counter
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import logging
 import faiss
 import pickle
 
@@ -66,27 +64,27 @@ def deduplicate(file, savepath, gpu=False):
     grouped = df.groupby('lang').apply(lambda x: x['id'].unique())
 
     for l in df['lang'].unique():
-        click.echo(f'Processing {l}')
+        logger.info(f'Processing {l}')
         m_list = grouped.loc[l]
-        click.echo(len(m_list))
+        logger.info(len(m_list))
         ordered_ids = story_iter(file, only_text = False, match_list=m_list)
         vectorizer = TfidfVectorizer(
             analyzer='word',
             norm='l2',
             max_features=dim
         )
-        click.echo('start fit transform')
+        logger.info('start fit transform')
         t1_start = perf_counter()
         csr = vectorizer.fit_transform(story_iter(file, match_list=m_list))
         t1_stop = perf_counter()
-        click.echo(f'end fit transform. Seconds taken: {t1_stop-t1_start:.2f}') 
+        logger.info(f'end fit transform. Seconds taken: {t1_stop-t1_start:.2f}') 
 
         with open(os.path.join(savepath, 'csr.pkl'), 'wb') as f:
             pickle.dump(csr, f)
 
-        click.echo(f'Shape: {csr.shape}')
+        logger.info(f'Shape: {csr.shape}')
 
-        click.echo('Starting FAISS')
+        logger.info('Starting FAISS')
         start=perf_counter()
 
         # cf. https://towardsdatascience.com/ivfpq-hnsw-for-billion-scale-similarity-search-89ff2f89d90e#9718
@@ -100,7 +98,7 @@ def deduplicate(file, savepath, gpu=False):
         # Create the index.
         coarse_quantizer = faiss.IndexHNSWFlat(d, M)
         if gpu:
-            click.echo(f'Running with GPU')
+            logger.info(f'Running with GPU')
             index = faiss.GpuIndexIVFPQ(coarse_quantizer, d, nlist, nsegment, nbit)
         else:
             index = faiss.IndexIVFPQ(coarse_quantizer, d, nlist, nsegment, nbit)
@@ -108,11 +106,11 @@ def deduplicate(file, savepath, gpu=False):
         index.train(csr[:40*nlist].todense().astype(np.float32))
 
         # Adding vectors to the index (xb are database vectors that are to be indexed).
-        click.echo('Adding rows to index...')
+        logger.info('Adding rows to index...')
         batch_size = 10000
         for sparse_vectors, ids in chunks(csr, ordered_ids, batch_size):
             index.add_with_ids(sparse_vectors.todense().astype(np.float32), ids)
-        click.echo('Done adding rows to index')
+        logger.info('Done adding rows to index')
 
         # Setting the number of partitions to search.
         index.nprobe = 100
@@ -133,7 +131,7 @@ def deduplicate(file, savepath, gpu=False):
         with open(savename, 'wb') as f:
             pickle.dump(D, f)
         stop=perf_counter()
-        click.echo(f'End FAISS: {stop-start:.2f}s elapsed')
+        logger.info(f'End FAISS: {stop-start:.2f}s elapsed')
 
 
 
