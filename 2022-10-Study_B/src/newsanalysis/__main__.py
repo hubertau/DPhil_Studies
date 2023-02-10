@@ -21,7 +21,7 @@ def cli(ctx, debug, gpu):
     """News Analysis package.
 
     """
-    click.echo(f"Debug mode is {'on' if debug else 'off'}")
+    logger.info(f"Debug mode is {'on' if debug else 'off'}")
 
     ctx.obj = {}
     ctx.obj['DEBUG'] = debug
@@ -32,7 +32,7 @@ def cli(ctx, debug, gpu):
 def get_date_range(file) -> None:
     '''Print date range of data file supplied'''
     min_date, max_date = newsanalysis.dataviz.show_date_range(file)
-    click.echo(f'Date range for file is {min_date} to {max_date}')
+    logger.info(f'Date range for file is {min_date} to {max_date}')
 
 
 @cli.command()
@@ -73,11 +73,11 @@ def show_enrichment_rate(enrichment_csv):
     )
     by_lang['success_rate'] = 100*by_lang['enriched_sum']/by_lang['enriched_count']
 
-    click.echo(f'Total unenriched: {total_unenriched}')
-    click.echo(f'Total enriched: {total_enriched}')
-    click.echo(f'Overall enrichment success rate: {100*total_enriched/total_unenriched:.2f}%')
-    click.echo(f'Success rate by language:')
-    click.echo(f'{by_lang}')
+    logger.info(f'Total unenriched: {total_unenriched}')
+    logger.info(f'Total enriched: {total_enriched}')
+    logger.info(f'Overall enrichment success rate: {100*total_enriched/total_unenriched:.2f}%')
+    logger.info(f'Success rate by language:')
+    logger.info(f'{by_lang}')
 
 @cli.command()
 @click.argument('enrichment_csv')
@@ -142,7 +142,7 @@ def get_pub_list(file, outdir):
     df = newsanalysis.dataviz.retrieve_pubs(file)
     savepath = os.path.join(outdir, 'desc_pubs.csv')
     df.to_csv(savepath)
-    click.echo(f'Saved to {savepath}')
+    logger.info(f'Saved to {savepath}')
 
 @cli.command()
 @click.argument('file')
@@ -153,7 +153,7 @@ def show_pub_summary(file):
         df = pd.read_csv(file)
     else:
         df = newsanalysis.dataviz.retrieve_pubs(file)
-    click.echo(df.describe())
+    logger.info(df.describe())
 
 @cli.command()
 @click.argument('file')
@@ -173,7 +173,7 @@ def show_top_pubs(file, top_n = 5):
 
     agged = df.groupby('language').head(top_n)
 
-    click.echo(agged)
+    logger.info(agged)
 
 @cli.command()
 @click.argument('file')
@@ -184,7 +184,7 @@ def show_pub_by_lang(file):
         df = pd.read_csv(file)
     else:
         df = newsanalysis.dataviz.retrieve_pubs(file) 
-    click.echo(df.groupby('language').sum()['story_count'])
+    logger.info(df.groupby('language').sum()['story_count'])
 
 @cli.command()
 @click.argument('file')
@@ -232,17 +232,17 @@ def consolidate(ctx, glob_command, outfile):
         ValueError: if no files to consolidate, bad glob command
     """
     if ctx.obj['DEBUG']:
-        click.echo(f'Glob command: {glob_command}')
-        click.echo(f'Outfile: {outfile}')
+        logger.info(f'Glob command: {glob_command}')
+        logger.info(f'Outfile: {outfile}')
     files_to_consolidate = glob.glob(glob_command)
     if ctx.obj['DEBUG']:
-        click.echo(files_to_consolidate)
+        logger.info(files_to_consolidate)
     if not files_to_consolidate:
         raise ValueError
 
     # check all queries are the same
     if ctx.obj['DEBUG']:
-        click.echo('Performing query check')
+        logger.info('Performing query check')
     query = None
     for file in files_to_consolidate:
         with jsonlines.open(file, 'r') as reader:
@@ -255,18 +255,18 @@ def consolidate(ctx, glob_command, outfile):
                     break
 
     if ctx.obj['DEBUG']:
-        click.echo('Collecting max start and end date')
+        logger.info('Collecting max start and end date')
 
     min_date, max_date = None, None
     for file in files_to_consolidate:
         min_date, max_date = newsanalysis.dataviz.show_date_range(file, min_date, max_date)
     if ctx.obj['DEBUG']:
-        click.echo(f'Total date range is {min_date} to {max_date}')
+        logger.info(f'Total date range is {min_date} to {max_date}')
 
     query_written = False
     with jsonlines.open(outfile, 'w') as writer:
         for index, file in enumerate(files_to_consolidate):
-            click.echo(f'Processing {file}, {index+1} out of {len(files_to_consolidate)}')
+            logger.info(f'Processing {file}, {index+1} out of {len(files_to_consolidate)}')
             with jsonlines.open(file, 'r') as reader:
                 for story in reader.iter(skip_empty=True, skip_invalid=True):
                     if 'query' in story:
@@ -297,11 +297,11 @@ def duplicate_check(ctx, file, savepath, threshold = 0.9):
     Returns:
         _type_: _description_
     """
-    click.echo(f'threshold: {threshold}')
-    click.echo(f'Savepath: {savepath}')
-    click.echo(f'GPU flag is {ctx.obj["GPU"]}')
+    logger.info(f'threshold: {threshold}')
+    logger.info(f'Savepath: {savepath}')
+    logger.info(f'GPU flag is {ctx.obj["GPU"]}')
     newsanalysis.data_utils.deduplicate(file, savepath, gpu=ctx.obj['GPU'])
-    click.echo('done')
+    logger.info('done')
 
 if __name__ == '__main__':
     cli()
