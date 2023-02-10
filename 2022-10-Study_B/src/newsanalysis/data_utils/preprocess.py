@@ -11,6 +11,8 @@ Script to preprocess obtained and enriched MediaCloud data. The enriching steps 
 import numpy as np
 import pandas as pd
 import os
+import itertools
+import click
 import jsonlines
 from time import perf_counter
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
@@ -20,6 +22,12 @@ import faiss
 import pickle
 
 from newsanalysis.dataviz.plots import retrieve_story_lens, retrieve_story_and_lang
+
+def chunks(iter1, iter2, n):
+    """Yield successive n-sized chunks from iter1 and iter2."""
+    assert iter1.shape[0] == len(iter2)
+    for i in range(0, iter1.shape[0], n):
+        yield (iter1[i:i + n], iter2[i:i + n])
 
 def unique_story_ids(file):
     '''Get unique story ids from jsonl file'''
@@ -45,7 +53,7 @@ def story_iter(file, only_text = True, match_list = None):
                 else:
                     yield story_id
 
-def deduplicate(file, savepath, cpu=True):
+def deduplicate(file, savepath, gpu=False):
     '''Return dict of story ids and their duplicates'''
 
     df = retrieve_story_and_lang(file)
@@ -57,28 +65,27 @@ def deduplicate(file, savepath, cpu=True):
     grouped = df.groupby('lang').apply(lambda x: x['id'].unique())
 
     for l in df['lang'].unique():
-        if l != 'en':
-            break
-        print(f'Processing {l}')
+        click.echo(f'Processing {l}')
         m_list = grouped.loc[l]
-        print(len(m_list))
+        click.echo(len(m_list))
+        ordered_ids = story_iter(file, only_text = False, match_list=m_list)
         vectorizer = TfidfVectorizer(
             analyzer='word',
             norm='l2',
             max_features=dim
         )
-        print('start fit transform')
+        click.echo('start fit transform')
         t1_start = perf_counter()
         csr = vectorizer.fit_transform(story_iter(file, match_list=m_list))
         t1_stop = perf_counter()
-        print(f'end fit transform. Seconds taken: {t1_stop-t1_start:.2f}') 
+        click.echo(f'end fit transform. Seconds taken: {t1_stop-t1_start:.2f}') 
 
         with open(os.path.join(savepath, 'csr.pkl'), 'wb') as f:
             pickle.dump(csr, f)
 
-        print(f'Shape: {csr.shape}')
+        click.echo(f'Shape: {csr.shape}')
 
-        print('Starting FAISS')
+        click.echo('Starting FAISS')
         start=perf_counter()
 
         # cf. https://towardsdatascience.com/ivfpq-hnsw-for-billion-scale-similarity-search-89ff2f89d90e#9718
@@ -91,30 +98,41 @@ def deduplicate(file, savepath, cpu=True):
 
         # Create the index.
         coarse_quantizer = faiss.IndexHNSWFlat(d, M)
-        if cpu:
-            index = faiss.IndexIVFPQ(coarse_quantizer, d, nlist, nsegment, nbit)
+        if gpu:
+            click.echo(f'Running with GPU')
+            index = faiss.GpuIndexIVFPQ(coarse_quantizer, d, nlist, nsegment, nbit)
         else:
-            index = faiss.GpuIndexIVFPQ()
+            index = faiss.IndexIVFPQ(coarse_quantizer, d, nlist, nsegment, nbit)
         # Run training to perform k-means clustering (xt are vectors used for training).
         index.train(csr[:40*nlist].todense().astype(np.float32))
 
         # Adding vectors to the index (xb are database vectors that are to be indexed).
-        for row in csr:
-            index.add(row.todense())
+        click.echo('Adding rows to index...')
+        batch_size = 10000
+        for sparse_vectors, ids in chunks(csr, ordered_ids, batch_size):
+            index.add_with_ids(sparse_vectors.todense().astype(np.float32), ids)
+        click.echo('Done adding rows to index')
 
         # Setting the number of partitions to search.
-        index.nprobe = 10
+        index.nprobe = 100
 
         # xq are query vectors, for which we need to search in xb to find the k nearest neighbors.
         # The search returns D, the pairwise distances, and I, the indices of the nearest neighbors.
-        D, I = index.search(csr[:100].todense(), 10)
+        for sparse_vectors, ids in chunks(csr, ordered_ids, batch_size):
+            D, I = index.search(sparse_vectors, 10)
+
+
+        savename = os.path.join(savepath, f'ids_{l}.pkl') 
+        with open(savename, 'wb') as f:
+            pickle.dump(ordered_ids, f)
+        savename = os.path.join(savepath, f'indices_{l}.pkl') 
         with open(savename, 'wb') as f:
             pickle.dump(I, f)
-        savename = os.path.join(savepath, 'distances.pkl') 
+        savename = os.path.join(savepath, f'distances_{l}.pkl') 
         with open(savename, 'wb') as f:
             pickle.dump(D, f)
         stop=perf_counter()
-        print(f'End FAISS: {stop-start:.2f}s elapsed')
+        click.echo(f'End FAISS: {stop-start:.2f}s elapsed')
 
 
 

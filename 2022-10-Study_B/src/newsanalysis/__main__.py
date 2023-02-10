@@ -14,8 +14,8 @@ from collections import Counter, defaultdict
 @click.group()
 @click.pass_context
 @click.option('--debug/--no-debug', default=False)
-@click.option('--cpu', default=True)
-def cli(ctx, debug, cpu):
+@click.option('--gpu/--no-gpu', default=False)
+def cli(ctx, debug, gpu):
     """News Analysis package.
 
     """
@@ -23,7 +23,7 @@ def cli(ctx, debug, cpu):
 
     ctx.obj = {}
     ctx.obj['DEBUG'] = debug
-    ctx.obj['CPU'] = cpu
+    ctx.obj['GPU'] = gpu
 
 @cli.command()
 @click.argument('file')
@@ -295,23 +295,10 @@ def duplicate_check(ctx, file, savepath, threshold = 0.9):
     Returns:
         _type_: _description_
     """
-    print(f'threshold: {threshold}')
-    print(f'Savepath: {savepath}')
-    newsanalysis.data_utils.deduplicate(file, savepath, cpu=ctx.obj['CPU'])
-    print('done')
-    # indices_to_discard = set()
-    # print('process similarity matrix...')
-    # for index, row in enumerate(returned_mat):
-    #     for k in np.where(row[index:] > threshold)[0]:
-    #         indices_to_discard.add(k+index)
-    # print(len(indices_to_discard))
-    # savename = os.path.join(savepath, 'indices.pkl')
-    # with open(savename, 'wb') as f:
-    #     pickle.dump(I, f)
-    # savename = os.path.join(savepath, 'distances.pkl') 
-    # with open(savename, 'wb') as f:
-    #     pickle.dump(D, f)
-    # return None
+    click.echo(f'threshold: {threshold}')
+    click.echo(f'Savepath: {savepath}')
+    newsanalysis.data_utils.deduplicate(file, savepath, cpu=ctx.obj['GPU'])
+    click.echo('done')
 
 if __name__ == '__main__':
     cli()
