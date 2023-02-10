@@ -109,7 +109,7 @@ def deduplicate(file, savepath, gpu=False):
         logger.info('Adding rows to index...')
         batch_size = 10000
         for sparse_vectors, ids in chunks(csr, ordered_ids, batch_size):
-            index.add_with_ids(sparse_vectors.todense().astype(np.float32), ids)
+            index.add_with_ids(sparse_vectors.todense().astype(np.float32), np.array(ids))
         logger.info('Done adding rows to index')
 
         # Setting the number of partitions to search.
