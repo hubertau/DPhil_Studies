@@ -297,7 +297,8 @@ def duplicate_check(ctx, file, savepath, threshold = 0.9):
     """
     click.echo(f'threshold: {threshold}')
     click.echo(f'Savepath: {savepath}')
-    newsanalysis.data_utils.deduplicate(file, savepath, cpu=ctx.obj['GPU'])
+    click.echo(f'GPU flag is {ctx.obj["GPU"]}')
+    newsanalysis.data_utils.deduplicate(file, savepath, gpu=ctx.obj['GPU'])
     click.echo('done')
 
 if __name__ == '__main__':

@@ -5,6 +5,7 @@ Script to preprocess obtained and enriched MediaCloud data. The enriching steps 
 * remove stories that contain irrelevant information
 * remove irrelevant stories
     * this might be with, e.g. words that often indicate excluion: 'SUMMARY:' etc.
+    * BERTopic?
 
 '''
 
