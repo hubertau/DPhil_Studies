@@ -118,7 +118,7 @@ def deduplicate(file, savepath, gpu=False):
         # xq are query vectors, for which we need to search in xb to find the k nearest neighbors.
         # The search returns D, the pairwise distances, and I, the indices of the nearest neighbors.
         for sparse_vectors, ids in chunks(csr, ordered_ids, batch_size):
-            D, I = index.search(sparse_vectors, 10)
+            D, I = index.search(sparse_vectors.todense().astype(np.float32), 10)
 
 
         savename = os.path.join(savepath, f'ids_{l}.pkl') 
