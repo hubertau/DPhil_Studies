@@ -14,7 +14,8 @@ from collections import Counter, defaultdict
 @click.group()
 @click.pass_context
 @click.option('--debug/--no-debug', default=False)
-def cli(ctx, debug):
+@click.option('--cpu', default=True)
+def cli(ctx, debug, cpu):
     """News Analysis package.
 
     """
@@ -22,6 +23,7 @@ def cli(ctx, debug):
 
     ctx.obj = {}
     ctx.obj['DEBUG'] = debug
+    ctx.obj['CPU'] = cpu
 
 @cli.command()
 @click.argument('file')
@@ -280,10 +282,11 @@ def consolidate(ctx, glob_command, outfile):
                     writer.write(story)
 
 @cli.command()
+@click.pass_context
 @click.argument('file')
 @click.argument('savepath')
 @click.option('--threshold',default=0.9)
-def duplicate_check(file, savepath, threshold = 0.9):
+def duplicate_check(ctx, file, savepath, threshold = 0.9):
     """Deducplication. Given an ENRICHED file, generate a similarity matrix on a bag-of-words representation
 
     Args:
@@ -293,21 +296,22 @@ def duplicate_check(file, savepath, threshold = 0.9):
         _type_: _description_
     """
     print(f'threshold: {threshold}')
-    newsanalysis.data_utils.deduplicate(file)
-
+    print(f'Savepath: {savepath}')
+    newsanalysis.data_utils.deduplicate(file, savepath, cpu=ctx.obj['CPU'])
+    print('done')
     # indices_to_discard = set()
     # print('process similarity matrix...')
     # for index, row in enumerate(returned_mat):
     #     for k in np.where(row[index:] > threshold)[0]:
     #         indices_to_discard.add(k+index)
     # print(len(indices_to_discard))
-    savename = os.path.join(savepath, 'indices.pkl')
-    with open(savename, 'wb') as f:
-        pickle.dump(I, f)
-    savename = os.path.join(savepath, 'distances.pkl') 
-    with open(savename, 'wb') as f:
-        pickle.dump(D, f)
-    return None
+    # savename = os.path.join(savepath, 'indices.pkl')
+    # with open(savename, 'wb') as f:
+    #     pickle.dump(I, f)
+    # savename = os.path.join(savepath, 'distances.pkl') 
+    # with open(savename, 'wb') as f:
+    #     pickle.dump(D, f)
+    # return None
 
 if __name__ == '__main__':
     cli()

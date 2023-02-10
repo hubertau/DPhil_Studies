@@ -10,6 +10,7 @@ Script to preprocess obtained and enriched MediaCloud data. The enriching steps 
 
 import numpy as np
 import pandas as pd
+import os
 import jsonlines
 from time import perf_counter
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
@@ -44,7 +45,7 @@ def story_iter(file, only_text = True, match_list = None):
                 else:
                     yield story_id
 
-def deduplicate(file):
+def deduplicate(file, savepath, cpu=True):
     '''Return dict of story ids and their duplicates'''
 
     df = retrieve_story_and_lang(file)
@@ -56,6 +57,8 @@ def deduplicate(file):
     grouped = df.groupby('lang').apply(lambda x: x['id'].unique())
 
     for l in df['lang'].unique():
+        if l != 'en':
+            break
         print(f'Processing {l}')
         m_list = grouped.loc[l]
         print(len(m_list))
@@ -70,16 +73,46 @@ def deduplicate(file):
         t1_stop = perf_counter()
         print(f'end fit transform. Seconds taken: {t1_stop-t1_start:.2f}') 
 
+        with open(os.path.join(savepath, 'csr.pkl'), 'wb') as f:
+            pickle.dump(csr, f)
+
         print(f'Shape: {csr.shape}')
 
         print('Starting FAISS')
         start=perf_counter()
-        index = faiss.IndexFlatIP(dim)
-        #add the rows of the dataframe into Faiss
-        index.add(csr)
 
-        k = csr.shape[0]
-        D, I = index.search(csr, k) 
+        # cf. https://towardsdatascience.com/ivfpq-hnsw-for-billion-scale-similarity-search-89ff2f89d90e#9718
+
+        d = 10000        # Dimension (length) of vectors.
+        M = 32         # Number of connections that would be made for each new vertex during HNSW construction.
+        nlist = 10000  # Number of inverted lists (number of partitions or cells).
+        nsegment = 16  # Number of segments for product quantization (number of subquantizers).
+        nbit = 8       # Number of bits to encode each segment.
+
+        # Create the index.
+        coarse_quantizer = faiss.IndexHNSWFlat(d, M)
+        if cpu:
+            index = faiss.IndexIVFPQ(coarse_quantizer, d, nlist, nsegment, nbit)
+        else:
+            index = faiss.GpuIndexIVFPQ()
+        # Run training to perform k-means clustering (xt are vectors used for training).
+        index.train(csr[:40*nlist].todense().astype(np.float32))
+
+        # Adding vectors to the index (xb are database vectors that are to be indexed).
+        for row in csr:
+            index.add(row.todense())
+
+        # Setting the number of partitions to search.
+        index.nprobe = 10
+
+        # xq are query vectors, for which we need to search in xb to find the k nearest neighbors.
+        # The search returns D, the pairwise distances, and I, the indices of the nearest neighbors.
+        D, I = index.search(csr[:100].todense(), 10)
+        with open(savename, 'wb') as f:
+            pickle.dump(I, f)
+        savename = os.path.join(savepath, 'distances.pkl') 
+        with open(savename, 'wb') as f:
+            pickle.dump(D, f)
         stop=perf_counter()
         print(f'End FAISS: {stop-start:.2f}s elapsed')
 
