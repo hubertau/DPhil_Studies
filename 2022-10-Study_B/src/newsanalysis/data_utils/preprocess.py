@@ -13,10 +13,15 @@ import numpy as np
 import pandas as pd
 import os
 from loguru import logger
+from bertopic import BERTopic
+from bertopic.vectorizers import ClassTfidfTransformer
+from sentence_transformers import SentenceTransformer
+from umap import UMAP
+from hdbscan import HDBSCAN
+import pandas as pd
 import jsonlines
 from time import perf_counter
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 import faiss
 import h5py
 
@@ -91,7 +96,7 @@ def deduplicate(file, savepath, gpu=False):
 
         d = 10000       # Dimension (length) of vectors.
         M = 32         # Number of connections that would be made for each new vertex during HNSW construction.
-        nlist = max(10000, int(np.floor(csr.shape[0]/2)))  # Number of inverted lists (number of partitions or cells).
+        nlist = min(10000, int(np.floor(csr.shape[0]/2)))  # Number of inverted lists (number of partitions or cells).
         nsegment = 16  # Number of segments for product quantization (number of subquantizers).
         nbit = 8       # Number of bits to encode each segment.
 
@@ -185,4 +190,47 @@ def deduplicate(file, savepath, gpu=False):
     # # similarity by faiss
 
 
-    # return unique_ids, D, I
+    # return unique_ids, D, Inlist
+
+def filter_by_cluster(file):
+
+    # Step 1 - Extract embeddings.
+    embedding_model = SentenceTransformer("xlm-roberta-large")
+
+    # Step 2 - Reduce dimensionality.
+    umap_model = UMAP(
+        n_neighbors=15,
+        n_components=5,
+        min_dist=0.0,
+        metric='cosine',
+        random_state=42
+    )
+
+    # Step 3 - Cluster reduced embeddings.
+    hdbscan_model = HDBSCAN(min_cluster_size=15, metric='euclidean', cluster_selection_method='eom', prediction_data=True)
+
+    # Step 4 - Tokenize topics.
+    vectorizer_model = CountVectorizer(stop_words="english")
+
+    # Step 5 - Create topic representation.
+    ctfidf_model = ClassTfidfTransformer()
+
+    topic_model = BERTopic(
+        language='english', # Set to 'multilingual' for datasets with languages other than English.
+        top_n_words=10,
+        n_gram_range=(1, 1),
+        min_topic_size=10,
+        nr_topics=None,
+        low_memory=False,
+        calculate_probabilities=True, # The probabilities of all topics per document.
+        diversity=None,
+        seed_topic_list=None, # Like CorEx
+        embedding_model=embedding_model,
+        umap_model=umap_model,
+        hdbscan_model=hdbscan_model,
+        vectorizer_model=vectorizer_model,
+        ctfidf_model=ctfidf_model,
+        verbose=False
+    )
+
+    topics, probs = topic_model.fit_transform(docs) # Fit the model and predict documents.
