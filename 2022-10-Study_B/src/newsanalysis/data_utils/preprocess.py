@@ -91,7 +91,7 @@ def deduplicate(file, savepath, gpu=False):
 
         d = 10000       # Dimension (length) of vectors.
         M = 32         # Number of connections that would be made for each new vertex during HNSW construction.
-        nlist = 10000  # Number of inverted lists (number of partitions or cells).
+        nlist = max(10000, int(np.floor(csr.shape[0]/2)))  # Number of inverted lists (number of partitions or cells).
         nsegment = 16  # Number of segments for product quantization (number of subquantizers).
         nbit = 8       # Number of bits to encode each segment.
 
@@ -108,7 +108,7 @@ def deduplicate(file, savepath, gpu=False):
                 index
             )
         # Run training to perform k-means clustering (xt are vectors used for training).
-        index.train(csr[:40*nlist].todense().astype(np.float32))
+        index.train(csr[:min(40*nlist, csr.shape[0])].todense().astype(np.float32))
 
         # Adding vectors to the index (xb are database vectors that are to be indexed).
         logger.info('Adding rows to index...')
