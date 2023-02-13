@@ -118,7 +118,7 @@ def deduplicate(file, savepath, gpu=False):
         # Adding vectors to the index (xb are database vectors that are to be indexed).
         logger.info('Adding rows to index...')
         batch_size = 10000
-        for sparse_vectors, ids in chunks(csr, ordered_ids, batch_size):
+        for _, sparse_vectors, ids in chunks(csr, ordered_ids, batch_size):
             index.add_with_ids(sparse_vectors.todense().astype(np.float32), ids)
         logger.info('Done adding rows to index')
 
@@ -207,16 +207,23 @@ def filter_by_cluster(file):
     )
 
     # Step 3 - Cluster reduced embeddings.
-    hdbscan_model = HDBSCAN(min_cluster_size=15, metric='euclidean', cluster_selection_method='eom', prediction_data=True)
+    hdbscan_model = HDBSCAN(
+        min_cluster_size=15,
+        metric='euclidean',
+        cluster_selection_method='eom',
+        prediction_data=True
+    )
 
     # Step 4 - Tokenize topics.
-    vectorizer_model = CountVectorizer(stop_words="english")
+    vectorizer_model = CountVectorizer(
+        stop_words="english"
+    )
 
     # Step 5 - Create topic representation.
     ctfidf_model = ClassTfidfTransformer()
 
     topic_model = BERTopic(
-        language='english', # Set to 'multilingual' for datasets with languages other than English.
+        language='multilingual', # Set to 'multilingual' for datasets with languages other than English.
         top_n_words=10,
         n_gram_range=(1, 1),
         min_topic_size=10,
