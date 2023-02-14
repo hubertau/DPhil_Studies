@@ -30,8 +30,8 @@ from newsanalysis.dataviz.plots import retrieve_story_lens, retrieve_story_and_l
 def chunks(iter1, iter2, n):
     """Yield successive n-sized chunks from iter1 and iter2."""
     assert iter1.shape[0] == iter2.shape[0]
-    for i in range(0, iter1.shape[0], n):
-        yield (i, iter1[i:i + n], iter2[i:i + n])
+    for i, e in enumerate(range(0, iter1.shape[0], n)):
+        yield (i, iter1[e:e + n], iter2[e:e + n])
 
 def unique_story_ids(file):
     '''Get unique story ids from jsonl file'''
@@ -69,6 +69,9 @@ def deduplicate(file, savepath, gpu=False):
     grouped = df.groupby('lang').apply(lambda x: x['id'].unique())
 
     for l in df['lang'].unique():
+        if l != 'zh':
+            logger.debug('TESTING WITH ZH')
+            continue
         logger.info(f'Processing {l}')
         m_list = grouped.loc[l]
         logger.info(len(m_list))
@@ -96,7 +99,7 @@ def deduplicate(file, savepath, gpu=False):
 
         d = 10000       # Dimension (length) of vectors.
         M = 32         # Number of connections that would be made for each new vertex during HNSW construction.
-        nlist = min(10000, int(np.floor(csr.shape[0]/2)))  # Number of inverted lists (number of partitions or cells).
+        nlist = min(10000, int(np.floor(csr.shape[0]/40)))  # Number of inverted lists (number of partitions or cells).
         nsegment = 16  # Number of segments for product quantization (number of subquantizers).
         nbit = 8       # Number of bits to encode each segment.
 
@@ -129,8 +132,10 @@ def deduplicate(file, savepath, gpu=False):
         # The search returns D, the pairwise distances, and I, the indices of the nearest neighbors.
         k = 10
         D = np.zeros((csr.shape[0],k))
+        logger.debug(f'Shape of D and I is {D.shape}')
         I = np.zeros((csr.shape[0],k))
         for num, sparse_vectors, ids in chunks(csr, ordered_ids, batch_size):
+            logger.debug(f'{num}, {D[num*batch_size:num*batch_size+batch_size,:].shape}')
             D[num*batch_size:num*batch_size+batch_size,:], I[num*batch_size:num*batch_size+batch_size,:] = index.search(sparse_vectors.todense().astype(np.float32), k)
 
         savename = os.path.join(savepath, f'results_{"gpu" if gpu else "cpu"}.hdf5') 
