@@ -60,10 +60,17 @@ def story_iter(file, only_text = True, match_list = None):
 def deduplicate(file, savepath, gpu=False):
     '''Return dict of story ids and their duplicates'''
 
-    df = retrieve_story_and_lang(file)
-    dim=10000
+    # define params
+    d = 10000       # Dimension (length) of vectors.
+    M = 32         # Number of connections that would be made for each new vertex during HNSW construction.
+    nlist = min(10000, int(np.floor(csr.shape[0]/40)))  # Number of inverted lists (number of partitions or cells).
+    nsegment = 16  # Number of segments for product quantization (number of subquantizers).
+    nbit = 8       # Number of bits to encode each segment.
+    nprobe = 100  # number of clusters to probe
+    batch_size = 10000 # batch size with which to cycle through vectors.
+    k = 10 # number of nearest neighbours
 
-    # unique_ids = list(story_iter(file, only_text=False))
+    df = retrieve_story_and_lang(file)
 
     # Process by language
     grouped = df.groupby('lang').apply(lambda x: x['id'].unique())
@@ -76,7 +83,7 @@ def deduplicate(file, savepath, gpu=False):
         vectorizer = TfidfVectorizer(
             analyzer='word',
             norm='l2',
-            max_features=dim
+            max_features=d
         )
         logger.info('start fit transform')
         t1_start = perf_counter()
@@ -94,11 +101,6 @@ def deduplicate(file, savepath, gpu=False):
 
         # cf. https://towardsdatascience.com/ivfpq-hnsw-for-billion-scale-similarity-search-89ff2f89d90e#9718
 
-        d = 10000       # Dimension (length) of vectors.
-        M = 32         # Number of connections that would be made for each new vertex during HNSW construction.
-        nlist = min(10000, int(np.floor(csr.shape[0]/40)))  # Number of inverted lists (number of partitions or cells).
-        nsegment = 16  # Number of segments for product quantization (number of subquantizers).
-        nbit = 8       # Number of bits to encode each segment.
 
         # Create the index.
         coarse_quantizer = faiss.IndexHNSWFlat(d, M)
@@ -117,17 +119,16 @@ def deduplicate(file, savepath, gpu=False):
 
         # Adding vectors to the index (xb are database vectors that are to be indexed).
         logger.info('Adding rows to index...')
-        batch_size = 10000
+        
         for _, sparse_vectors, ids in chunks(csr, ordered_ids, batch_size):
             index.add_with_ids(sparse_vectors.todense().astype(np.float32), ids)
         logger.info('Done adding rows to index')
 
         # Setting the number of partitions to search.
-        index.nprobe = 100
+        index.nprobe = nprobe
 
         # xq are query vectors, for which we need to search in xb to find the k nearest neighbors.
         # The search returns D, the pairwise distances, and I, the indices of the nearest neighbors.
-        k = 10
         D = np.zeros((csr.shape[0],k))
         I = np.zeros((csr.shape[0],k))
         logger.debug(f'Shape of D and I is {D.shape}')
@@ -135,8 +136,27 @@ def deduplicate(file, savepath, gpu=False):
             logger.debug(f'{num}, {D[num*batch_size:num*batch_size+batch_size,:].shape}')
             D[num*batch_size:num*batch_size+batch_size,:], I[num*batch_size:num*batch_size+batch_size,:] = index.search(sparse_vectors.todense().astype(np.float32), k)
 
+
+        # d = 10000       # Dimension (length) of vectors.
+        # M = 32         # Number of connections that would be made for each new vertex during HNSW construction.
+        # nlist = min(10000, int(np.floor(csr.shape[0]/40)))  # Number of inverted lists (number of partitions or cells).
+        # nsegment = 16  # Number of segments for product quantization (number of subquantizers).
+        # nbit = 8       # Number of bits to encode each segment.
+        # nprobe = 100  # number of clusters to probe
+        # batch_size = 10000 # batch size with which to cycle through vectors.
+        # k = 10 # number of nearest neighbours
+
         savename = os.path.join(savepath, f'deduplicate_{"gpu" if gpu else "cpu"}.hdf5') 
         with h5py.File(savename, 'a') as f:
+            f.attrs['d']          = d
+            f.attrs['M']          = M
+            f.attrs['nlist']      = nlist
+            f.attrs['nsegment']   = nsegment
+            f.attrs['nbit']       = 8
+            f.attrs['nprobe']     = 100
+            f.attrs['batch_size'] = batch_size
+            f.attrs['k']          = k
+
             g = f.require_group(l)
             # clear previous datasets:
             for dsetname in ['D', 'I', 'ids']:
@@ -145,46 +165,9 @@ def deduplicate(file, savepath, gpu=False):
             g.create_dataset('D', data=D)
             g.create_dataset('I', data=I)
             g.create_dataset('ids', data=ordered_ids)
+
         stop=perf_counter()
         logger.info(f'End FAISS: {stop-start:.2f}s elapsed')
-
-
-
-    # print('start fit transform')
-    # t1_start = perf_counter()
-    # csr = vectorizer.fit_transform(story_iter(file))
-    # t1_stop = perf_counter()
-    # print(f'end fit transform. Seconds taken: {t1_stop-t1_start:.2f}')
-
-    # with open('/home/hubert/DPhil_Studies/2022-10-Study_B/data/03_processed/csr.pkl', 'wb') as f:
-    #     pickle.dump(csr, f)
-
-    # # assert len(unique_ids) == csr.shape[0]
-
-    # dim = csr.shape[1]
-    # print(csr.shape)
-
-    # # print(f'Calculating similarity...')
-    # # sim_matrix = cosine_similarity(csr)
-    # # print('Similarity calculated')
-
-    # # array1 = np.random.random((csr.shape[0], dimension)).astype('float32')
-
-    # print('Starting FAISS')
-    # start=perf_counter()
-    # index = faiss.IndexFlatIP(dim)
-    # #add the rows of the dataframe into Faiss
-    # index.add(csr)
-
-    # k = csr.shape[0]
-    # D, I = index.search(csr, k) 
-    # stop=perf_counter()
-    # print(f'End FAISS: {stop-start:.2f}s elapsed')
-
-    # # similarity by faiss
-
-
-    # return unique_ids, D, Inlist
 
 def filter_by_cluster(file):
 
