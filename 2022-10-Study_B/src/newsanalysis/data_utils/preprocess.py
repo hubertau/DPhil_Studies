@@ -103,6 +103,7 @@ def deduplicate(file, savepath, gpu=False):
 
         # Create the index.
         coarse_quantizer = faiss.IndexHNSWFlat(d, M)
+        nlist = min(10000, int(np.floor(csr.shape[0]/40)))  # Number of inverted lists (number of partitions or cells).
         index = faiss.IndexIVFPQ(coarse_quantizer, d, nlist, nsegment, nbit)
         if gpu:
             # declare GPU resource
@@ -114,7 +115,6 @@ def deduplicate(file, savepath, gpu=False):
                 index
             )
         # Run training to perform k-means clustering (xt are vectors used for training).
-        nlist = min(10000, int(np.floor(csr.shape[0]/40)))  # Number of inverted lists (number of partitions or cells).
         index.train(csr[:min(40*nlist, csr.shape[0])].todense().astype(np.float32))
 
         # Adding vectors to the index (xb are database vectors that are to be indexed).
