@@ -69,9 +69,6 @@ def deduplicate(file, savepath, gpu=False):
     grouped = df.groupby('lang').apply(lambda x: x['id'].unique())
 
     for l in df['lang'].unique():
-        if l != 'zh':
-            logger.debug('TESTING WITH ZH')
-            continue
         logger.info(f'Processing {l}')
         m_list = grouped.loc[l]
         logger.info(len(m_list))
@@ -132,13 +129,13 @@ def deduplicate(file, savepath, gpu=False):
         # The search returns D, the pairwise distances, and I, the indices of the nearest neighbors.
         k = 10
         D = np.zeros((csr.shape[0],k))
-        logger.debug(f'Shape of D and I is {D.shape}')
         I = np.zeros((csr.shape[0],k))
+        logger.debug(f'Shape of D and I is {D.shape}')
         for num, sparse_vectors, ids in chunks(csr, ordered_ids, batch_size):
             logger.debug(f'{num}, {D[num*batch_size:num*batch_size+batch_size,:].shape}')
             D[num*batch_size:num*batch_size+batch_size,:], I[num*batch_size:num*batch_size+batch_size,:] = index.search(sparse_vectors.todense().astype(np.float32), k)
 
-        savename = os.path.join(savepath, f'results_{"gpu" if gpu else "cpu"}.hdf5') 
+        savename = os.path.join(savepath, f'deduplicate_{"gpu" if gpu else "cpu"}.hdf5') 
         with h5py.File(savename, 'a') as f:
             g = f.require_group(l)
             # clear previous datasets:
@@ -148,14 +145,6 @@ def deduplicate(file, savepath, gpu=False):
             g.create_dataset('D', data=D)
             g.create_dataset('I', data=I)
             g.create_dataset('ids', data=ordered_ids)
-        # with open(savename, 'wb') as f:
-        #     pickle.dump(ordered_ids, f)
-        # savename = os.path.join(savepath, f'indices_{l}.pkl') 
-        # with open(savename, 'wb') as f:
-        #     pickle.dump(I, f)
-        # savename = os.path.join(savepath, f'distances_{l}.pkl') 
-        # with open(savename, 'wb') as f:
-        #     pickle.dump(D, f)
         stop=perf_counter()
         logger.info(f'End FAISS: {stop-start:.2f}s elapsed')
 
@@ -245,4 +234,4 @@ def filter_by_cluster(file):
         verbose=False
     )
 
-    topics, probs = topic_model.fit_transform(docs) # Fit the model and predict documents.
+    topics, probs = topic_model.fit_transform(None) # Fit the model and predict documents.

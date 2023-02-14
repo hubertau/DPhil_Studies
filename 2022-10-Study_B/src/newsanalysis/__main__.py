@@ -22,6 +22,9 @@ def cli(ctx, debug, gpu):
 
     """
     logger.info(f"Debug mode is {'on' if debug else 'off'}")
+    if not debug:
+        logger.remove()
+        logger.add(sys.stderr, level="INFO")
 
     ctx.obj = {}
     ctx.obj['DEBUG'] = debug
