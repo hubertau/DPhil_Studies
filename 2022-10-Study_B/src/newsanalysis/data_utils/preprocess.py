@@ -63,7 +63,6 @@ def deduplicate(file, savepath, gpu=False):
     # define params
     d = 10000       # Dimension (length) of vectors.
     M = 32         # Number of connections that would be made for each new vertex during HNSW construction.
-    nlist = min(10000, int(np.floor(csr.shape[0]/40)))  # Number of inverted lists (number of partitions or cells).
     nsegment = 16  # Number of segments for product quantization (number of subquantizers).
     nbit = 8       # Number of bits to encode each segment.
     nprobe = 100  # number of clusters to probe
@@ -115,6 +114,7 @@ def deduplicate(file, savepath, gpu=False):
                 index
             )
         # Run training to perform k-means clustering (xt are vectors used for training).
+        nlist = min(10000, int(np.floor(csr.shape[0]/40)))  # Number of inverted lists (number of partitions or cells).
         index.train(csr[:min(40*nlist, csr.shape[0])].todense().astype(np.float32))
 
         # Adding vectors to the index (xb are database vectors that are to be indexed).
@@ -150,7 +150,6 @@ def deduplicate(file, savepath, gpu=False):
         with h5py.File(savename, 'a') as f:
             f.attrs['d']          = d
             f.attrs['M']          = M
-            f.attrs['nlist']      = nlist
             f.attrs['nsegment']   = nsegment
             f.attrs['nbit']       = 8
             f.attrs['nprobe']     = 100
@@ -158,6 +157,7 @@ def deduplicate(file, savepath, gpu=False):
             f.attrs['k']          = k
 
             g = f.require_group(l)
+            g.attrs['nlist']      = nlist
             # clear previous datasets:
             for dsetname in ['D', 'I', 'ids']:
                 if dsetname in g.keys():
