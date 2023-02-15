@@ -16,6 +16,7 @@ from loguru import logger
 from bertopic import BERTopic
 from bertopic.vectorizers import ClassTfidfTransformer
 from sentence_transformers import SentenceTransformer
+from transformers import BertTokenizerFast
 from umap import UMAP
 from hdbscan import HDBSCAN
 import pandas as pd
@@ -74,6 +75,7 @@ def remove_redundant_ids(file, savepath):
 
 def deduplicate(file, savepath, gpu=False):
     '''Return dict of story ids and their duplicates'''
+    tokenizer = BertTokenizerFast.from_pretrained("sentence-transformers/LaBSE")
 
     # define params
     d = 10000       # Dimension (length) of vectors.
@@ -98,6 +100,7 @@ def deduplicate(file, savepath, gpu=False):
         vectorizer = TfidfVectorizer(
             analyzer='word',
             norm='l2',
+            tokenizer=tokenizer,
             max_features=d
         )
         logger.info('start fit transform')
@@ -125,6 +128,7 @@ def deduplicate(file, savepath, gpu=False):
             potential_nlist = csr.shape[0]
         nlist = min(10000, potential_nlist)  # Number of inverted lists (number of partitions or cells).
         logger.info(f'nlist is {nlist}')
+        # N.B. https://github.com/facebookresearch/faiss/wiki/FAQ#can-i-ignore-warning-clustering-xxx-points-to-yyy-centroids 
         if nprobe > nlist:
             logger.info('nprobe was greater than nlist. set to equal.')
             nprobe = nlist
