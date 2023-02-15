@@ -10,6 +10,8 @@ Script to preprocess obtained and enriched MediaCloud data. The enriching steps 
 '''
 
 import numpy as np
+import re
+import functools
 import pandas as pd
 import os
 from loguru import logger
@@ -19,6 +21,7 @@ from sentence_transformers import SentenceTransformer
 from transformers import BertTokenizerFast
 from umap import UMAP
 from hdbscan import HDBSCAN
+import pysbd
 import pandas as pd
 import jsonlines
 from time import perf_counter
@@ -73,6 +76,35 @@ def remove_redundant_ids(file, savepath):
                     present.add(story_id)
                     writer.write(story)
 
+def split_and_tokenize(string, lang, tok):
+    # cf. https://github.com/nipunsadvilkar/pySBD
+    if lang not in {'mr', 'kk', 'pl', 'bg', 'ru', 'ar', 'el', 'my', 'sk', 'zh', 'fa', 'ur', 'nl', 'hy', 'ja', 'fr', 'hi', 'de', 'it', 'am', 'en', 'es', 'da'}:
+        seg = pysbd.Segmenter(language = 'en')
+    else:
+        seg = pysbd.Segmenter(language = lang)
+    segmented = seg.segment(string)
+    # span = 10
+    final_segmented = []
+    for sent in segmented:
+        if len(sent) < 510:
+            final_segmented.append(sent)
+        else:
+            words = sent.split(' ')
+            if not all([len(i) < 510 for i in words]):
+                words = re.split('[ ，,"]', sent)
+            # if STILL not possible, just split into chunks:
+            if not all([len(i) < 510 for i in words]):
+                logger.warning('Brute force splitting carried out')
+                words = list([sent[i:i+500] for i in range(0, len(sent), 500)])
+            final_segmented = final_segmented + words
+                # final_segmented = final_segmented + ["-".join(words[i:i+span]) for i in range(0, len(words), span)]
+    to_return = []
+    for sent in final_segmented:
+        if len(sent) > 510:
+            logger.warning(sent)
+        to_return = to_return + tok.tokenize(sent)
+    return to_return
+
 def deduplicate(file, savepath, gpu=False):
     '''Return dict of story ids and their duplicates'''
     tokenizer = BertTokenizerFast.from_pretrained("sentence-transformers/LaBSE")
@@ -91,16 +123,19 @@ def deduplicate(file, savepath, gpu=False):
     grouped = df.groupby('lang').apply(lambda x: x['id'].unique())
 
     for l in df['lang'].unique():
+        if l != 'zh':
+            continue
         logger.info(f'Processing {l}')
         m_list = grouped.loc[l]
         logger.info(len(m_list))
         ordered_ids = np.array(list(story_iter(file, only_text = False, match_list=m_list)))
         if len(ordered_ids) != len(m_list):
             logger.warning('Length of ordered ids and match list not equal. Have you deduplicated by removing redundant story ids?')
+        custom_tok = functools.partial(split_and_tokenize, lang=l, tok=tokenizer)
         vectorizer = TfidfVectorizer(
             analyzer='word',
             norm='l2',
-            tokenizer=tokenizer,
+            tokenizer=custom_tok,
             max_features=d
         )
         logger.info('start fit transform')
@@ -163,16 +198,6 @@ def deduplicate(file, savepath, gpu=False):
         for num, sparse_vectors, ids in chunks(csr, ordered_ids, batch_size):
             logger.debug(f'{num}, {D[num*batch_size:num*batch_size+batch_size,:].shape}')
             D[num*batch_size:num*batch_size+batch_size,:], I[num*batch_size:num*batch_size+batch_size,:] = index.search(sparse_vectors.todense().astype(np.float32), k)
-
-
-        # d = 10000       # Dimension (length) of vectors.
-        # M = 32         # Number of connections that would be made for each new vertex during HNSW construction.
-        # nlist = min(10000, int(np.floor(csr.shape[0]/40)))  # Number of inverted lists (number of partitions or cells).
-        # nsegment = 16  # Number of segments for product quantization (number of subquantizers).
-        # nbit = 8       # Number of bits to encode each segment.
-        # nprobe = 100  # number of clusters to probe
-        # batch_size = 10000 # batch size with which to cycle through vectors.
-        # k = 10 # number of nearest neighbours
 
         savename = os.path.join(savepath, f'deduplicate_{"gpu" if gpu else "cpu"}.hdf5') 
         with h5py.File(savename, 'a') as f:
