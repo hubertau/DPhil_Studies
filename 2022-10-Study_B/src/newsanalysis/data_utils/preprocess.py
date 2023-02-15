@@ -80,7 +80,6 @@ def deduplicate(file, savepath, gpu=False):
     M = 32         # Number of connections that would be made for each new vertex during HNSW construction.
     nsegment = 16  # Number of segments for product quantization (number of subquantizers).
     nbit = 8       # Number of bits to encode each segment.
-    nprobe = 100  # number of clusters to probe
     batch_size = 10000 # batch size with which to cycle through vectors.
     k = 10 # number of nearest neighbours
 
@@ -119,8 +118,16 @@ def deduplicate(file, savepath, gpu=False):
 
 
         # Create the index.
+        nprobe = 100  # number of clusters to probe
         coarse_quantizer = faiss.IndexHNSWFlat(d, M)
-        nlist = min(10000, int(np.floor(csr.shape[0]/40)))  # Number of inverted lists (number of partitions or cells).
+        potential_nlist = int(np.floor(csr.shape[0]/40))
+        if potential_nlist == 0:
+            potential_nlist = csr.shape[0]
+        nlist = min(10000, potential_nlist)  # Number of inverted lists (number of partitions or cells).
+        logger.info(f'nlist is {nlist}')
+        if nprobe > nlist:
+            logger.info('nprobe was greater than nlist. set to equal.')
+            nprobe = nlist
         index = faiss.IndexIVFPQ(coarse_quantizer, d, nlist, nsegment, nbit)
         if gpu:
             # declare GPU resource
