@@ -290,6 +290,13 @@ def consolidate(ctx, glob_command, outfile):
 @click.pass_context
 @click.argument('file')
 @click.argument('savepath')
+def remove_redundant_ids(ctx, file, savepath):
+    newsanalysis.data_utils.remove_redundant_ids(file, savepath)
+
+@cli.command()
+@click.pass_context
+@click.argument('file')
+@click.argument('savepath')
 @click.option('--threshold',default=0.9)
 def duplicate_check(ctx, file, savepath, threshold = 0.9):
     """Deducplication. Given an ENRICHED file, generate a similarity matrix on a bag-of-words representation

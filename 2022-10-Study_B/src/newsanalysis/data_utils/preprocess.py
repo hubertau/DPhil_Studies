@@ -57,6 +57,21 @@ def story_iter(file, only_text = True, match_list = None):
                 else:
                     yield story_id
 
+def remove_redundant_ids(file, savepath):
+    logger.info('Removing duplicate stories by id. Keep the first one')
+    logger.info(f'Input file is {file}')
+    logger.info(f'Output file is {savepath}')
+    present = set()
+    with jsonlines.open(file, 'r') as reader:
+        with jsonlines.open(savepath, 'w') as writer:
+            for story in reader.iter(skip_empty=True, skip_invalid=True):
+                if 'query' in story:
+                    writer.write(story)
+                story_id = story.get('processed_stories_id')
+                if story_id not in present:
+                    present.add(story_id)
+                    writer.write(story)
+
 def deduplicate(file, savepath, gpu=False):
     '''Return dict of story ids and their duplicates'''
 
@@ -79,6 +94,8 @@ def deduplicate(file, savepath, gpu=False):
         m_list = grouped.loc[l]
         logger.info(len(m_list))
         ordered_ids = np.array(list(story_iter(file, only_text = False, match_list=m_list)))
+        if len(ordered_ids) != len(m_list):
+            logger.warning('Length of ordered ids and match list not equal. Have you deduplicated by removing redundant story ids?')
         vectorizer = TfidfVectorizer(
             analyzer='word',
             norm='l2',
@@ -88,10 +105,10 @@ def deduplicate(file, savepath, gpu=False):
         t1_start = perf_counter()
         csr = vectorizer.fit_transform(story_iter(file, match_list=m_list))
         t1_stop = perf_counter()
+        # fix d not matching for low vocabulary
+        if csr.shape[1] < d:
+            d = csr.shape[1]
         logger.info(f'end fit transform. Seconds taken: {t1_stop-t1_start:.2f}') 
-
-        # with open(os.path.join(savepath, 'csr.pkl'), 'wb') as f:
-            # pickle.dump(csr, f)
 
         logger.info(f'Shape: {csr.shape}')
 
