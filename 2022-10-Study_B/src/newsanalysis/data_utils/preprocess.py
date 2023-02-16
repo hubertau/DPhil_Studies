@@ -132,6 +132,9 @@ def deduplicate(file, savepath, gpu=False):
         logger.info(f'Processing {l}')
         m_list = grouped.loc[l]
         logger.info(len(m_list))
+        if len(m_list) < 256:
+            logger.info('Cannot cluster below 256 due to IVFPQ. Continuing...')
+            continue
         ordered_ids = np.array(list(story_iter(file, only_text = False, match_list=m_list)))
         if len(ordered_ids) != len(m_list):
             logger.warning('Length of ordered ids and match list not equal. Have you deduplicated by removing redundant story ids?')
