@@ -126,7 +126,7 @@ def deduplicate(file, savepath, gpu=False):
     grouped = df.groupby('lang').apply(lambda x: x['id'].unique())
 
     for l in df['lang'].unique():
-        d = 10000       # Dimension (length) of vectors.
+        d = 10240       # Dimension (length) of vectors.
         # if l == 'en':
             # continue
         logger.info(f'Processing {l}')
