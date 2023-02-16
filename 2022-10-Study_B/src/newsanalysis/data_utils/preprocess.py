@@ -76,38 +76,63 @@ def remove_redundant_ids(file, savepath):
                     present.add(story_id)
                     writer.write(story)
 
-def split_and_tokenize(string, lang, tok):
+def build_en_tokenizer(token_pattern=r"\b\w\w+\b"):
+    """Return a function that splits a string into a sequence of tokens.
+    Returns
+    -------
+    tokenizer: callable
+            A function to split a string into a sequence of tokens.
+    """
+    token_pattern = re.compile(token_pattern)
+    return token_pattern.findall
+
+
+def split_and_tokenize(string, lang, tok, en_tok):
     # cf. https://github.com/nipunsadvilkar/pySBD
-    if lang not in {'mr', 'kk', 'pl', 'bg', 'ru', 'ar', 'el', 'my', 'sk', 'zh', 'fa', 'ur', 'nl', 'hy', 'ja', 'fr', 'hi', 'de', 'it', 'am', 'en', 'es', 'da'}:
-        seg = pysbd.Segmenter(language = 'en')
-    else:
-        seg = pysbd.Segmenter(language = lang)
-    segmented = seg.segment(string)
+    # if lang not in {'mr', 'kk', 'pl', 'bg', 'ru', 'ar', 'el', 'my', 'sk', 'zh', 'fa', 'ur', 'nl', 'hy', 'ja', 'fr', 'hi', 'de', 'it', 'am', 'en', 'es', 'da'}:
+    #     seg = pysbd.Segmenter(language = 'en')
+    # else:
+    #     seg = pysbd.Segmenter(language = lang)
+    # segmented = seg.segment(string)
     # span = 10
-    final_segmented = []
-    for sent in segmented:
-        if len(sent) < 510:
-            final_segmented.append(sent)
-        else:
-            words = sent.split(' ')
-            if not all([len(i) < 510 for i in words]):
-                words = re.split('[ ，,"]', sent)
-            # if STILL not possible, just split into chunks:
-            if not all([len(i) < 510 for i in words]):
-                logger.warning('Brute force splitting carried out')
-                words = list([sent[i:i+500] for i in range(0, len(sent), 500)])
-            final_segmented = final_segmented + words
-                # final_segmented = final_segmented + ["-".join(words[i:i+span]) for i in range(0, len(words), span)]
-    to_return = []
-    for sent in final_segmented:
-        if len(sent) > 510:
-            logger.warning(sent)
-        to_return = to_return + tok.tokenize(sent)
-    return to_return
+    # final_segmented = []
+    # # for sent in segmented:
+    # #     if len(sent) < 510:
+    # #         final_segmented.append(sent)
+    # #     else:
+    #         # words = sent.split(' ')
+    #         # if not all([len(i) < 510 for i in words]):
+    # words = re.split('[ ，,".]', string)
+    #         # if STILL not possible, just split into chunks:
+    #         if not all([len(i) < 510 for i in words]):
+    #             logger.warning('Brute force splitting carried out')
+    #             words = list([sent[i:i+500] for i in range(0, len(sent), 500)])
+    #         final_segmented = final_segmented + words
+    #             # final_segmented = final_segmented + ["-".join(words[i:i+span]) for i in range(0, len(words), span)]
+
+
+    if lang == 'en':
+        return en_tok.findall(string)
+
+    else:
+        words = re.split('[ ，,".]', string)
+        to_return = []
+        for group in words:
+            if len(group) > 510:
+                logger.warning('Brute force applied')
+                group = list([group[i:i+500] for i in range(0, len(group), 500)])
+                for x in group:
+                    to_return.append(tok.tokenize(x))
+            else:
+                to_return.append(tok.tokenize(group))
+        # flatten
+        to_return = [item for sublist in to_return for item in sublist]
+        return to_return
 
 def deduplicate(file, savepath, gpu=False):
     '''Return dict of story ids and their duplicates'''
     tokenizer = BertTokenizerFast.from_pretrained("sentence-transformers/LaBSE")
+    en_tok    = build_en_tokenizer()
 
     # define params
     d = 10000       # Dimension (length) of vectors.
@@ -131,7 +156,7 @@ def deduplicate(file, savepath, gpu=False):
         ordered_ids = np.array(list(story_iter(file, only_text = False, match_list=m_list)))
         if len(ordered_ids) != len(m_list):
             logger.warning('Length of ordered ids and match list not equal. Have you deduplicated by removing redundant story ids?')
-        custom_tok = functools.partial(split_and_tokenize, lang=l, tok=tokenizer)
+        custom_tok = functools.partial(split_and_tokenize, lang=l, tok=tokenizer, en_tok=en_tok)
         vectorizer = TfidfVectorizer(
             analyzer='word',
             norm='l2',
@@ -182,7 +207,7 @@ def deduplicate(file, savepath, gpu=False):
 
         # Adding vectors to the index (xb are database vectors that are to be indexed).
         logger.info('Adding rows to index...')
-        
+
         for _, sparse_vectors, ids in chunks(csr, ordered_ids, batch_size):
             index.add_with_ids(sparse_vectors.todense().astype(np.float32), ids)
         logger.info('Done adding rows to index')
