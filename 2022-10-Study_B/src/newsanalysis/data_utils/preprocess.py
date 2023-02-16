@@ -114,7 +114,6 @@ def deduplicate(file, savepath, gpu=False):
     en_tok    = build_en_tokenizer()
 
     # define params
-    d = 10000       # Dimension (length) of vectors.
     M = 32         # Number of connections that would be made for each new vertex during HNSW construction.
     nsegment = 16  # Number of segments for product quantization (number of subquantizers).
     nbit = 8       # Number of bits to encode each segment.
@@ -127,6 +126,7 @@ def deduplicate(file, savepath, gpu=False):
     grouped = df.groupby('lang').apply(lambda x: x['id'].unique())
 
     for l in df['lang'].unique():
+        d = 10000       # Dimension (length) of vectors.
         # if l == 'en':
             # continue
         logger.info(f'Processing {l}')
