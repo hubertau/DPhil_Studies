@@ -90,10 +90,7 @@ def build_en_tokenizer(token_pattern=r"\b\w\w+\b"):
 def split_and_tokenize(string, lang, tok, en_tok):
     '''Custom tokenizer to handle the multiple languages for sklearn vectorizers. Models have a cap of 512 for input length.'''
 
-    if lang == 'en':
-        return en_tok.findall(string)
-
-    else:
+    if lang in ['zh', 'ja', 'ko', 'bn', 'hi', 'ta', 'gu', 'kn', 'te', 'ml', 'th', 'my', 'mr', 'vi', 'ne', 'lo', 'ur', 'si', 'or', 'ceb']:
         words = re.split('[ ，,".]', string)
         to_return = []
         for group in words:
@@ -107,6 +104,9 @@ def split_and_tokenize(string, lang, tok, en_tok):
         # flatten
         to_return = [item for sublist in to_return for item in sublist]
         return to_return
+    else:
+        return en_tok.findall(string)
+
 
 def deduplicate(file, savepath, gpu=False):
     '''Return dict of story ids and their duplicates'''
