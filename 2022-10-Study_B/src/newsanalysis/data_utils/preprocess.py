@@ -171,7 +171,11 @@ def deduplicate(file, savepath, gpu=False):
         if nprobe > nlist:
             logger.info('nprobe was greater than nlist. set to equal.')
             nprobe = nlist
-        index = faiss.IndexIVFPQ(coarse_quantizer, d, nlist, nsegment, nbit)
+        try:
+            index = faiss.IndexIVFPQ(coarse_quantizer, d, nlist, nsegment, nbit)
+        except:
+            logger.exception('Instantiating IndexIVFPQ Failed.')
+            continue
         if gpu:
             # declare GPU resource
             res = faiss.StandardGpuResources()
