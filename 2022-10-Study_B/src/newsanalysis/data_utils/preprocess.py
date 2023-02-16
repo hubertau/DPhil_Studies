@@ -105,7 +105,7 @@ def split_and_tokenize(string, lang, tok, en_tok):
         to_return = [item for sublist in to_return for item in sublist]
         return to_return
     else:
-        return en_tok.findall(string)
+        return en_tok(string)
 
 
 def deduplicate(file, savepath, gpu=False):
