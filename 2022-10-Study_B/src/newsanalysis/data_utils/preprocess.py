@@ -88,28 +88,7 @@ def build_en_tokenizer(token_pattern=r"\b\w\w+\b"):
 
 
 def split_and_tokenize(string, lang, tok, en_tok):
-    # cf. https://github.com/nipunsadvilkar/pySBD
-    # if lang not in {'mr', 'kk', 'pl', 'bg', 'ru', 'ar', 'el', 'my', 'sk', 'zh', 'fa', 'ur', 'nl', 'hy', 'ja', 'fr', 'hi', 'de', 'it', 'am', 'en', 'es', 'da'}:
-    #     seg = pysbd.Segmenter(language = 'en')
-    # else:
-    #     seg = pysbd.Segmenter(language = lang)
-    # segmented = seg.segment(string)
-    # span = 10
-    # final_segmented = []
-    # # for sent in segmented:
-    # #     if len(sent) < 510:
-    # #         final_segmented.append(sent)
-    # #     else:
-    #         # words = sent.split(' ')
-    #         # if not all([len(i) < 510 for i in words]):
-    # words = re.split('[ ，,".]', string)
-    #         # if STILL not possible, just split into chunks:
-    #         if not all([len(i) < 510 for i in words]):
-    #             logger.warning('Brute force splitting carried out')
-    #             words = list([sent[i:i+500] for i in range(0, len(sent), 500)])
-    #         final_segmented = final_segmented + words
-    #             # final_segmented = final_segmented + ["-".join(words[i:i+span]) for i in range(0, len(words), span)]
-
+    '''Custom tokenizer to handle the multiple languages for sklearn vectorizers. Models have a cap of 512 for input length.'''
 
     if lang == 'en':
         return en_tok.findall(string)
@@ -148,8 +127,8 @@ def deduplicate(file, savepath, gpu=False):
     grouped = df.groupby('lang').apply(lambda x: x['id'].unique())
 
     for l in df['lang'].unique():
-        # if l != 'zh':
-        #     continue
+        # if l == 'en':
+            # continue
         logger.info(f'Processing {l}')
         m_list = grouped.loc[l]
         logger.info(len(m_list))

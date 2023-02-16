@@ -8,6 +8,8 @@ import pickle
 import datetime
 from loguru import logger
 import sys
+from iso639 import Lang as isolang
+from iso639.exceptions import InvalidLanguageValue
 import glob
 from pprint import PrettyPrinter
 import pandas as pd
@@ -17,7 +19,8 @@ from collections import Counter, defaultdict
 @click.pass_context
 @click.option('--debug/--no-debug', default=False)
 @click.option('--gpu/--no-gpu', default=False)
-def cli(ctx, debug, gpu):
+@click.option('--log_file')
+def cli(ctx, debug, gpu, log_file):
     """News Analysis package.
 
     """
@@ -25,6 +28,8 @@ def cli(ctx, debug, gpu):
     if not debug:
         logger.remove()
         logger.add(sys.stderr, level="INFO")
+    if log_file:
+        logger.add(log_file)
 
     ctx.obj = {}
     ctx.obj['DEBUG'] = debug
@@ -312,6 +317,48 @@ def duplicate_check(ctx, file, savepath, threshold = 0.9):
     logger.info(f'GPU flag is {ctx.obj["GPU"]}')
     newsanalysis.data_utils.deduplicate(file, savepath, gpu=ctx.obj['GPU'])
     logger.info('done')
+
+
+@cli.command()
+@click.pass_context
+@click.argument('file')
+def show_langs(ctx, file):
+    df = newsanalysis.data_utils.retrieve_story_and_lang(file)
+
+    # MediaCloud say they support the following languages:
+    langdict = {
+        "ca":"Catalan",
+        "da":"Danish",
+        "de":"German",
+        "en":"English",
+        "es":"Spanish",
+        "fi":"Finnish",
+        "fr":"French",
+        "ha":"Hausa",
+        "hi":"Hindi",
+        "hu":"Hungarian",
+        "it":"Italian",
+        "ja":"Japanese",
+        "lt":"Lithuanian",
+        "nl":"Dutch",
+        "no":"Norwegian",
+        "pt":"Portuguese",
+        "ro":"Romanian",
+        "ru":"Russian",
+        "sv":"Swedish",
+        "tr":"Turkish",
+        "zh":"Chinese"
+    }
+
+    for empirical_lang in df['lang'].unique():
+        if empirical_lang is None:
+            logger.info('"None" language present.')
+            continue
+        try:
+            this_lang = isolang(empirical_lang)
+            logger.info(f'{empirical_lang}: {this_lang.name} present. {"YES MediaCloud" if empirical_lang in langdict else "NO MediaCloud"}')
+        except InvalidLanguageValue:
+            logger.info(f'{empirical_lang} not a valid iso639 code')
 
 if __name__ == '__main__':
     cli()
