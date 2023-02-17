@@ -129,6 +129,8 @@ def deduplicate(file, savepath, gpu=False):
         d = 10240       # Dimension (length) of vectors.
         # if l == 'en':
             # continue
+        if l == '' or l.strip() == '':
+            continue
         logger.info(f'Processing {l}')
         m_list = grouped.loc[l]
         logger.info(len(m_list))
