@@ -47,15 +47,21 @@ def unique_story_ids(file):
                 unique_ids.add(story_id)
     return unique_ids
 
-def story_iter(file, only_text = True, match_list = None):
+def story_iter(file, only_text = True, match_list = None, up_to = None):
     if match_list is not None:
         match_list = set(match_list)
+    if up_to:
+        c = 0
     with jsonlines.open(file, 'r') as reader:
         for story in reader.iter(skip_empty=True, skip_invalid=True):
             if 'query' in story:
                 continue
             story_id = story.get('processed_stories_id')
             if (match_list and story_id in match_list) or not match_list:
+                if c < up_to:
+                    c += 1
+                else:
+                    break
                 if only_text:
                     yield story.get('text')
                 else:
@@ -129,7 +135,10 @@ def deduplicate(file, savepath, gpu=False):
         d = 10240       # Dimension (length) of vectors.
         # if l == 'en':
             # continue
-        if l == '' or l.strip() == '':
+        if l is None:
+            logger.warning('Nonetype Language. Skipping...')
+            continue
+        elif l == '' or l.strip() == '':
             continue
         logger.info(f'Processing {l}')
         m_list = grouped.loc[l]
@@ -238,7 +247,7 @@ def deduplicate(file, savepath, gpu=False):
 def filter_by_cluster(file):
 
     # Step 1 - Extract embeddings.
-    embedding_model = SentenceTransformer("xlm-roberta-large")
+    embedding_model = SentenceTransformer("sentence-transformers/LaBSE")
 
     # Step 2 - Reduce dimensionality.
     umap_model = UMAP(
