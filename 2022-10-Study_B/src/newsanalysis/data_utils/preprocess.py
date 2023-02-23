@@ -58,10 +58,11 @@ def story_iter(file, only_text = True, match_list = None, up_to = None):
                 continue
             story_id = story.get('processed_stories_id')
             if (match_list and story_id in match_list) or not match_list:
-                if c < up_to:
-                    c += 1
-                else:
-                    break
+                if up_to:
+                    if c < up_to:
+                        c += 1
+                    else:
+                        break
                 if only_text:
                     yield story.get('text')
                 else:
@@ -244,7 +245,7 @@ def deduplicate(file, savepath, gpu=False):
         stop=perf_counter()
         logger.info(f'End FAISS: {stop-start:.2f}s elapsed')
 
-def filter_by_cluster(file):
+def filter_by_cluster(file, up_to=None):
 
     # Step 1 - Extract embeddings.
     embedding_model = SentenceTransformer("sentence-transformers/LaBSE")
@@ -292,4 +293,6 @@ def filter_by_cluster(file):
         verbose=False
     )
 
-    topics, probs = topic_model.fit_transform(None) # Fit the model and predict documents.
+    topics, probs = topic_model.fit_transform(list(story_iter(file, only_text=True, up_to=up_to))) # Fit the model and predict documents.
+
+    return topics, probs
