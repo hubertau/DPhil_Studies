@@ -48,10 +48,10 @@ def unique_story_ids(file):
                 unique_ids.add(story_id)
     return unique_ids
 
-def story_iter(file, only_text = True, match_list = None, up_to = None):
+def story_iter(file, only_text = True, match_list = None, up_to = None, progress_check = None):
     if match_list is not None:
         match_list = set(match_list)
-    if up_to:
+    if up_to or progres_check:
         c = 0
     with jsonlines.open(file, 'r') as reader:
         for story in reader.iter(skip_empty=True, skip_invalid=True):
@@ -59,11 +59,13 @@ def story_iter(file, only_text = True, match_list = None, up_to = None):
                 continue
             story_id = story.get('processed_stories_id')
             if (match_list and story_id in match_list) or not match_list:
-                if up_to:
+                if up_to or progress_check:
                     if c < up_to:
                         c += 1
                     else:
                         break
+                    if c % progress_check == 0:
+                        logger.info(f"Yielding story number {c}")
                 if only_text:
                     yield story.get('text')
                 else:
@@ -294,7 +296,12 @@ def filter_by_cluster(file, savepath, up_to=None):
         verbose=False
     )
 
-    topics, probs = topic_model.fit_transform(list(story_iter(file, only_text=True, up_to=up_to))) # Fit the model and predict documents.
+    topics, probs = topic_model.fit_transform(list(story_iter(
+        file,
+        only_text=True,
+        up_to=up_to,
+        progress_check=10000
+    ))) # Fit the model and predict documents.
 
     topic_model_savename = os.path.join(savepath, 'topic_model.pkl')
     with open(topic_model_savename, 'wb') as f:
