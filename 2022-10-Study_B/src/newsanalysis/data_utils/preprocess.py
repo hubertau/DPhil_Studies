@@ -22,6 +22,7 @@ from transformers import BertTokenizerFast
 from umap import UMAP
 from hdbscan import HDBSCAN
 import pysbd
+import pickle
 import pandas as pd
 import jsonlines
 from time import perf_counter
@@ -245,7 +246,8 @@ def deduplicate(file, savepath, gpu=False):
         stop=perf_counter()
         logger.info(f'End FAISS: {stop-start:.2f}s elapsed')
 
-def filter_by_cluster(file, up_to=None):
+def filter_by_cluster(file, savepath, up_to=None):
+    assert os.path.isdir(savepath)
 
     # Step 1 - Extract embeddings.
     embedding_model = SentenceTransformer("sentence-transformers/LaBSE")
@@ -294,5 +296,10 @@ def filter_by_cluster(file, up_to=None):
     )
 
     topics, probs = topic_model.fit_transform(list(story_iter(file, only_text=True, up_to=up_to))) # Fit the model and predict documents.
+
+    topic_model_savename = os.path.join(savepath, 'topic_model.pkl')
+    with open(topic_model_savename, 'wb') as f:
+        pickle.dump(topic_model, f)
+    logger.info(f'Saved to {topic_model_savename}')
 
     return topics, probs
