@@ -10,7 +10,6 @@ readme = "README.md"
 python = "^3.9"
 loguru = "^0.6.0"
 transformers = "^4.26.1"
-pandas = "^1.5.3"
 
 [tool.poetry.scripts]
 newsanalysis = "newsanalysis.__main__:cli"
