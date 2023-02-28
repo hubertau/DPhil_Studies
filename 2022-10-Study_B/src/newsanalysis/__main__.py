@@ -366,13 +366,13 @@ def show_langs(ctx, file):
 @click.pass_context
 @click.argument('file')
 @click.argument('savepath')
-def obtain_clusters(ctx, file, savepath):
-    topics, probs = newsanalysis.data_utils.filter_by_cluster(file)
+@click.option('--up_to', type=int, default=None)
+def obtain_clusters(ctx, file, savepath, up_to):
+    topics, probs = newsanalysis.data_utils.filter_by_cluster(file, savepath, up_to=up_to)
     savename = os.path.join(savepath, 'bertopic_cluster.hdf5')
     with h5py.File(savename, 'w') as f:
         f.create_dataset('topics', data=topics)
         f.create_dataset('probs', data=probs)
-
 
 
 if __name__ == '__main__':

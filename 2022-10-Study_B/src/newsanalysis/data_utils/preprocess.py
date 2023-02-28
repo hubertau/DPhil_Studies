@@ -285,7 +285,6 @@ def filter_by_cluster(file, savepath, up_to=None):
         nr_topics=None,
         low_memory=False,
         calculate_probabilities=True, # The probabilities of all topics per document.
-        diversity=None,
         seed_topic_list=None, # Like CorEx
         embedding_model=embedding_model,
         umap_model=umap_model,
