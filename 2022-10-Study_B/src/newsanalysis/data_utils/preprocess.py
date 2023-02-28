@@ -51,7 +51,7 @@ def unique_story_ids(file):
 def story_iter(file, only_text = True, match_list = None, up_to = None, progress_check = None):
     if match_list is not None:
         match_list = set(match_list)
-    if up_to or progres_check:
+    if up_to or progress_check:
         c = 0
     with jsonlines.open(file, 'r') as reader:
         for story in reader.iter(skip_empty=True, skip_invalid=True):
