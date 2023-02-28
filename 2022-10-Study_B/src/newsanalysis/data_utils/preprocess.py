@@ -49,22 +49,41 @@ def unique_story_ids(file):
     return unique_ids
 
 def story_iter(file, only_text = True, match_list = None, up_to = None, progress_check = None):
+    """Iterator to yield stories from a jsonlines data file
+
+    Args:
+        file (str): jsonlines file to read
+        only_text (bool, optional): whether to yield text or story id. Defaults to True.
+        match_list (list/set, optional): list or set of ids to return only if matching. None means everything is yielded. Defaults to None.
+        up_to (int, optional): Maximum number of stories to yield, for debugging. Defaults to None.
+        progress_check (int, optional): Log a progress check every {progress_check} stories yielded. Defaults to None.
+
+    Yields:
+        _type_: _description_
+    """
+
+    # enforce match_list as a set
     if match_list is not None:
         match_list = set(match_list)
+
+    # if up_to or progress check options present, then instantiate counter variable
     if up_to or progress_check:
         c = 0
+
+    # begin iteration
     with jsonlines.open(file, 'r') as reader:
         for story in reader.iter(skip_empty=True, skip_invalid=True):
+            # ignore query
             if 'query' in story:
                 continue
+
             story_id = story.get('processed_stories_id')
+
             if (match_list and story_id in match_list) or not match_list:
-                if up_to:
-                    if c < up_to:
-                        c += 1
-                    else:
-                        break
-                if progress_check:
+                if up_to and c >= up_to:
+                    break
+                elif up_to or progress_check:
+                    c += 1
                     if c % progress_check == 0:
                         logger.info(f"Yielding story number {c}")
                 if only_text:
