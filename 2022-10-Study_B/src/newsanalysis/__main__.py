@@ -370,7 +370,8 @@ def obtain_clusters(ctx, file, savepath):
     topics, probs = newsanalysis.data_utils.filter_by_cluster(file)
     savename = os.path.join(savepath, 'bertopic_cluster.hdf5')
     with h5py.File(savename, 'w') as f:
-        h5py
+        f.create_dataset('topics', data=topics)
+        f.create_dataset('probs', data=probs)
 
 
 
