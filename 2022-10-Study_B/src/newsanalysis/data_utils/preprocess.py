@@ -313,7 +313,7 @@ def filter_by_cluster(file, savepath, up_to=None, progress_check=None):
         hdbscan_model=hdbscan_model,
         vectorizer_model=vectorizer_model,
         ctfidf_model=ctfidf_model,
-        verbose=False
+        verbose=True
     )
 
     topics, probs = topic_model.fit_transform(list(story_iter(
