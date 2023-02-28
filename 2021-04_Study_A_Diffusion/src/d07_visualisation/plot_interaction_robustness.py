@@ -27,7 +27,7 @@ def main(group_num):
     plt.xlabel("Date", fontsize = fontsize)
     plt.ylabel("Interactions (log scale)", fontsize = fontsize)
     plot_save_path = f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{group_num}_group/'
-    plt.savefig(f'{plot_save_path}overall_interactions_{group_num}.png', transparent=True, bbox_inches='tight', dpi=300)
+    plt.savefig(f'{plot_save_path}overall_interactions_{group_num}.png', bbox_inches='tight', dpi=300)
     plt.show();
 
 if __name__=='__main__':

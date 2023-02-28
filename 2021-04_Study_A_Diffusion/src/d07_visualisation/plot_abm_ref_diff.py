@@ -45,4 +45,4 @@ if len(all_sim_path) == 3:
     # )
     ax.hlines(ref_diff[1],  0.7, 1.3, color='red')
     ax.hlines(ref_diff[2],  1.7, 2.3, color='red')
-    plt.savefig('/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/abm_ref_sim_grouped_boxplot.png',bbox_inches='tight')
+    plt.savefig('/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/abm_ref_sim_grouped_boxplot.png',bbox_inches='tight', dpi=300)

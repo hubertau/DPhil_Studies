@@ -93,7 +93,7 @@ def main():
     ax.set(xlabel='Date',
         ylabel='Activity Count');
 
-    plt.savefig(f'../../results/new_FAS_activity.png', dpi=300, transparent=True, bbox_inches='tight');
+    plt.savefig(f'../../results/new_FAS_activity.png', dpi=300, bbox_inches='tight');
 
     plt.vlines([i[0]+0.5*(i[1]-i[0]) for i in ranges],
         ymin = 0,
@@ -103,7 +103,7 @@ def main():
         alpha = wnp/max(wnp)
         );
 
-    plt.savefig(f'../../results/new_FAS_activity_with_peaks.png', dpi=300, transparent=True, bbox_inches='tight');
+    plt.savefig(f'../../results/new_FAS_activity_with_peaks.png', dpi=300, bbox_inches='tight');
 
 
     ############################################################################

@@ -359,7 +359,7 @@ def main(args):
             if measure=='experimentation_count':
                 ax.set_yscale('log')
                 ax.set_ylabel(f'{measure_labels[measure]} (log scale)')
-            plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{args.group_num}_group/abm_{param_name}+{measure}.png', bbox_inches='tight')
+            plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{args.group_num}_group/abm_{param_name}+{measure}.png', bbox_inches='tight', dpi=300)
             plt.close()
 
     # Plot grouped boxplot for awareness and interaction probability
@@ -393,7 +393,7 @@ def main(args):
                 size=measure,
                 data=final_df
             )
-            plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{args.group_num}_group/abm_composite_{measure}_model_{model_num}.png', bbox_inches='tight')
+            plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{args.group_num}_group/abm_composite_{measure}_model_{model_num}.png', bbox_inches='tight', dpi=300)
             plt.close()
 
     # plot just the histogram of the measure:
@@ -404,7 +404,7 @@ def main(args):
             x=measure,
             data=final_df
         )
-        plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{args.group_num}_group/abm_histogram_{measure}.png', bbox_inches='tight')
+        plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{args.group_num}_group/abm_histogram_{measure}.png', bbox_inches='tight', dpi=300)
         plt.close()
 
     print('Plotting boxplots for the measures themselves ')
@@ -422,7 +422,7 @@ def main(args):
                 data=final_df
             )
         ax.set_xlabel(f'{measure_labels[measure]}')
-        plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{args.group_num}_group/abm_boxplot_{measure}.png', bbox_inches='tight')
+        plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{args.group_num}_group/abm_boxplot_{measure}.png', bbox_inches='tight', dpi=300)
         plt.close()
 
     ## SAVE FINALDF FOR COMBINED PLOTS
@@ -462,7 +462,7 @@ def main(args):
                 data=measure_temp_df
                 )
             ax.set_ylabel(f'{measure_labels[measure]}')
-            plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/abm_theory_combined_{measure}.png', bbox_inches='tight')
+            plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/abm_theory_combined_{measure}.png', bbox_inches='tight', dpi=300)
             plt.close()
 
     # Make grouped boxplot with y axis awareness count, period on x axis with hue as interaction probability
@@ -477,7 +477,7 @@ def main(args):
     ax.set_ylabel(f'Awareness Count')
     ax.set_xlabel('Period')
     ax.set_xticklabels([1,2,3])
-    plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/abm_grouped_boxplot.png', bbox_inches='tight')
+    plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/abm_grouped_boxplot.png', bbox_inches='tight', dpi=300)
 
     # Heatmap for medians of movement app awareness and theoretical measures
     median_df_dict = [
@@ -492,7 +492,7 @@ def main(args):
     median_df.set_index('Period', inplace=True)
     plt.figure(figsize=(15,8))
     ax = sns.heatmap(median_df, annot=True, fmt=".1f")
-    plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/abm_theory_heatmap.png', bbox_inches='tight')
+    plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/abm_theory_heatmap.png', bbox_inches='tight', dpi=300)
 
     ############################################################################
     # Process DATA evaluation tasks
@@ -550,7 +550,7 @@ def main(args):
                 data=dataplot_df
             )
         ax.set_xlabel(f'{eval_labels[data_eval]}')
-        plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{args.group_num}_group/abm_data_eval_boxplot_{data_eval}.png', bbox_inches='tight')
+        plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{args.group_num}_group/abm_data_eval_boxplot_{data_eval}.png', bbox_inches='tight', dpi=300)
         plt.close()
 
     # PLOT HISTPLOT WITH EXTRA
@@ -564,7 +564,7 @@ def main(args):
         data=temp_dat,
         palette='rocket'
     )
-    plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{args.group_num}_group/abm_data_eval_boxplot_rank_eval_with_interact_prob.png', bbox_inches='tight')
+    plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{args.group_num}_group/abm_data_eval_boxplot_rank_eval_with_interact_prob.png', bbox_inches='tight', dpi=300)
 
     # save dataplot df
     print('SAVING DATA DF')
@@ -578,7 +578,7 @@ def main(args):
         y = sim_percent
     )
     ax.hlines(ref_percent, -1, 1)
-    plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{args.group_num}_group/abm_data_eval_boxplot_reference.png',bbox_inches='tight')
+    plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{args.group_num}_group/abm_data_eval_boxplot_reference.png',bbox_inches='tight', dpi=300)
 
     print('SAVING SIM PERCENT TOP EVAL BY FAR')
     with open(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/0{args.group_num}_group/abm_sim_percent.obj', 'wb') as f:
@@ -618,7 +618,7 @@ def main(args):
         ax.hlines(ref_diff[0], -0.3, 0.3, color='red')
         ax.hlines(ref_diff[1],  0.7, 1.3, color='red')
         ax.hlines(ref_diff[2],  1.7, 2.3, color='red')
-        plt.savefig('/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/abm_ref_sim_grouped_boxplot.png',bbox_inches='tight')
+        plt.savefig('/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/abm_ref_sim_grouped_boxplot.png',bbox_inches='tight', dpi=300)
 
     all_data_evals = sorted(glob.glob('/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/*/abm_data_eval_df.obj', recursive=True))
     all_data_dfs = []
@@ -632,10 +632,10 @@ def main(args):
         all_data = pd.concat(all_data_dfs, ignore_index=True)
 
         print('Plotting grouped boxplot for ref sim percent')
-        plt.figure(figsize=(15,8))
         rename_cols = {**eval_labels, **param_labels}
         all_data.rename(columns=rename_cols, inplace=True)
         for _, w in param_labels.items():
+            plt.figure(figsize=(15,8))
             all_data[w] = all_data[w].apply(lambda x: round(x, 1))
             sns.boxplot(
                 x = 'Period',
@@ -643,7 +643,7 @@ def main(args):
                 hue = w,
                 data=all_data
             )
-            plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/abm_ref_sim_{w.lower()}_grouped_boxplot.png', bbox_inches='tight')
+            plt.savefig(f'/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/results/abm_ref_sim_{w.lower()}_grouped_boxplot.png', bbox_inches='tight', dpi=300)
         # all_data = all_data_dfs[0].merge(all_data_dfs[1], suffixes=('_1', '_2'), on = param_names)
         # all_data = all_data.merge(all_data_dfs[2], on=param_names)
 
