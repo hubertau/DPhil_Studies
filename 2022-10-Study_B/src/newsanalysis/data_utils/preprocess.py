@@ -248,7 +248,7 @@ def deduplicate(file, savepath, gpu=False):
         stop=perf_counter()
         logger.info(f'End FAISS: {stop-start:.2f}s elapsed')
 
-def filter_by_cluster(file, savepath, up_to=None):
+def filter_by_cluster(file, savepath, up_to=None, progress_check=None):
     assert os.path.isdir(savepath)
 
     # Step 1 - Extract embeddings.
@@ -300,7 +300,7 @@ def filter_by_cluster(file, savepath, up_to=None):
         file,
         only_text=True,
         up_to=up_to,
-        progress_check=10000
+        progress_check=progress_check
     ))) # Fit the model and predict documents.
 
     topic_model_savename = os.path.join(savepath, 'topic_model.pkl')
