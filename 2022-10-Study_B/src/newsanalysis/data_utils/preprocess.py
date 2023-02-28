@@ -59,11 +59,12 @@ def story_iter(file, only_text = True, match_list = None, up_to = None, progress
                 continue
             story_id = story.get('processed_stories_id')
             if (match_list and story_id in match_list) or not match_list:
-                if up_to or progress_check:
+                if up_to:
                     if c < up_to:
                         c += 1
                     else:
                         break
+                if progress_check:
                     if c % progress_check == 0:
                         logger.info(f"Yielding story number {c}")
                 if only_text:
