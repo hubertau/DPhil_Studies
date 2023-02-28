@@ -12,6 +12,7 @@ from iso639 import Lang as isolang
 from iso639.exceptions import InvalidLanguageValue
 import glob
 from pprint import PrettyPrinter
+import h5py
 import pandas as pd
 from collections import Counter, defaultdict
 
@@ -359,6 +360,19 @@ def show_langs(ctx, file):
             logger.info(f'{empirical_lang}: {this_lang.name} present. {"YES MediaCloud" if empirical_lang in langdict else "NO MediaCloud"}')
         except InvalidLanguageValue:
             logger.info(f'{empirical_lang} not a valid iso639 code')
+
+
+@cli.command()
+@click.pass_context
+@click.argument('file')
+@click.argument('savepath')
+def obtain_clusters(ctx, file, savepath):
+    topics, probs = newsanalysis.data_utils.filter_by_cluster(file)
+    savename = os.path.join(savepath, 'bertopic_cluster.hdf5')
+    with h5py.File(savename, 'w') as f:
+        h5py
+
+
 
 if __name__ == '__main__':
     cli()
