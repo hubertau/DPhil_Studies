@@ -18,6 +18,7 @@ from collections import Counter, defaultdict
 import logging
 
 # intercept default logging package from submodules (e.g. SentenceTrasnformers)
+# from recipe in loguru: https://loguru.readthedocs.io/en/stable/overview.html
 class InterceptHandler(logging.Handler):
     def emit(self, record):
         # Get corresponding Loguru level if it exists
