@@ -84,7 +84,7 @@ def story_iter(file, only_text = True, match_list = None, up_to = None, progress
                     break
                 elif up_to or progress_check:
                     c += 1
-                    if c % progress_check == 0:
+                    if progress_check and c % progress_check == 0:
                         logger.info(f"Yielding story number {c}")
                 if only_text:
                     yield story.get('text')
