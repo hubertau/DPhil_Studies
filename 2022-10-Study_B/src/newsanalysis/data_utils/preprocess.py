@@ -268,7 +268,42 @@ def deduplicate(file, savepath, gpu=False):
         stop=perf_counter()
         logger.info(f'End FAISS: {stop-start:.2f}s elapsed')
 
-def filter_by_cluster(file, savepath, up_to=None, progress_check=None):
+
+def embed_docs(file, savepath, up_to = None, progress_check = None):
+    assert os.path.isdir(savepath)
+
+    embedding_model = SentenceTransformer("sentence-transformers/LaBSE")
+
+    #Start the multi-process pool on all available CUDA devices
+    pool = embedding_model.start_multi_process_pool()
+
+    #Compute the embeddings using the multi-process pool
+    emb = embedding_model.encode_multi_process(list(story_iter(
+        file,
+        only_text=True,
+        up_to=up_to,
+        progress_check=progress_check
+    )), pool)
+    logger.info("Embeddings computed. Shape:", emb.shape)
+
+    unique_ids = list(story_iter(
+        file,
+        only_text=False,
+        up_to = up_to,
+        progress_check = None
+    ))
+
+    #Optional: Stop the proccesses in the pool
+    embedding_model.stop_multi_process_pool(pool)
+
+    # Store sentences & embeddings on disc
+    savename = os.path.join(savepath,'embeddings.pkl')
+    with open(savename, "wb") as fOut:
+        pickle.dump({'ids': unique_ids, 'embeddings': emb}, fOut, protocol=pickle.HIGHEST_PROTOCOL)
+
+    logger.info(f'Saved to {savename}')
+
+def filter_by_cluster(file, savepath, embeddings= None, up_to=None, progress_check=None):
     assert os.path.isdir(savepath)
 
     # Step 1 - Extract embeddings.
@@ -300,7 +335,7 @@ def filter_by_cluster(file, savepath, up_to=None, progress_check=None):
     ctfidf_model = ClassTfidfTransformer()
 
     topic_model = BERTopic(
-        language='multilingual', # Set to 'multilingual' for datasets with languages other than English.
+        language='multilingual', # Set to 'multilingual' for datasets with languages other than English. N.B. documentation says this is not used if embedding_model is provided
         top_n_words=10,
         n_gram_range=(1, 1),
         min_topic_size=10,
