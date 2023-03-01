@@ -388,7 +388,7 @@ def show_langs(ctx, file):
 @click.argument('file')
 @click.argument('savepath')
 @click.option('--up_to', '-u', type=int, default=None)
-@click.option('--progress_check', '-p', type=int, default=10000)
+@click.option('--progress_check', '-p', type=int, default=100000)
 def embed(ctx, file, savepath, up_to, progress_check):
     '''Generate embeddings of documents with multiple GPUs
     '''
@@ -402,7 +402,7 @@ def embed(ctx, file, savepath, up_to, progress_check):
 @click.argument('file')
 @click.argument('savepath')
 @click.option('--up_to', '-u', type=int, default=None)
-@click.option('--progress_check', '-p', type=int, default=10000)
+@click.option('--progress_check', '-p', type=int, default=100000)
 def obtain_clusters(ctx, file, savepath, up_to, progress_check):
     topics, probs = newsanalysis.data_utils.filter_by_cluster(
         file,
