@@ -403,12 +403,21 @@ def embed(ctx, file, savepath, up_to, progress_check):
 @click.argument('savepath')
 @click.option('--up_to', '-u', type=int, default=None)
 @click.option('--progress_check', '-p', type=int, default=100000)
-def obtain_clusters(ctx, file, savepath, up_to, progress_check):
+@click.option('--embedding_file', '-e', default=None)
+def obtain_clusters(ctx, file, savepath, up_to, progress_check, embedding_file):
+    if embedding_file:
+        #Load sentences & embeddings from disc
+        with open(embedding_file, "rb") as fIn:
+            stored_data = pickle.load(fIn)
+            stored_sentences = stored_data['sentences']
+            stored_embeddings = stored_data['embeddings']
+        logger.info('loaded in embeddings')
     topics, probs = newsanalysis.data_utils.filter_by_cluster(
         file,
         savepath,
         up_to=up_to,
-        progress_check=progress_check
+        progress_check=progress_check,
+        embeddings=stored_embeddings
     )
     savename = os.path.join(savepath, 'bertopic_cluster.hdf5')
     with h5py.File(savename, 'w') as f:

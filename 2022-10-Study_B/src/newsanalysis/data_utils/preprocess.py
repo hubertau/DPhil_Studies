@@ -21,7 +21,6 @@ from sentence_transformers import SentenceTransformer
 from transformers import BertTokenizerFast
 from umap import UMAP
 from hdbscan import HDBSCAN
-import pysbd
 import pickle
 import pandas as pd
 import jsonlines
@@ -356,7 +355,8 @@ def filter_by_cluster(file, savepath, embeddings= None, up_to=None, progress_che
         only_text=True,
         up_to=up_to,
         progress_check=progress_check
-    ))) # Fit the model and predict documents.
+    )),
+    embeddings=embeddings) # Fit the model and predict documents.
 
     topic_model_savename = os.path.join(savepath, 'topic_model.pkl')
     with open(topic_model_savename, 'wb') as f:
