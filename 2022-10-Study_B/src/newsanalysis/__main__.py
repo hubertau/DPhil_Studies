@@ -409,7 +409,7 @@ def obtain_clusters(ctx, file, savepath, up_to, progress_check, embedding_file):
         #Load sentences & embeddings from disc
         with open(embedding_file, "rb") as fIn:
             stored_data = pickle.load(fIn)
-            stored_sentences = stored_data['sentences']
+            stored_ids = stored_data['ids']
             stored_embeddings = stored_data['embeddings']
         logger.info('loaded in embeddings')
     topics, probs = newsanalysis.data_utils.filter_by_cluster(
