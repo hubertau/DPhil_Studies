@@ -314,7 +314,8 @@ def filter_by_cluster(file, savepath, embeddings= None, up_to=None, progress_che
         n_components=5,
         min_dist=0.0,
         metric='cosine',
-        random_state=42
+        random_state=42,
+        verbose=True
     )
 
     # Step 3 - Cluster reduced embeddings.
