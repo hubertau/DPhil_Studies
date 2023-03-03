@@ -137,6 +137,7 @@ def split_and_tokenize(string, lang, tok, en_tok):
         return en_tok(string)
 
 
+
 def deduplicate(file, savepath, gpu=False):
     '''Return dict of story ids and their duplicates'''
     tokenizer = BertTokenizerFast.from_pretrained("sentence-transformers/LaBSE")
@@ -266,6 +267,52 @@ def deduplicate(file, savepath, gpu=False):
 
         stop=perf_counter()
         logger.info(f'End FAISS: {stop-start:.2f}s elapsed')
+
+def remove_duplicates(dedup_faiss_file, original_file, savepath):
+    '''Function to remove duplicates from faiss output. Saves ids to discard into savepath and a new cleaned datafile into the same directory as the original file.
+    '''
+
+    to_discard = set()
+    do_not_discard = set()
+    threshold=0.01
+
+    with h5py.File(dedup_faiss_file, 'r') as f:
+        for lang in f.keys():
+            logger.info(f'Processing {lang}')
+            D = f[lang]['D'][:]
+            I = f[lang]['I'][:]
+            ids = f[lang]['ids'][:]
+
+            id_len = len(ids)
+            for c in range(id_len):
+                if c%np.floor(id_len/10) == 0:
+                    logger.info(f'{100*c/len(ids):.2f}% complete')
+                if ids[c] not in to_discard.union(do_not_discard):
+                    do_not_discard.add(ids[c])
+                ids_to_process = I[c, D[c,:]<threshold]
+                for k in ids_to_process:
+                    k = int(k)
+                    if k not in do_not_discard and k != ids[c]:
+                        to_discard.add(k)
+    assert len(do_not_discard.intersection(to_discard)) == 0
+
+    savename = os.path.join(savepath, 'deduplicate_discard_list.pkl')
+    with open(savename, 'wb') as f:
+        pickle.dump(to_discard, f)
+
+    original_file_dir = os.path.dirname(original_file)
+    sole_filename = os.path.split(original_file)[-1].split('.jsonl')[0]
+    deduped_filename = os.path.join(original_file_dir, f'{sole_filename}_nodup.jsonl')
+    with jsonlines.open(original_file, 'r') as reader:
+        with jsonlines.open(deduped_filename, 'w') as writer:
+            for story in reader.iter(skip_invalid=True, skip_empty=True):
+                id = int(story.get('processed_stories_id'))
+                if id and id not in to_discard:
+                    writer.write(story)
+                elif 'query' in story:
+                    writer.write(story)
+
+    logger.info(f'Written to {deduped_filename}')
 
 
 def embed_docs(file, savepath, up_to = None, progress_check = None):

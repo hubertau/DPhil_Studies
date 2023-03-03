@@ -424,6 +424,13 @@ def obtain_clusters(ctx, file, savepath, up_to, progress_check, embedding_file):
         f.create_dataset('topics', data=topics)
         f.create_dataset('probs', data=probs)
 
+@cli.command()
+@click.pass_context
+@click.argument('dedup_faiss_file')
+@click.argument('data_file')
+@click.argument('savepath')
+def remove_duplicates(ctx, dedup_faiss_file, data_file, savepath):
+    newsanalysis.data_utils.remove_duplicates(dedup_faiss_file, data_file, savepath)
 
 if __name__ == '__main__':
     cli()
