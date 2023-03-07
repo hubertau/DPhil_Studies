@@ -365,7 +365,7 @@ def filter_by_cluster(file, savepath, embeddings= None, up_to=None, progress_che
 
     # Step 2 - Reduce dimensionality.
     umap_model = UMAP(
-        n_neighbors=15,
+        n_neighbors=10,
         n_components=5,
         min_dist=0.0,
         metric='cosine',
@@ -405,7 +405,8 @@ def filter_by_cluster(file, savepath, embeddings= None, up_to=None, progress_che
         ctfidf_model=ctfidf_model,
         verbose=True
     )
-
+    if embeddings:
+        logger.info(f'Embeddings shape: {embeddings.shape}')
     topics, probs = topic_model.fit_transform(list(story_iter(
         file,
         only_text=True,
