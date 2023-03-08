@@ -120,7 +120,6 @@ dependencies:
       - lxml==4.9.1
       - miniful==0.0.6
       - nagisa==0.2.8
-      - newsanalysis==0.1.0
       - newspaper3k==0.2.8
       - nvidia-cublas-cu11==11.10.3.66
       - nvidia-cuda-nvrtc-cu11==11.7.99
