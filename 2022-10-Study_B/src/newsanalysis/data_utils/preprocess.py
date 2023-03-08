@@ -273,16 +273,17 @@ def deduplicate(file, savepath, gpu=False):
         stop=perf_counter()
         logger.info(f'End FAISS: {stop-start:.2f}s elapsed')
 
-def remove_duplicates(dedup_faiss_file, original_file, savepath, skip_hdf5_read = False):
+def remove_duplicates(dedup_faiss_file, original_file, savepath, skip_hdf5_read = False, threshold=0.35):
     '''Function to remove duplicates from faiss output. Saves ids to discard into savepath and a new cleaned datafile into the same directory as the original file.
     '''
 
     savename = os.path.join(savepath, 'deduplicate_discard_list.pkl')
+    logger.info(f'Threshold is {threshold}')
 
     if not skip_hdf5_read:
         to_discard = set()
         do_not_discard = set()
-        threshold=0.01
+        threshold=threshold
 
         with h5py.File(dedup_faiss_file, 'r') as f:
             for lang in f.keys():
