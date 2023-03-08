@@ -363,7 +363,7 @@ def embed_docs(file, savepath, up_to = None, progress_check = None):
 
     logger.info(f'Saved to {savename}')
 
-def filter_by_cluster(file, savepath, embeddings= None, up_to=None, progress_check=None):
+def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_check=None):
     assert os.path.isdir(savepath)
 
     # Step 1 - Extract embeddings.
@@ -411,7 +411,7 @@ def filter_by_cluster(file, savepath, embeddings= None, up_to=None, progress_che
         ctfidf_model=ctfidf_model,
         verbose=True
     )
-    if embeddings:
+    if embeddings is not None:
         logger.info(f'Embeddings shape: {embeddings.shape}')
     topics, probs = topic_model.fit_transform(list(story_iter(
         file,

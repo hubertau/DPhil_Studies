@@ -431,7 +431,7 @@ def obtain_clusters(ctx, file, savepath, up_to, progress_check, embedding_file):
 @click.argument('data_file')
 @click.argument('savepath')
 @click.option('--skip/--no_skip', default=False, help='skip reading from hdf5 file if discard list already present')
-@click.option('--threshold', '-t', default=0.35, type=float, help='threshold of distance below which articles are considered duplicates')
+@click.option('--threshold', '-t', default=0.15, type=float, help='threshold of distance below which articles are considered duplicates')
 def remove_duplicates(ctx, dedup_faiss_file, data_file, savepath, skip, threshold):
     newsanalysis.data_utils.remove_duplicates(dedup_faiss_file, data_file, savepath, skip_hdf5_read = skip, threshold=threshold)
 
