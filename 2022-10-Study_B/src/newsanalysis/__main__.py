@@ -36,6 +36,7 @@ class InterceptHandler(logging.Handler):
         logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 logging.basicConfig(handlers=[InterceptHandler()], level=0)
+sys.stdout = sys.stderr #to capture print statements
 
 @click.group()
 @click.pass_context

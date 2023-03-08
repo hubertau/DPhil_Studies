@@ -19,7 +19,6 @@ from bertopic import BERTopic
 from bertopic.vectorizers import ClassTfidfTransformer
 from sentence_transformers import SentenceTransformer
 from transformers import BertTokenizerFast
-from umap import UMAP
 from hdbscan import HDBSCAN
 import pickle
 import pandas as pd
@@ -28,6 +27,12 @@ from time import perf_counter
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 import faiss
 import h5py
+try:
+    from cuml.manifold import UMAP
+    logger.info('cuML UMAP imported')
+except ImportError:
+    from umap import UMAP
+    logger.info('Regular UMAP imported')
 
 from newsanalysis.dataviz.plots import retrieve_story_lens, retrieve_story_and_lang
 
