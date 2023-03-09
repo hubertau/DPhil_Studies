@@ -42,8 +42,9 @@ sys.stdout = sys.stderr #to capture print statements
 @click.pass_context
 @click.option('--debug/--no-debug', default=False)
 @click.option('--gpu/--no-gpu', default=False)
+@click.option('--dask/--no-dask', default=False)
 @click.option('--log_file')
-def cli(ctx, debug, gpu, log_file):
+def cli(ctx, debug, gpu, dask, log_file):
     """News Analysis package.
 
     """
@@ -57,6 +58,7 @@ def cli(ctx, debug, gpu, log_file):
     ctx.obj = {}
     ctx.obj['DEBUG'] = debug
     ctx.obj['GPU'] = gpu
+    ctx.obj['DASK'] = dask
 
 @cli.command()
 @click.argument('file')
@@ -418,7 +420,8 @@ def obtain_clusters(ctx, file, savepath, up_to, progress_check, embedding_file):
         savepath,
         up_to=up_to,
         progress_check=progress_check,
-        embeddings=stored_embeddings
+        embeddings=stored_embeddings,
+        dask=ctx.obj['DASK']
     )
     savename = os.path.join(savepath, 'bertopic_cluster.hdf5')
     with h5py.File(savename, 'w') as f:

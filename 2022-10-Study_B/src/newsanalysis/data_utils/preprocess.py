@@ -25,6 +25,11 @@ try:
 except ImportError:
     from hdbscan import HDBSCAN
     logger.info('Regular HSBDSCAN imported')
+try:
+    from cuml.dask.cluster import DBSCAN
+    logger.info(f'cuML DBSCAN DASK imported')
+except ImportError:
+    logger.info(f'cuML DBSCAN DASK failed to import')
 import pickle
 import pandas as pd
 import jsonlines
@@ -368,8 +373,24 @@ def embed_docs(file, savepath, up_to = None, progress_check = None):
 
     logger.info(f'Saved to {savename}')
 
-def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_check=None):
+
+# custom dbscan class for dask
+
+
+def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_check=None, dask = False):
     assert os.path.isdir(savepath)
+
+    if dask:
+        logger.info(f'Dask flag is TRUE')
+        from dask_cuda import LocalCUDACluster
+        from dask.distributed import Client
+        class bertopic_compatible_dask_dbscan(DBSCAN):
+
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+
+            def predict(self, *args, **kwargs):
+                self.labels_ = super().fit_predict(*args, **kwargs)
 
     # Step 1 - Extract embeddings.
     embedding_model = SentenceTransformer("sentence-transformers/LaBSE")
@@ -385,12 +406,24 @@ def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_ch
     )
 
     # Step 3 - Cluster reduced embeddings.
-    hdbscan_model = HDBSCAN(
-        min_cluster_size=15,
-        metric='euclidean',
-        cluster_selection_method='eom',
-        prediction_data=True
-    )
+    if dask:
+        cluster = LocalCUDACluster(threads_per_worker=1)
+        logger.info(f'CUDA VISIBLE DEVICES: {cluster.cuda_visible_devices}')
+        client = Client(cluster)
+        dbscan_model = bertopic_compatible_dask_dbscan(
+            verbose=True,
+            client=client,
+            min_samples=15,
+            output_type='numpy',
+            max_mbytes_per_batch = 30000
+        )
+    else:
+        dbscan_model = HDBSCAN(
+            min_cluster_size=15,
+            metric='euclidean',
+            cluster_selection_method='eom',
+            prediction_data=True
+        )
 
     # Step 4 - Tokenize topics.
     vectorizer_model = CountVectorizer(
@@ -411,7 +444,7 @@ def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_ch
         seed_topic_list=None, # Like CorEx
         embedding_model=embedding_model,
         umap_model=umap_model,
-        hdbscan_model=hdbscan_model,
+        hdbscan_model=dbscan_model,
         vectorizer_model=vectorizer_model,
         ctfidf_model=ctfidf_model,
         verbose=True
