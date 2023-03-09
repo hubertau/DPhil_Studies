@@ -415,7 +415,7 @@ def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_ch
             client=client,
             min_samples=15,
             output_type='numpy',
-            max_mbytes_per_batch = 30000
+            max_mbytes_per_batch = 10000
         )
     else:
         dbscan_model = HDBSCAN(
