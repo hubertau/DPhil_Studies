@@ -19,7 +19,12 @@ from bertopic import BERTopic
 from bertopic.vectorizers import ClassTfidfTransformer
 from sentence_transformers import SentenceTransformer
 from transformers import BertTokenizerFast
-from hdbscan import HDBSCAN
+try:
+    from cuml.cluster import HDBSCAN
+    logger.info(f'cuML HDBSCAN imported')
+except ImportError:
+    from hdbscan import HDBSCAN
+    logger.info('Regular HSBDSCAN imported')
 import pickle
 import pandas as pd
 import jsonlines
