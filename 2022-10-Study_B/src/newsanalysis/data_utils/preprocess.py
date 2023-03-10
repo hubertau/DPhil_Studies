@@ -105,8 +105,11 @@ def story_iter(file, only_text = True, match_list = None, up_to = None, progress
                 else:
                     yield story_id
 
-def remove_redundant_ids(file, savepath):
-    logger.info('Removing duplicate stories by id. Keep the first one')
+def remove_redundant_ids(file, savepath, by='id'):
+    valid_by = ['id', 'url']
+    if by not in valid_by:
+        raise ValueError(f'by must be in {valid_by}. "{by}" was given')
+    logger.info(f'Removing redundant stories by {by}. Keep the first one')
     logger.info(f'Input file is {file}')
     logger.info(f'Output file is {savepath}')
     present = set()
@@ -115,10 +118,16 @@ def remove_redundant_ids(file, savepath):
             for story in reader.iter(skip_empty=True, skip_invalid=True):
                 if 'query' in story:
                     writer.write(story)
-                story_id = story.get('processed_stories_id')
-                if story_id not in present:
-                    present.add(story_id)
-                    writer.write(story)
+                if by == 'id':
+                    story_id = story.get('processed_stories_id')
+                    if story_id not in present:
+                        present.add(story_id)
+                        writer.write(story)
+                elif by == 'url':
+                    story_url = story.get('url')
+                    if story_url not in present:
+                        present.add(story_url)
+                        writer.write(story)
 
 def build_en_tokenizer(token_pattern=r"\b\w\w+\b"):
     """Return a function that splits a string into a sequence of tokens.
@@ -129,7 +138,6 @@ def build_en_tokenizer(token_pattern=r"\b\w\w+\b"):
     """
     token_pattern = re.compile(token_pattern)
     return token_pattern.findall
-
 
 def split_and_tokenize(string, lang, tok, en_tok):
     '''Custom tokenizer to handle the multiple languages for sklearn vectorizers. Models have a cap of 512 for input length.'''
@@ -150,8 +158,6 @@ def split_and_tokenize(string, lang, tok, en_tok):
         return to_return
     else:
         return en_tok(string)
-
-
 
 def deduplicate(file, savepath, gpu=False):
     '''Return dict of story ids and their duplicates'''
@@ -469,3 +475,23 @@ def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_ch
     logger.info(f'Saved to {topic_model_savename}')
 
     return topics, probs
+
+
+def remove_by_len(file, savepath, lo = None, hi = None):
+    '''Function to remove articles below and above a certain length
+    '''
+
+    original_file_dir = os.path.dirname(original_file)
+    sole_filename = os.path.split(original_file)[-1].split('.jsonl')[0]
+    deduped_filename = os.path.join(original_file_dir, f'{sole_filename}_nodup.jsonl')
+    with jsonlines.open(original_file, 'r') as reader:
+        with jsonlines.open(deduped_filename, 'w') as writer:
+            for story in reader.iter(skip_invalid=True, skip_empty=True):
+                if 'query' in story:
+                    writer.write(story)
+                    continue
+                id = int(story.get('processed_stories_id'))
+                if id and id not in to_discard:
+                    writer.write(story)
+
+    logger.info(f'Written to {deduped_filename}')
