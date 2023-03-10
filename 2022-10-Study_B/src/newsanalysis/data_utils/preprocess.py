@@ -384,6 +384,7 @@ def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_ch
         logger.info(f'Dask flag is TRUE')
         from dask_cuda import LocalCUDACluster
         from dask.distributed import Client
+        import dask.array as da
         class bertopic_compatible_dask_dbscan(DBSCAN):
 
             def __init__(self, *args, **kwargs):
@@ -391,6 +392,8 @@ def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_ch
 
             def predict(self, *args, **kwargs):
                 self.labels_ = super().fit_predict(*args, **kwargs)
+
+        embeddings = da.from_array(embeddings, chunks=2000)
 
     # Step 1 - Extract embeddings.
     embedding_model = SentenceTransformer("sentence-transformers/LaBSE")
@@ -419,7 +422,8 @@ def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_ch
         )
     else:
         dbscan_model = HDBSCAN(
-            min_cluster_size=15,
+            min_cluster_size=100,
+            min_samples=50,
             metric='euclidean',
             cluster_selection_method='eom',
             prediction_data=True
@@ -440,7 +444,7 @@ def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_ch
         min_topic_size=10,
         nr_topics=None,
         low_memory=False,
-        calculate_probabilities=True, # The probabilities of all topics per document.
+        calculate_probabilities=True, # The probabilities of all topics per document. Might need to set to false for gpu https://github.com/rapidsai/cuml/issues/5127
         seed_topic_list=None, # Like CorEx
         embedding_model=embedding_model,
         umap_model=umap_model,
