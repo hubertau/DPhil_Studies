@@ -444,7 +444,7 @@ def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_ch
         min_topic_size=10,
         nr_topics=None,
         low_memory=False,
-        calculate_probabilities=True, # The probabilities of all topics per document. Might need to set to false for gpu https://github.com/rapidsai/cuml/issues/5127
+        calculate_probabilities=False, # The probabilities of all topics per document. Might need to set to false for gpu https://github.com/rapidsai/cuml/issues/5127. see also https://github.com/rapidsai/cuml/issues/4879
         seed_topic_list=None, # Like CorEx
         embedding_model=embedding_model,
         umap_model=umap_model,
