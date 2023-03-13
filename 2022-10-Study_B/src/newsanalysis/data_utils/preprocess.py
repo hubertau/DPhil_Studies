@@ -113,6 +113,7 @@ def remove_redundant(file, savepath, by='id'):
     logger.info(f'Input file is {file}')
     logger.info(f'Output file is {savepath}')
     present = set()
+    unwritten = 0
     with jsonlines.open(file, 'r') as reader:
         with jsonlines.open(savepath, 'w') as writer:
             for story in reader.iter(skip_empty=True, skip_invalid=True):
@@ -123,11 +124,16 @@ def remove_redundant(file, savepath, by='id'):
                     if story_id not in present:
                         present.add(story_id)
                         writer.write(story)
+                    else:
+                        unwritten += 1
                 elif by == 'url':
                     story_url = story.get('url')
                     if story_url not in present:
                         present.add(story_url)
                         writer.write(story)
+                    else:
+                        unwritten += 1
+    logger.info(f'{unwritten} stories unwritten/discarded')
 
 def build_en_tokenizer(token_pattern=r"\b\w\w+\b"):
     """Return a function that splits a string into a sequence of tokens.
