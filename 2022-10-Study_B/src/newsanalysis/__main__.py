@@ -443,7 +443,7 @@ def remove_duplicates(ctx, dedup_faiss_file, data_file, savepath, skip, threshol
 @cli.command()
 @click.pass_context
 @click.argument('data_file')
-@click.option('--lo')
+@click.option('--lo', type=int, default=0)
 @click.option('--hi')
 def remove_by_len(ctx, data_file, lo, hi):
     newsanalysis.data_utils.remove_by_len(data_file, lo, hi)

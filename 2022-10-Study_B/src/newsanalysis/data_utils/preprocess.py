@@ -21,13 +21,13 @@ from sentence_transformers import SentenceTransformer
 from transformers import BertTokenizerFast
 try:
     from cuml.cluster import HDBSCAN
-    logger.info(f'cuML HDBSCAN imported')
+    # logger.info(f'cuML HDBSCAN imported')
 except ImportError:
     from hdbscan import HDBSCAN
-    logger.info('Regular HSBDSCAN imported')
+    # logger.info('Regular HSBDSCAN imported')
 try:
     from cuml.dask.cluster import DBSCAN
-    logger.info(f'cuML DBSCAN DASK imported')
+    # logger.info(f'cuML DBSCAN DASK imported')
 except ImportError:
     logger.info(f'cuML DBSCAN DASK failed to import')
 import pickle
@@ -39,10 +39,10 @@ import faiss
 import h5py
 try:
     from cuml.manifold import UMAP
-    logger.info('cuML UMAP imported')
+    # logger.info('cuML UMAP imported')
 except ImportError:
     from umap import UMAP
-    logger.info('Regular UMAP imported')
+    # logger.info('Regular UMAP imported')
 
 from newsanalysis.dataviz.plots import retrieve_story_lens, retrieve_story_and_lang
 
@@ -350,7 +350,6 @@ def remove_duplicates(dedup_faiss_file, original_file, savepath, skip_hdf5_read 
 
     logger.info(f'Written to {deduped_filename}')
 
-
 def embed_docs(file, savepath, up_to = None, progress_check = None):
     assert os.path.isdir(savepath)
 
@@ -384,10 +383,6 @@ def embed_docs(file, savepath, up_to = None, progress_check = None):
         pickle.dump({'ids': unique_ids, 'embeddings': emb}, fOut, protocol=pickle.HIGHEST_PROTOCOL)
 
     logger.info(f'Saved to {savename}')
-
-
-# custom dbscan class for dask
-
 
 def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_check=None, dask = False):
     assert os.path.isdir(savepath)
@@ -482,15 +477,16 @@ def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_ch
 
     return topics, probs
 
-
 def remove_by_len(file, lo = None, hi = None):
     '''Function to remove articles below and above a certain length
     '''
 
-    to_discard = set()
+    if not lo or hi:
+        logger.info(f'No lo or hi boundary provided, returning...')
+        return None
     original_file_dir = os.path.dirname(file)
     sole_filename = os.path.split(file)[-1].split('.jsonl')[0]
-    deduped_filename = os.path.join(original_file_dir, f'{sole_filename}_noempty.jsonl')
+    deduped_filename = os.path.join(original_file_dir, f'{sole_filename}{f"_nolo{lo}" if lo else ""}{f"_nohi{hi}" if hi else ""}.jsonl')
     with jsonlines.open(file, 'r') as reader:
         with jsonlines.open(deduped_filename, 'w') as writer:
             for story in reader.iter(skip_invalid=True, skip_empty=True):
