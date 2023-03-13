@@ -392,7 +392,7 @@ def show_langs(ctx, file):
 @click.argument('file')
 @click.argument('savepath')
 @click.option('--up_to', '-u', type=int, default=None)
-@click.option('--progress_check', '-p', type=int, default=100000)
+@click.option('--progress_check', '-p', type=int, default=500000)
 def embed(ctx, file, savepath, up_to, progress_check):
     '''Generate embeddings of documents with multiple GPUs
     '''
@@ -406,7 +406,7 @@ def embed(ctx, file, savepath, up_to, progress_check):
 @click.argument('file')
 @click.argument('savepath')
 @click.option('--up_to', '-u', type=int, default=None)
-@click.option('--progress_check', '-p', type=int, default=100000)
+@click.option('--progress_check', '-p', type=int, default=500000)
 @click.option('--embedding_file', '-e', default=None)
 def obtain_clusters(ctx, file, savepath, up_to, progress_check, embedding_file):
     if embedding_file:
