@@ -481,12 +481,14 @@ def remove_by_len(file, lo = None, hi = None):
     '''Function to remove articles below and above a certain length
     '''
 
-    if not lo or hi:
+    if lo is None and hi is None:
         logger.info(f'No lo or hi boundary provided, returning...')
         return None
+    logger.info(f'lo is {lo}')
+    logger.info(f'hi is {hi}')
     original_file_dir = os.path.dirname(file)
     sole_filename = os.path.split(file)[-1].split('.jsonl')[0]
-    deduped_filename = os.path.join(original_file_dir, f'{sole_filename}{f"_nolo{lo}" if lo else ""}{f"_nohi{hi}" if hi else ""}.jsonl')
+    deduped_filename = os.path.join(original_file_dir, f'{sole_filename}{f"_nolo{lo}" if lo is not None else ""}{f"_nohi{hi}" if hi is not None else ""}.jsonl')
     unwritten = 0
     with jsonlines.open(file, 'r') as reader:
         with jsonlines.open(deduped_filename, 'w') as writer:
@@ -495,7 +497,7 @@ def remove_by_len(file, lo = None, hi = None):
                     writer.write(story)
                     continue
                 length = len(story.get('text'))
-                if (lo and length < lo) and (hi and length < hi):
+                if (lo is not None and length < lo) and (hi is not None and length < hi):
                     writer.write(story)
                 else:
                     unwritten += 1
