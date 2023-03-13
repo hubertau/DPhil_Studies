@@ -416,7 +416,7 @@ def obtain_clusters(ctx, file, savepath, up_to, progress_check, embedding_file):
             stored_ids = stored_data['ids']
             stored_embeddings = stored_data['embeddings']
         logger.info('loaded in embeddings')
-    topics, probs = newsanalysis.data_utils.filter_by_cluster(
+    _ = newsanalysis.data_utils.filter_by_cluster(
         file,
         savepath,
         up_to=up_to,
@@ -424,10 +424,10 @@ def obtain_clusters(ctx, file, savepath, up_to, progress_check, embedding_file):
         embeddings=stored_embeddings,
         dask=ctx.obj['DASK']
     )
-    savename = os.path.join(savepath, 'bertopic_cluster.hdf5')
-    with h5py.File(savename, 'w') as f:
-        f.create_dataset('topics', data=topics)
-        f.create_dataset('probs', data=probs)
+    # savename = os.path.join(savepath, 'bertopic_cluster.hdf5')
+    # with h5py.File(savename, 'w') as f:
+    #     f.create_dataset('topics', data=topics)
+    #     f.create_dataset('probs', data=probs)
 
 @cli.command()
 @click.pass_context
@@ -447,6 +447,19 @@ def remove_duplicates(ctx, dedup_faiss_file, data_file, savepath, skip, threshol
 @click.option('--hi')
 def remove_by_len(ctx, data_file, lo, hi):
     newsanalysis.data_utils.remove_by_len(data_file, lo, hi)
+
+
+@cli.command()
+@click.argument('file')
+def show_count(file):
+    counter = 0
+    with jsonlines.open(file, 'r') as reader:
+        for story in reader.iter(skip_invalid=True, skip_empty=True):
+            if 'query' in story:
+                continue
+            else:
+                counter += 1
+    logger.info(f'{counter} stories in file')
 
 if __name__ == '__main__':
     cli()
