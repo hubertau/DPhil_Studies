@@ -105,7 +105,7 @@ def story_iter(file, only_text = True, match_list = None, up_to = None, progress
                 else:
                     yield story_id
 
-def remove_redundant_ids(file, savepath, by='id'):
+def remove_redundant(file, savepath, by='id'):
     valid_by = ['id', 'url']
     if by not in valid_by:
         raise ValueError(f'by must be in {valid_by}. "{by}" was given')
@@ -477,21 +477,22 @@ def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_ch
     return topics, probs
 
 
-def remove_by_len(file, savepath, lo = None, hi = None):
+def remove_by_len(file, lo = None, hi = None):
     '''Function to remove articles below and above a certain length
     '''
 
-    original_file_dir = os.path.dirname(original_file)
-    sole_filename = os.path.split(original_file)[-1].split('.jsonl')[0]
-    deduped_filename = os.path.join(original_file_dir, f'{sole_filename}_nodup.jsonl')
-    with jsonlines.open(original_file, 'r') as reader:
+    to_discard = set()
+    original_file_dir = os.path.dirname(file)
+    sole_filename = os.path.split(file)[-1].split('.jsonl')[0]
+    deduped_filename = os.path.join(original_file_dir, f'{sole_filename}_noempty.jsonl')
+    with jsonlines.open(file, 'r') as reader:
         with jsonlines.open(deduped_filename, 'w') as writer:
             for story in reader.iter(skip_invalid=True, skip_empty=True):
                 if 'query' in story:
                     writer.write(story)
                     continue
-                id = int(story.get('processed_stories_id'))
-                if id and id not in to_discard:
+                length = len(story.get('text'))
+                if (lo and length < lo) and (hi and length < hi):
                     writer.write(story)
 
     logger.info(f'Written to {deduped_filename}')

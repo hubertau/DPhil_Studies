@@ -320,8 +320,9 @@ def consolidate(ctx, glob_command, outfile):
 @click.pass_context
 @click.argument('file')
 @click.argument('savepath')
-def remove_redundant_ids(ctx, file, savepath):
-    newsanalysis.data_utils.remove_redundant_ids(file, savepath)
+@click.option('--by', default='id', type=click.Choice(['id', 'url']))
+def remove_redundant(ctx, file, savepath, by):
+    newsanalysis.data_utils.remove_redundant(file, savepath, by)
 
 @cli.command()
 @click.pass_context
@@ -437,6 +438,14 @@ def obtain_clusters(ctx, file, savepath, up_to, progress_check, embedding_file):
 @click.option('--threshold', '-t', default=0.15, type=float, help='threshold of distance below which articles are considered duplicates')
 def remove_duplicates(ctx, dedup_faiss_file, data_file, savepath, skip, threshold):
     newsanalysis.data_utils.remove_duplicates(dedup_faiss_file, data_file, savepath, skip_hdf5_read = skip, threshold=threshold)
+
+
+@cli.command()
+@click.pass_context
+@click.argument('data_file')
+@click.option()
+def remove_by_len(ctx, data_file, lo, hi):
+    newsanalysis.data_utils.remove_by_len(data_file, lo, hi)
 
 if __name__ == '__main__':
     cli()
