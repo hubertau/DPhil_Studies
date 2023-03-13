@@ -499,10 +499,15 @@ def remove_by_len(file, lo = None, hi = None):
                     writer.write(story)
                     continue
                 length = len(story.get('text'))
-                if (lo is not None and length > lo) and (hi is not None and length < hi):
-                    writer.write(story)
-                else:
-                    unwritten += 1
+                if lo is not None:
+                    if length <= lo:
+                        unwritten += 1
+                        continue
+                if hi is not None:
+                    if length <= hi:
+                        unwritten += 1
+                        continue
+                writer.write(story)
 
     logger.info(f'{unwritten} stories unwritten/discarded')
     logger.info(f'Written to {deduped_filename}')
