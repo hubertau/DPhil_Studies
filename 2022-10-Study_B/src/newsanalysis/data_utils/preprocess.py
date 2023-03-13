@@ -487,6 +487,7 @@ def remove_by_len(file, lo = None, hi = None):
     original_file_dir = os.path.dirname(file)
     sole_filename = os.path.split(file)[-1].split('.jsonl')[0]
     deduped_filename = os.path.join(original_file_dir, f'{sole_filename}{f"_nolo{lo}" if lo else ""}{f"_nohi{hi}" if hi else ""}.jsonl')
+    unwritten = 0
     with jsonlines.open(file, 'r') as reader:
         with jsonlines.open(deduped_filename, 'w') as writer:
             for story in reader.iter(skip_invalid=True, skip_empty=True):
@@ -496,5 +497,8 @@ def remove_by_len(file, lo = None, hi = None):
                 length = len(story.get('text'))
                 if (lo and length < lo) and (hi and length < hi):
                     writer.write(story)
+                else:
+                    unwritten += 1
 
+    logger.info(f'{unwritten} stories unwritten/discarded')
     logger.info(f'Written to {deduped_filename}')
