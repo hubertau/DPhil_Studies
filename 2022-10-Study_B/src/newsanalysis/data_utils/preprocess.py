@@ -470,12 +470,14 @@ def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_ch
     )),
     embeddings=embeddings) # Fit the model and predict documents.
 
-    topic_model_savename = os.path.join(savepath, 'topic_model.pkl')
-    with open(topic_model_savename, 'wb') as f:
-        pickle.dump(topic_model, f)
+    # cf. https://stackoverflow.com/questions/74860769/loading-a-gpu-trained-bertopic-model-on-cpu about saving and loading with a GPU and loading onto a computer with CPU
+    topic_model_savename = os.path.join(savepath, 'topic_model.bertopic')
+    # with open(topic_model_savename, 'wb') as f:
+    #     pickle.dump(topic_model, f)
+    topic_model.save(topic_model_savename, save_embedding_model=False)
     logger.info(f'Saved to {topic_model_savename}')
 
-    return topics, probs
+    return None
 
 def remove_by_len(file, lo = None, hi = None):
     '''Function to remove articles below and above a certain length
@@ -497,7 +499,7 @@ def remove_by_len(file, lo = None, hi = None):
                     writer.write(story)
                     continue
                 length = len(story.get('text'))
-                if (lo is not None and length < lo) and (hi is not None and length < hi):
+                if (lo is not None and length > lo) and (hi is not None and length < hi):
                     writer.write(story)
                 else:
                     unwritten += 1
