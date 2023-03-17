@@ -461,5 +461,14 @@ def show_count(file):
                 counter += 1
     logger.info(f'{counter} stories in file')
 
+@cli.command()
+@click.argument('data_file')
+@click.option('--outpath', help='folder to save outfile')
+@click.option('--id', help='specific id of story to export', default=None, type=int)
+@click.option('--format', '-f', help='format to save in.', default='txt')
+@click.option('--count', '-c', help= 'number of stories to output', type=int)
+def export(data_file, outpath, id, format, count):
+    newsanalysis.data_utils.export(data_file, outpath = outpath, id=id, format=format, count=count)
+
 if __name__ == '__main__':
     cli()

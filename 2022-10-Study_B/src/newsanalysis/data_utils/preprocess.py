@@ -9,11 +9,14 @@ Script to preprocess obtained and enriched MediaCloud data. The enriching steps 
 
 '''
 
+from pathlib import Path
 import numpy as np
 import re
 import functools
 import pandas as pd
 import os
+from csv import DictWriter
+import json
 from loguru import logger
 from bertopic import BERTopic
 from bertopic.vectorizers import ClassTfidfTransformer
@@ -304,8 +307,6 @@ def remove_duplicates(dedup_faiss_file, original_file, savepath, skip_hdf5_read 
 
     if not skip_hdf5_read:
         to_discard = set()
-        do_not_discard = set()
-        threshold=threshold
 
         with h5py.File(dedup_faiss_file, 'r') as f:
             for lang in f.keys():
@@ -314,21 +315,30 @@ def remove_duplicates(dedup_faiss_file, original_file, savepath, skip_hdf5_read 
                 I = f[lang]['I'][:]
                 ids = f[lang]['ids'][:]
 
-                id_len = len(ids)
-                for c in range(id_len):
-                    if c%np.floor(id_len/10) == 0:
-                        logger.info(f'{100*c/len(ids):.2f}% complete')
-                    if ids[c] not in to_discard.union(do_not_discard):
-                        do_not_discard.add(ids[c])
-                    ids_to_process = I[c, D[c,:]<threshold]
-                    for k in ids_to_process:
-                        k = int(k)
-                        if k not in do_not_discard and k != ids[c]:
-                            to_discard.add(k)
-        assert len(do_not_discard.intersection(to_discard)) == 0
+                to_discard.update(
+                    set(I[np.logical_and(
+                        np.logical_not(np.equal(I, ids.reshape(-1,1))),
+                        D<threshold
+                    )].astype(int))
+                )
+
+        #         id_len = len(ids)
+        #         for c in range(id_len):
+        #             if c%np.floor(id_len/10) == 0:
+        #                 logger.info(f'{100*c/len(ids):.2f}% complete')
+        #             if ids[c] not in to_discard.union(do_not_discard):
+        #                 do_not_discard.add(int(ids[c]))
+        #             ids_to_process = I[c, D[c,:]<threshold]
+        #             for k in ids_to_process:
+        #                 k = int(k)
+        #                 if (k not in do_not_discard) and k != int(ids[c]):
+        #                     to_discard.add(k)
+
+        logger.info(f'Length of discard list is {len(to_discard)}')
 
         with open(savename, 'wb') as f:
             pickle.dump(to_discard, f)
+        logger.info(f'Discard list saved to {savename}')
 
     else:
         with open(savename, 'rb') as f:
@@ -340,7 +350,9 @@ def remove_duplicates(dedup_faiss_file, original_file, savepath, skip_hdf5_read 
     deduped_filename = os.path.join(original_file_dir, f'{sole_filename}_nodup.jsonl')
     with jsonlines.open(original_file, 'r') as reader:
         with jsonlines.open(deduped_filename, 'w') as writer:
-            for story in reader.iter(skip_invalid=True, skip_empty=True):
+            for counter, story in enumerate(reader.iter(skip_invalid=True, skip_empty=True)):
+                if counter>0 and counter %100000 == 0:
+                    logger.info(f'Processed {counter} stories')
                 if 'query' in story:
                     writer.write(story)
                     continue
@@ -365,7 +377,7 @@ def embed_docs(file, savepath, up_to = None, progress_check = None):
         up_to=up_to,
         progress_check=progress_check
     )), pool)
-    logger.info("Embeddings computed. Shape:", emb.shape)
+    logger.info(f"Embeddings computed. Shape: {emb.shape}")
 
     unique_ids = list(story_iter(
         file,
@@ -511,3 +523,49 @@ def remove_by_len(file, lo = None, hi = None):
 
     logger.info(f'{unwritten} stories unwritten/discarded')
     logger.info(f'Written to {deduped_filename}')
+
+
+def export(data_file, outpath = None, id = None, format='txt', count = None) -> None:
+    if outpath is None:
+        outpath = Path(data_file).parent
+    else:
+        outpath = Path(outpath)
+
+    if count is None:
+        with jsonlines.open(data_file, 'r') as reader:
+            for story in reader.iter(skip_invalid=True, skip_empty=True):
+                if 'query' in story:
+                    continue
+                if id is None or id == story.get('processed_stories_id'):
+                    outfile = outpath / f'{story.get("processed_stories_id")}.{format}'
+                    with open(outfile, 'w') as f:
+                        f.write(story.get('text'))
+                    logger.info(f'Saved to {outfile}')
+                    return
+    elif count is not None and format == 'csv':
+        outfile = outpath / f'dedoose_ready_{count}.csv'
+        with jsonlines.open(data_file, 'r') as reader:
+            with open(outfile, 'w', newline='') as outp:
+                writer = DictWriter(outp, fieldnames=[
+                    'collect_date',
+                    'language',
+                    'media_id',
+                    'media_name',
+                    'media_url',
+                    'processed_stories_id',
+                    'publish_date',
+                    'Text',
+                    'Title',
+                    'url'
+                ], extrasaction='ignore')
+                writer.writeheader()
+                for counter, story in enumerate(reader.iter(skip_invalid=True, skip_empty=True)):
+                    if 'query' in story:
+                        continue
+                    if counter == count:
+                        logger.info(f'{count} stories written, exiting...')
+                        return
+                    story['Text'] = story['text']
+                    story['Title'] = story['title']
+                    writer.writerow(story)
+
