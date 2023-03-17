@@ -470,5 +470,11 @@ def show_count(file):
 def export(data_file, outpath, id, format, count):
     newsanalysis.data_utils.export(data_file, outpath = outpath, id=id, format=format, count=count)
 
+@cli.command()
+@click.argument('data_file')
+@click.argument('--by')
+def gen_sample(data_file, by):
+    pass
+
 if __name__ == '__main__':
     cli()
