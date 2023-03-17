@@ -41,7 +41,7 @@ except ImportError:
     from umap import UMAP
     # logger.info('Regular UMAP imported')
 
-from newsanalysis.dataviz.plots import retrieve_story_lens, retrieve_story_and_lang
+from ..dataviz import retrieve_story_and_lang, retrieve_story_lens
 
 def chunks(iter1, iter2, n):
     """Yield successive n-sized chunks from iter1 and iter2."""

@@ -5,6 +5,7 @@ import os
 def test_embeddings(tmp_path):
     _ = subprocess.run([
         'newsanalysis',
+        'preprocess',
         'embed',
         '../data/01_raw/data_ndid.jsonl',
         tmp_path,
@@ -20,6 +21,7 @@ def test_embeddings(tmp_path):
 def test_obtain_clusters(tmp_path):
     _ = subprocess.run([
         'newsanalysis',
+        'preprocess',
         'obtain-clusters',
         '../data/01_raw/data_ndid.jsonl',
         tmp_path,

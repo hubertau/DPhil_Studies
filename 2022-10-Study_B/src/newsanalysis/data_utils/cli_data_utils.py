@@ -1,5 +1,7 @@
 import click
 import glob
+import jsonlines
+from loguru import logger
 
 from ..dataviz import show_date_range
 from . import *
@@ -23,6 +25,7 @@ def consolidate(ctx, glob_command, outfile):
     Raises:
         ValueError: if no files to consolidate, bad glob command
     """
+
     if ctx.obj['DEBUG']:
         logger.info(f'Glob command: {glob_command}')
         logger.info(f'Outfile: {outfile}')
@@ -83,6 +86,7 @@ def consolidate(ctx, glob_command, outfile):
 @click.option('--by', default='id', type=click.Choice(['id', 'url']))
 def remove_redundant_items(ctx, file, savepath, by):
     '''Removal of redundant items, e.g. repeated unique ids or urls'''
+    # from . import remove_redundant
     remove_redundant(file, savepath, by)
 
 @preprocess.command()
@@ -102,6 +106,17 @@ def duplicate_check(ctx, file, savepath, threshold = 0.9):
     logger.info(f'threshold: {threshold}')
     logger.info(f'Savepath: {savepath}')
     logger.info(f'GPU flag is {ctx.obj["GPU"]}')
+    # from . import deduplicate
+    # from transformers import BertTokenizerFast
+    # import re
+    # import functools
+    # from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+    # import faiss
+    # import numpy as np
+    # import h5py
+    # import os
+    # from time import perf_counter
+    # from ..dataviz import retrieve_story_and_lang, retrieve_story_lens
     deduplicate(file, savepath, gpu=ctx.obj['GPU'])
     logger.info('done')
 
@@ -116,7 +131,8 @@ def embed(ctx, file, savepath, up_to, progress_check):
     '''
     if not ctx.obj['GPU']:
         logger.warning("GPU flag not set. Torch will try to embed with 4 cpus")
-
+    # from . import embed_docs
+    # from sentence_transformers import SentenceTransformer
     embed_docs(file, savepath, up_to, progress_check)
 
 @preprocess.command()
@@ -151,6 +167,11 @@ def obtain_clusters(ctx, file, savepath, up_to, progress_check, embedding_file):
 @click.option('--threshold', '-t', default=0.15, type=float, help='threshold of distance below which articles are considered duplicates')
 def remove_dup(ctx, dedup_faiss_file, data_file, savepath, skip, threshold):
     '''remove duplicates given a file of calculated distances'''
+    # from . import remove_duplicates
+    # import os
+    # import h5py
+    # import numpy as np
+    # import pickle
     remove_duplicates(dedup_faiss_file, data_file, savepath, skip_hdf5_read = skip, threshold=threshold)
 
 
