@@ -42,7 +42,7 @@ def show_date_range(file, existing_min = None, existing_max = None):
 
     return min_date, max_date
 
-def show_enrichment_rate(unenriched, enriched):
+def show_enrichment_rate_data(unenriched, enriched):
     '''Print enrichment success rate'''
 
     results_dict  = Counter()

@@ -16,7 +16,6 @@ import functools
 import pandas as pd
 import os
 from csv import DictWriter
-import json
 from loguru import logger
 from bertopic import BERTopic
 from bertopic.vectorizers import ClassTfidfTransformer
@@ -28,11 +27,6 @@ try:
 except ImportError:
     from hdbscan import HDBSCAN
     # logger.info('Regular HSBDSCAN imported')
-try:
-    from cuml.dask.cluster import DBSCAN
-    # logger.info(f'cuML DBSCAN DASK imported')
-except ImportError:
-    logger.info(f'cuML DBSCAN DASK failed to import')
 import pickle
 import pandas as pd
 import jsonlines
@@ -322,18 +316,6 @@ def remove_duplicates(dedup_faiss_file, original_file, savepath, skip_hdf5_read 
                     )].astype(int))
                 )
 
-        #         id_len = len(ids)
-        #         for c in range(id_len):
-        #             if c%np.floor(id_len/10) == 0:
-        #                 logger.info(f'{100*c/len(ids):.2f}% complete')
-        #             if ids[c] not in to_discard.union(do_not_discard):
-        #                 do_not_discard.add(int(ids[c]))
-        #             ids_to_process = I[c, D[c,:]<threshold]
-        #             for k in ids_to_process:
-        #                 k = int(k)
-        #                 if (k not in do_not_discard) and k != int(ids[c]):
-        #                     to_discard.add(k)
-
         logger.info(f'Length of discard list is {len(to_discard)}')
 
         with open(savename, 'wb') as f:
@@ -396,24 +378,8 @@ def embed_docs(file, savepath, up_to = None, progress_check = None):
 
     logger.info(f'Saved to {savename}')
 
-def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_check=None, dask = False):
+def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_check=None):
     assert os.path.isdir(savepath)
-
-    if dask:
-        logger.info(f'Dask flag is TRUE')
-        from dask_cuda import LocalCUDACluster
-        from dask.distributed import Client
-        import dask.array as da
-        class bertopic_compatible_dask_dbscan(DBSCAN):
-
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-
-            def predict(self, *args, **kwargs):
-                self.labels_ = super().fit_predict(*args, **kwargs)
-
-        embeddings = da.from_array(embeddings, chunks=2000)
-
     # Step 1 - Extract embeddings.
     embedding_model = SentenceTransformer("sentence-transformers/LaBSE")
 
@@ -428,25 +394,13 @@ def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_ch
     )
 
     # Step 3 - Cluster reduced embeddings.
-    if dask:
-        cluster = LocalCUDACluster(threads_per_worker=1)
-        logger.info(f'CUDA VISIBLE DEVICES: {cluster.cuda_visible_devices}')
-        client = Client(cluster)
-        dbscan_model = bertopic_compatible_dask_dbscan(
-            verbose=True,
-            client=client,
-            min_samples=15,
-            output_type='numpy',
-            max_mbytes_per_batch = 10000
-        )
-    else:
-        dbscan_model = HDBSCAN(
-            min_cluster_size=100,
-            min_samples=50,
-            metric='euclidean',
-            cluster_selection_method='eom',
-            prediction_data=True
-        )
+    dbscan_model = HDBSCAN(
+        min_cluster_size=100,
+        min_samples=50,
+        metric='euclidean',
+        cluster_selection_method='eom',
+        prediction_data=True
+    )
 
     # Step 4 - Tokenize topics.
     vectorizer_model = CountVectorizer(
@@ -525,7 +479,7 @@ def remove_by_len(file, lo = None, hi = None):
     logger.info(f'Written to {deduped_filename}')
 
 
-def export(data_file, outpath = None, id = None, format='txt', count = None) -> None:
+def export_to(data_file, outpath = None, id = None, format='txt', count = None) -> None:
     if outpath is None:
         outpath = Path(data_file).parent
     else:
