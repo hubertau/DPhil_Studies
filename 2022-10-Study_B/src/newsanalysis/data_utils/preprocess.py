@@ -347,7 +347,7 @@ def remove_duplicates(dedup_faiss_file, original_file, savepath, skip_hdf5_read 
     logger.info(f'Written to {deduped_filename}')
 
 def embed_docs(file, savepath, up_to = None, progress_check = None):
-    assert os.path.isdir(savepath)
+    assert os.path.isdir(savepath), savepath
 
     embedding_model = SentenceTransformer("sentence-transformers/LaBSE")
 
