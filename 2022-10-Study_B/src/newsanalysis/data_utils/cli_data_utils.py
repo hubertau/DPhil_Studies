@@ -150,7 +150,9 @@ def obtain_clusters(ctx, file, savepath, up_to, progress_check, embedding_file):
             stored_ids = stored_data['ids']
             stored_embeddings = stored_data['embeddings']
         logger.info('loaded in embeddings')
-    _ = newsanalysis.data_utils.filter_by_cluster(
+    else:
+        stored_embeddings = None
+    _ = filter_by_cluster(
         file,
         savepath,
         up_to=up_to,
@@ -197,10 +199,13 @@ def export(data_file, outpath, id, format, count):
 
 @preprocess.command()
 @click.argument('data_file')
-@click.argument('--by')
-def gen_sample(data_file, by):
+@click.argument('savepath')
+@click.option('--by', '-b', help='What to sample on', multiple=True)
+@click.option('--lang', '-l', help='Languages to sample on. Can be multiple', multiple = True)
+@click.option('--total')
+def gen_sample(data_file, savepath, by, lang, total):
     '''Sample data for dedoose'''
-    pass
+    sample(data_file, savepath)
 
 if __name__ == '__main__':
     preprocess()

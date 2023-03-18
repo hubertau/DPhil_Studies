@@ -59,7 +59,7 @@ def unique_story_ids(file):
                 unique_ids.add(story_id)
     return unique_ids
 
-def story_iter(file, only_text = True, match_list = None, up_to = None, progress_check = None):
+def story_iter(file, only_text = True, match_list = None, up_to = None, progress_check = None, full_object = False):
     """Iterator to yield stories from a jsonlines data file
 
     Args:
@@ -99,6 +99,8 @@ def story_iter(file, only_text = True, match_list = None, up_to = None, progress
                         logger.info(f"Yielding story number {c}")
                 if only_text:
                     yield story.get('text')
+                elif full_object:
+                    yield story
                 else:
                     yield story_id
 
@@ -478,7 +480,6 @@ def remove_by_len(file, lo = None, hi = None):
     logger.info(f'{unwritten} stories unwritten/discarded')
     logger.info(f'Written to {deduped_filename}')
 
-
 def export_to(data_file, outpath = None, id = None, format='txt', count = None) -> None:
     if outpath is None:
         outpath = Path(data_file).parent
@@ -523,3 +524,27 @@ def export_to(data_file, outpath = None, id = None, format='txt', count = None) 
                     story['Title'] = story['title']
                     writer.writerow(story)
 
+def sample(data_file, savepath, by=None):
+    df_records = []
+    for story in story_iter(data_file, only_text= False, full_object=True):
+        df_records.append(
+            {
+                'id': story.get('processed_stories_id'),
+                'lang': story.get('language'),
+                'publish_date': story.get('publish_date'),
+                'media_id': story.get('media_id')
+            }
+        )
+    df = pd.DataFrame.from_records(df_records)
+    df['media_count'] = df.groupby('media_id')['media_id'].transform('count')
+    df['date'] = pd.to_datetime(df['publish_date'])
+    df['year'] = df['date'].dt.year
+
+    intermediate_df = df.groupby(['lang', 'year']).filter(lambda x: len(x) >= 20)
+    sampled_df = intermediate_df.groupby(['lang', 'year']).sample(n=20, weights=df['media_count'], random_state=1)
+
+
+    savename = Path(savepath) / 'dedoose_sampled.csv'
+
+    sampled_df.to_csv(savename)
+    logger.info(f'saved to {savename}')
