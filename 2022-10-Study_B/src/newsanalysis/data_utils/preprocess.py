@@ -380,7 +380,7 @@ def embed_docs(file, savepath, up_to = None, progress_check = None):
 
     logger.info(f'Saved to {savename}')
 
-def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_check=None):
+def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_check=None, save_without_gpu_elements = True):
     assert os.path.isdir(savepath)
     # Step 1 - Extract embeddings.
     embedding_model = SentenceTransformer("sentence-transformers/LaBSE")
@@ -442,6 +442,9 @@ def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_ch
     topic_model_savename = os.path.join(savepath, 'topic_model.bertopic')
     # with open(topic_model_savename, 'wb') as f:
     #     pickle.dump(topic_model, f)
+    if save_without_gpu_elements:
+        del topic_model.hdbscan_model
+        del topic_model.umap_model
     topic_model.save(topic_model_savename, save_embedding_model=False)
     logger.info(f'Saved to {topic_model_savename}')
 
