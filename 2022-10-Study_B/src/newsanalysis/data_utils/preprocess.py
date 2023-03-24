@@ -380,7 +380,7 @@ def embed_docs(file, savepath, up_to = None, progress_check = None):
 
     logger.info(f'Saved to {savename}')
 
-def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_check=None, save_without_gpu_elements = True):
+def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_check=None, nr_topics = None, save_without_gpu_elements = True):
     assert os.path.isdir(savepath)
     # Step 1 - Extract embeddings.
     embedding_model = SentenceTransformer("sentence-transformers/LaBSE")
@@ -417,7 +417,7 @@ def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_ch
         top_n_words=10,
         n_gram_range=(1, 1),
         min_topic_size=10,
-        nr_topics=None,
+        nr_topics=nr_topics,
         low_memory=False,
         calculate_probabilities=False, # The probabilities of all topics per document. Might need to set to false for gpu https://github.com/rapidsai/cuml/issues/5127. see also https://github.com/rapidsai/cuml/issues/4879
         seed_topic_list=None, # Like CorEx
@@ -430,7 +430,7 @@ def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_ch
     )
     if embeddings is not None:
         logger.info(f'Embeddings shape: {embeddings.shape}')
-    topics, probs = topic_model.fit_transform(list(story_iter(
+    _ = topic_model.fit_transform(list(story_iter(
         file,
         only_text=True,
         up_to=up_to,
