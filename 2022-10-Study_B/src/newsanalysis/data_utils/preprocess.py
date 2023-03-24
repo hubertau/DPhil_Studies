@@ -380,7 +380,7 @@ def embed_docs(file, savepath, up_to = None, progress_check = None):
 
     logger.info(f'Saved to {savename}')
 
-def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_check=None, nr_topics = None, save_without_gpu_elements = True):
+def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_check=None, nr_topics = None, top_n_words = 10, save_without_gpu_elements = True):
     assert os.path.isdir(savepath)
     # Step 1 - Extract embeddings.
     logger.info(f'nr topics set to {nr_topics}')
@@ -415,7 +415,7 @@ def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_ch
 
     topic_model = BERTopic(
         language='multilingual', # Set to 'multilingual' for datasets with languages other than English. N.B. documentation says this is not used if embedding_model is provided
-        top_n_words=10,
+        top_n_words=top_n_words,
         n_gram_range=(1, 1),
         min_topic_size=10,
         nr_topics=nr_topics,

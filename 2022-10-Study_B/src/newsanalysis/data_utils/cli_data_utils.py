@@ -142,8 +142,9 @@ def embed(ctx, file, savepath, up_to, progress_check):
 @click.option('--up_to', '-u', type=int, default=None)
 @click.option('--progress_check', '-p', type=int, default=500000)
 @click.option('--nr_topics', '-n', type=int, default=None)
+@click.option('--top_n_words', '-t', type=int, default=10)
 @click.option('--embedding_file', '-e', default=None)
-def obtain_clusters(ctx, file, savepath, up_to, progress_check, nr_topics, embedding_file):
+def obtain_clusters(ctx, file, savepath, up_to, progress_check, nr_topics, top_n_words, embedding_file):
     if embedding_file:
         #Load sentences & embeddings from disc
         with open(embedding_file, "rb") as fIn:
@@ -159,6 +160,7 @@ def obtain_clusters(ctx, file, savepath, up_to, progress_check, nr_topics, embed
         up_to=up_to,
         progress_check=progress_check,
         nr_topics = nr_topics,
+        top_n_words=top_n_words,
         embeddings=stored_embeddings
     )
 
