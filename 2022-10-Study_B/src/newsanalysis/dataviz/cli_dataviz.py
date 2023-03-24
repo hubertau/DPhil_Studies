@@ -260,6 +260,19 @@ def show_langs(ctx, file):
         except InvalidLanguageValue:
             logger.info(f'{empirical_lang} not a valid iso639 code')
 
+@viz.command()
+@click.argument('data_file')
+@click.argument('savedir')
+def get_story_and_lang(data_file, savedir):
+    '''Save stories with language information'''
+
+    '''Show languages prsent in data file
+    '''
+    df = retrieve_story_and_lang(data_file)
+
+    savename = Path(savedir) / f'{Path(data_file).stem}_stories_and_langs.csv'
+    df.to_csv(savename)
+
 
 
 if __name__ == '__main__':
