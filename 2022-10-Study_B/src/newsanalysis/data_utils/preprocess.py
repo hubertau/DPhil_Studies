@@ -383,6 +383,7 @@ def embed_docs(file, savepath, up_to = None, progress_check = None):
 def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_check=None, nr_topics = None, save_without_gpu_elements = True):
     assert os.path.isdir(savepath)
     # Step 1 - Extract embeddings.
+    logger.info(f'nr topics set to {nr_topics}')
     embedding_model = SentenceTransformer("sentence-transformers/LaBSE")
 
     # Step 2 - Reduce dimensionality.
@@ -439,7 +440,7 @@ def filter_by_cluster(file, savepath, embeddings = None, up_to=None, progress_ch
     embeddings=embeddings) # Fit the model and predict documents.
 
     # cf. https://stackoverflow.com/questions/74860769/loading-a-gpu-trained-bertopic-model-on-cpu about saving and loading with a GPU and loading onto a computer with CPU
-    topic_model_savename = os.path.join(savepath, 'topic_model.bertopic')
+    topic_model_savename = os.path.join(savepath, f'topic_model_{nr_topics}.bertopic')
     # with open(topic_model_savename, 'wb') as f:
     #     pickle.dump(topic_model, f)
     if save_without_gpu_elements:
