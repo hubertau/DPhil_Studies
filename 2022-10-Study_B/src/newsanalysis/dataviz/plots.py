@@ -18,8 +18,9 @@ class publisher:
 @dataclass(frozen=True)
 class storyclass:
     id: str=field(compare=True)
-    lang: str=field(compare=False)
+    lang: str=field(compare=False, default=None)
     length: int=field(compare=False, default=None)
+    time: str=field(compare=False, default=None)
 
 def retrieve_pubs(file):
 
@@ -65,6 +66,24 @@ def retrieve_story_and_lang(file):
                 all_stories.append(storyclass(
                     id     = story.get('processed_stories_id'),
                     lang   = story.get('language')
+                ))
+
+    df = pd.DataFrame.from_records([asdict(k) for k in all_stories])
+
+    return df
+
+def retrieve_story_and_dates(file):
+    '''Extract ids and timestamps'''
+
+    all_stories = []
+    with jsonlines.open(file, 'r') as reader:
+        for story in reader.iter(skip_empty=True, skip_invalid=True):
+            if 'query' in story:
+                continue
+            else:
+                all_stories.append(storyclass(
+                    id     = story.get('processed_stories_id'),
+                    time   = story.get('publish_date')
                 ))
 
     df = pd.DataFrame.from_records([asdict(k) for k in all_stories])

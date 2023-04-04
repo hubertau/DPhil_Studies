@@ -484,13 +484,17 @@ def remove_by_len(file, lo = None, hi = None):
     logger.info(f'{unwritten} stories unwritten/discarded')
     logger.info(f'Written to {deduped_filename}')
 
-def export_to(data_file, outpath = None, id = None, format='txt', count = None) -> None:
-    if outpath is None:
+def export_to(data_file, source = None, outpath = None, id = None, format='txt', count = None) -> None:
+    if outpath is None and source is None:
         outpath = Path(data_file).parent
+    elif source is not None:
+        outpath = Path(source).parent / Path(source).stem
+        os.makedirs(outpath, exist_ok=True)
+        logger.info(f'Outpath created is {outpath}')
     else:
         outpath = Path(outpath)
 
-    if count is None:
+    if count is None and source is None:
         with jsonlines.open(data_file, 'r') as reader:
             for story in reader.iter(skip_invalid=True, skip_empty=True):
                 if 'query' in story:
@@ -527,8 +531,46 @@ def export_to(data_file, outpath = None, id = None, format='txt', count = None) 
                     story['Text'] = story['text']
                     story['Title'] = story['title']
                     writer.writerow(story)
+    elif source is not None and format == 'csv':
+        ids = pd.read_csv(source)['id'].unique()
+        outfile = outpath / f'dedoose_descriptors_{Path(source).stem}.csv'
+        with jsonlines.open(data_file, 'r') as reader:
+            with open(outfile, 'w', newline='', encoding='utf-8') as outp:
+                writer = DictWriter(outp, fieldnames=[
+                    'collect_date',
+                    'language',
+                    'media_id',
+                    'media_name',
+                    'media_url',
+                    'publish_date',
+                    'Title',
+                    'title_text',
+                    'url'
+                ], extrasaction='ignore', delimiter='\t')
+                writer.writeheader()
+                for counter, story in enumerate(reader.iter(skip_invalid=True, skip_empty=True)):
+                    if 'query' in story:
+                        continue
+                    if story.get('processed_stories_id') in ids:
+                        # story['Text'] = story['text']
+                        story['title_text'] = story['title']
+                        story['Title'] = f"{story['processed_stories_id']}.txt"
+                        writer.writerow(story)
+    elif source is not None and format == 'txt':
+        ids = pd.read_csv(source)['id'].unique()
+        with jsonlines.open(data_file, 'r') as reader:
+            for story in reader.iter(skip_invalid=True, skip_empty=True):
+                if 'query' in story:
+                    continue
+                if story.get('processed_stories_id') in ids:
+                    outfile = outpath / f'{story.get("processed_stories_id")}.{format}'
+                    with open(outfile, 'w') as f:
+                        f.write(story.get('text'))
 
-def sample(data_file, savepath, by=None):
+
+def sample(data_file, savepath, by=None, total=20, lang=None, with_text = True, exclude = None):
+    if exclude:
+        to_exclude = pd.read_csv(exclude)
     df_records = []
     for story in story_iter(data_file, only_text= False, full_object=True):
         df_records.append(
@@ -536,7 +578,8 @@ def sample(data_file, savepath, by=None):
                 'id': story.get('processed_stories_id'),
                 'lang': story.get('language'),
                 'publish_date': story.get('publish_date'),
-                'media_id': story.get('media_id')
+                'media_id': story.get('media_id'),
+                # 'text': story.get('text') if with_text else None
             }
         )
     df = pd.DataFrame.from_records(df_records)
@@ -544,11 +587,71 @@ def sample(data_file, savepath, by=None):
     df['date'] = pd.to_datetime(df['publish_date'])
     df['year'] = df['date'].dt.year
 
-    intermediate_df = df.groupby(['lang', 'year']).filter(lambda x: len(x) >= 20)
-    sampled_df = intermediate_df.groupby(['lang', 'year']).sample(n=20, weights=df['media_count'], random_state=1)
+    if lang:
+        assert isinstance(lang, tuple)
+        logger.info(f'Filtering to lang list {lang}')
+        df = df[df['lang'].isin(lang)]
 
+    # each_group_min = np.ceil(total/len(lang))
+    if exclude:
+        df = df[~df['id'].isin(to_exclude['id'])]
+        logger.info('Exclusion applied')
 
-    savename = Path(savepath) / 'dedoose_sampled.csv'
+    intermediate_df = df.groupby(['lang', 'year']).filter(lambda x: len(x) >= total)
+    sampled_df = intermediate_df.groupby(['lang', 'year']).sample(n=total, weights=df['media_count'], random_state=1)
+
+    savename = Path(savepath) / f"dedoose_sampled_{Path(data_file).stem}{'_' if lang else ''}{'_'.join(lang)}.csv"
 
     sampled_df.to_csv(savename)
     logger.info(f'saved to {savename}')
+
+
+def remove_by_bt(data_file, bertopic_file, outfile, remove):
+    
+
+    # records which data and bertopic file
+    logger.info(f'Data file: {data_file}')
+    logger.info(f'BERTopic file: {bertopic_file}')
+
+    # we need at least one group to remove
+    assert len(remove) > 0, 'Please specify at least one topic to remove'
+    logger.info(f'TOPICS SET TO BE REMOVED: {remove}')
+
+    # load in bertopic file
+    embedding_model = SentenceTransformer("sentence-transformers/LaBSE")
+    topic_model = BERTopic.load(bertopic_file, embedding_model=embedding_model)
+    logger.info('BERTopic loaded in')
+
+    # get stories and langs data from data_file
+    df = retrieve_story_and_lang(data_file)
+    logger.info('Story ids loaded in')
+
+    # check that the number of stories in bertopic file match that of the bertopic result
+    assert len(df['id'].unique()) == len(topic_model.topics_), 'Are you sure this BERTopic was run on this data file? The number of labels in BERTopic do not match the length of this data file'
+
+    # check that all the topics set for removal are within the BERTopic result
+    max_topic = topic_model.get_topic_freq()['Topic'].max()
+    assert all([i<=max_topic for i in remove]), 'At least one topic set to be removed is not in the topics present. Please revise'
+
+    # generate set of story ids to be discarded
+    df['topic'] = topic_model.topics_
+    to_discard = set(df[df['topic'].isin(remove)]['id'])
+
+    # write to result
+    skipped = 0
+    with jsonlines.open(data_file, 'r') as reader:
+        with jsonlines.open(outfile, 'w') as writer:
+            for story in reader.iter(skip_invalid=True, skip_empty=True):
+                if 'query' in story:
+                    writer.write(story)
+                elif story.get('processed_stories_id') in to_discard:
+                    skipped += 1
+                    continue
+                else:
+                    writer.write(story)
+
+    logger.info(f'Saved to {outfile}')
+
+    logger.info(f'To discard: {len(to_discard)}')
+    logger.info(f'Skipped: {skipped} ')
+    assert skipped == len(to_discard)

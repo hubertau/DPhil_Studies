@@ -193,23 +193,36 @@ def remove_by_length(ctx, data_file, lo, hi):
 
 @preprocess.command()
 @click.argument('data_file')
+@click.option('--source', '-s')
 @click.option('--outpath', help='folder to save outfile')
 @click.option('--id', help='specific id of story to export', default=None, type=int)
 @click.option('--format', '-f', help='format to save in.', default='txt')
 @click.option('--count', '-c', help= 'number of stories to output', type=int)
-def export(data_file, outpath, id, format, count):
+def export(data_file, source, outpath, id, format, count):
     '''export for dedoose use'''
-    export_to(data_file, outpath = outpath, id=id, format=format, count=count)
+    export_to(data_file, source = source, outpath = outpath, id=id, format=format, count=count)
 
 @preprocess.command()
 @click.argument('data_file')
 @click.argument('savepath')
 @click.option('--by', '-b', help='What to sample on', multiple=True)
 @click.option('--lang', '-l', help='Languages to sample on. Can be multiple', multiple = True)
-@click.option('--total')
-def gen_sample(data_file, savepath, by, lang, total):
+@click.option('--total', '-t', help='Total number of articles to have sampled by the end.', type=int)
+@click.option('--exclude', '-e', help='File of existing sample to exclude')
+def gen_sample(data_file, savepath, by, lang, total, exclude):
     '''Sample data for dedoose'''
-    sample(data_file, savepath)
+    sample(data_file, savepath, lang=lang, total=total, exclude=exclude)
+
+
+@preprocess.command()
+@click.argument('data_file')
+@click.argument('bertopic_file')
+@click.argument('outfile')
+@click.option('--remove', '-r', help='ids for each group to remove', multiple=True, required=True, type=int)
+def remove_by_bertopic(data_file, bertopic_file, outfile, remove):
+    '''remove by bertopic result'''
+
+    remove_by_bt(data_file, bertopic_file, outfile, remove)
 
 if __name__ == '__main__':
     preprocess()

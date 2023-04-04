@@ -27,16 +27,23 @@ def get_date_range(file) -> None:
 
 @viz.command()
 @click.argument('file')
-def show_example(file) -> None:
+@click.option('--id', '-i', help='specific id to retrieve', type=int)
+def show_example(file, id) -> None:
     '''Print an example from a data jsonl file'''
     with jsonlines.open(file, 'r') as reader:
         for story in reader.iter(skip_empty=True, skip_invalid=True):
             if 'query' in story:
                 continue
-            else:
+            if id is None:
                 p = PrettyPrinter(indent=4)
                 p.pprint(story)
                 break
+            else:
+                story_id = story.get('processed_stories_id')
+                if story_id == id:
+                    p = PrettyPrinter(indent=4)
+                    p.pprint(story)
+                    break
 
 @viz.command()
 @click.argument('unenriched')
