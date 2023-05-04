@@ -1,4 +1,4 @@
-'''CLI commands for 
+'''CLI commands for dataviz
 '''
 
 import click

@@ -534,6 +534,7 @@ def export_to(data_file, source = None, outpath = None, id = None, format='txt',
     elif source is not None and format == 'csv':
         ids = pd.read_csv(source)['id'].unique()
         outfile = outpath / f'dedoose_descriptors_{Path(source).stem}.csv'
+        logger.info(f'outfile is {outfile}')
         with jsonlines.open(data_file, 'r') as reader:
             with open(outfile, 'w', newline='', encoding='utf-8') as outp:
                 writer = DictWriter(outp, fieldnames=[
@@ -568,7 +569,7 @@ def export_to(data_file, source = None, outpath = None, id = None, format='txt',
                         f.write(story.get('text'))
 
 
-def sample(data_file, savepath, by=None, total=20, lang=None, with_text = True, exclude = None):
+def sample(data_file, savepath, by=None, total=20, lang=None, with_text = True, exclude = None, min_date = None, max_date = None):
     if exclude:
         to_exclude = pd.read_csv(exclude)
     df_records = []
@@ -597,17 +598,29 @@ def sample(data_file, savepath, by=None, total=20, lang=None, with_text = True, 
         df = df[~df['id'].isin(to_exclude['id'])]
         logger.info('Exclusion applied')
 
+    if min_date:
+
+        # filter dataframe by dates later than a given date
+        df = df[df['date'] >= pd.to_datetime(min_date)]
+        logger.info(f'{min_date} applied')
+
+    if max_date:
+        df = df[df['date'] <= pd.to_datetime(min_date)]
+        logger.info(f'{max_date} applied')
+
+
+
     intermediate_df = df.groupby(['lang', 'year']).filter(lambda x: len(x) >= total)
     sampled_df = intermediate_df.groupby(['lang', 'year']).sample(n=total, weights=df['media_count'], random_state=1)
 
-    savename = Path(savepath) / f"dedoose_sampled_{Path(data_file).stem}{'_' if lang else ''}{'_'.join(lang)}.csv"
+    savename = Path(savepath) / f"dedoose_sampled_{Path(data_file).stem}{'_' if lang else ''}{'_'.join(lang)}{f'_min{min_date}' if min_date else ''}{f'_min{max_date}' if max_date else ''}.csv"
 
     sampled_df.to_csv(savename)
     logger.info(f'saved to {savename}')
 
 
 def remove_by_bt(data_file, bertopic_file, outfile, remove):
-    
+
 
     # records which data and bertopic file
     logger.info(f'Data file: {data_file}')
@@ -655,3 +668,47 @@ def remove_by_bt(data_file, bertopic_file, outfile, remove):
     logger.info(f'To discard: {len(to_discard)}')
     logger.info(f'Skipped: {skipped} ')
     assert skipped == len(to_discard)
+
+
+def read_in_annotated_txt(file):
+
+    '''
+    Title: 2195905526.txt
+    +1 Doc Creator: hubertau
+    +2 Doc Date: 3/31/2023
+    +3 Descriptor Info: 	collect_date: 12/1/2020 10:23	language: en	media_id: 25638	media_name: whatreallyhappened.com	media_url: http://whatreallyhappened.com	publish_date: 12/1/2020 9:57	url: https://www.dailymail.co.uk/news/article-9002367/Debenhams-jobs-danger-fallout-Arcadia-collapse.html	title_text: Everything MUST go: Debenhams will open TOMORROW for 'Wild Wednesday' fire sale of all remaining stock as 242-year-old chain collapses 24 hours after Arcadia - leaving 25,000 jobs at risk	Title: 2195905526.txt
+    +4 Codes Applied: 	not relevant
+
+    +5 Excerpt Creator: hubertau
+    +6 Excerpt Created On: 4/18/2023
+    +7 Excerpt Range: 0-80269
+    '''
+
+    results = []
+
+    with open(file, 'r') as f:
+        x = f.readlines()
+        x = [i.replace('\n', '').replace('\ufeff', '') for i in x]
+
+    start_indices = []
+    for index, row in enumerate(x):
+        if row.startwith('Title: ') and row.endswith('.txt'):
+            start_indices.append(index)
+
+    for i in start_indices:
+
+        results.append({
+            'doc_id': row[i].strip().replace('Title: ', '').replace('.txt', ''),
+            'annotator': row[i+1].strip().replace('Doc Creater: ', ''),
+            'Codes Applied': row[i+4].strip().replace('Codes Applied: ', '')
+        })
+
+    return results
+
+# def model_prep(annotated_file):
+
+#     annot = pd.read_csv(annotated_file)
+#     codes = [i.replace('Code: ', '') for i in annot.columns if 'Code' in i]
+
+#     # discard not relevant and broken links
+#     annot = annot[annot['Code: for review']]

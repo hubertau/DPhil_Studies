@@ -209,9 +209,11 @@ def export(data_file, source, outpath, id, format, count):
 @click.option('--lang', '-l', help='Languages to sample on. Can be multiple', multiple = True)
 @click.option('--total', '-t', help='Total number of articles to have sampled by the end.', type=int)
 @click.option('--exclude', '-e', help='File of existing sample to exclude')
-def gen_sample(data_file, savepath, by, lang, total, exclude):
+@click.option('--min_date', help='min date')
+@click.option('--max_date', help='min date')
+def gen_sample(data_file, savepath, by, lang, total, exclude, min_date, max_date):
     '''Sample data for dedoose'''
-    sample(data_file, savepath, lang=lang, total=total, exclude=exclude)
+    sample(data_file, savepath, lang=lang, total=total, exclude=exclude, min_date= min_date, max_date = max_date)
 
 
 @preprocess.command()
