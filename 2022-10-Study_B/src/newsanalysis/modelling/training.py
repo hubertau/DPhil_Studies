@@ -17,6 +17,7 @@ def custom_trainer(
         checkpoint_dir,
         init_model = "sentence-transformers/LaBSE",
         num_train_epochs = 10,
+        num_labels = 16,
         device = 'cpu',
         seed = 1
 ):
@@ -43,7 +44,7 @@ def custom_trainer(
     # set up Trainer
     model = AutoModelForSequenceClassification.from_pretrained(
         init_model,
-        num_labels=16
+        num_labels=num_labels
     )
 
     if device == 'gpu':
