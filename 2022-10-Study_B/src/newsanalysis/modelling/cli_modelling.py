@@ -24,7 +24,7 @@ def test():
 @click.pass_context
 @click.argument('dataset')
 @click.argument('checkpoint_dir')
-@click.option('--num_labels', '-n', default=2)
+@click.option('--num_labels', '-n', default=2, type=int)
 def train(ctx, dataset, checkpoint_dir, num_labels):
     '''Fine tune on annotated dataset'''
     custom_trainer(
