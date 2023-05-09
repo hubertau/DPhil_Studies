@@ -82,7 +82,9 @@ def custom_trainer(
         load_best_model_at_end=True,
         save_strategy = "epoch",
         num_train_epochs = num_train_epochs,
-        metric_for_best_model=best_metric
+        metric_for_best_model=best_metric,
+        disable_tqdm=True,
+        remove_unused_columns=True
     )
 
     trainer = Trainer(
@@ -90,7 +92,7 @@ def custom_trainer(
         args=training_args,
         train_dataset=ds['train'],
         eval_dataset=ds['dev'],
-        compute_metrics=compute_metrics,
+        compute_metrics=compute_metrics
     )
 
     trainer.train()
