@@ -4,7 +4,7 @@ from loguru import logger
 from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer, EvalPrediction
 import numpy as np
 import evaluate
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc_auc_score
 
 # define the compute_metrics function
 def compute_metrics(pred):
@@ -12,7 +12,22 @@ def compute_metrics(pred):
     preds = pred.predictions.argmax(-1)
     precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average='weighted')
     acc = accuracy_score(labels, preds)
-    return {'accuracy': acc, 'precision': precision, 'recall': recall, 'f1': f1}
+
+    # calculate macro-averaged precision, recall, and F1 score
+    macro_precision, macro_recall, macro_f1, _ = precision_recall_fscore_support(labels, preds, average='macro')
+
+    auc = roc_auc_score(labels, pred.predictions, multi_class='ovr')
+
+    return {
+        'accuracy': acc,
+        'precision': precision,
+        'recall': recall,
+        'f1': f1,
+        'macro_precision': macro_precision,
+        'macro_recall': macro_recall,
+        'macro_f1': macro_f1,
+        'auc': auc
+    }
 
 # def compute_metrics(eval_pred):
 #     metric = evaluate.load("accuracy")
@@ -27,6 +42,7 @@ def custom_trainer(
         num_train_epochs = 10,
         num_labels = 16,
         device = 'cpu',
+        best_metric = 'accuracy',
         seed = 1
 ):
     # # load in dataset
@@ -65,7 +81,8 @@ def custom_trainer(
         logging_strategy="epoch",
         load_best_model_at_end=True,
         save_strategy = "epoch",
-        num_train_epochs = num_train_epochs
+        num_train_epochs = num_train_epochs,
+        metric_for_best_model=best_metric
     )
 
     trainer = Trainer(
