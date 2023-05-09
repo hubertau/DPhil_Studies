@@ -25,10 +25,20 @@ def test():
 @click.argument('dataset')
 @click.argument('checkpoint_dir')
 @click.option('--num_labels', '-n', default=2, type=int)
-def train(ctx, dataset, checkpoint_dir, num_labels):
+@click.option('--init_model','-i', default='sentence-transformers/LaBSE')
+@click.option('--num_epochs', '-e', default=10, type=int)
+def train(ctx,
+          dataset,
+          checkpoint_dir,
+          num_labels,
+          num_epochs,
+          init_model
+    ):
     '''Fine tune on annotated dataset'''
     custom_trainer(
         dataset,
         checkpoint_dir = checkpoint_dir,
-        num_labels = num_labels
+        init_model=init_model,
+        num_labels = num_labels,
+        num_train_epochs= num_epochs
     )
