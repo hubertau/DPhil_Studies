@@ -72,7 +72,7 @@ def custom_trainer(
         model=model,
         args=training_args,
         train_dataset=ds['train'],
-        eval_dataset=ds['valid'],
+        eval_dataset=ds['dev'],
         compute_metrics=compute_metrics,
     )
 
