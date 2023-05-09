@@ -16,7 +16,7 @@ def compute_metrics(pred):
     # calculate macro-averaged precision, recall, and F1 score
     macro_precision, macro_recall, macro_f1, _ = precision_recall_fscore_support(labels, preds, average='macro')
 
-    auc = roc_auc_score(labels, pred.predictions, multi_class='ovr')
+    auc = roc_auc_score(labels, preds, multi_class='ovr')
 
     return {
         'accuracy': acc,
