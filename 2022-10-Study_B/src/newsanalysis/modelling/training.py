@@ -1,16 +1,24 @@
 from datasets import Dataset, DatasetDict
 from sentence_transformers import SentenceTransformer
 from loguru import logger
-from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer
+from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer, EvalPrediction
 import numpy as np
 import evaluate
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
+# define the compute_metrics function
+def compute_metrics(pred):
+    labels = pred.label_ids
+    preds = pred.predictions.argmax(-1)
+    precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average='weighted')
+    acc = accuracy_score(labels, preds)
+    return {'accuracy': acc, 'precision': precision, 'recall': recall, 'f1': f1}
 
-def compute_metrics(eval_pred):
-    metric = evaluate.load("accuracy")
-    logits, labels = eval_pred
-    predictions = np.argmax(logits, axis=-1)
-    return metric.compute(predictions=predictions, references=labels)
+# def compute_metrics(eval_pred):
+#     metric = evaluate.load("accuracy")
+#     logits, labels = eval_pred
+#     predictions = np.argmax(logits, axis=-1)
+#     return metric.compute(predictions=predictions, references=labels)
 
 def custom_trainer(
         dataset,
