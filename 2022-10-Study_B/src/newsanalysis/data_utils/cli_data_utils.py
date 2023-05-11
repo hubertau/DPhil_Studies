@@ -226,5 +226,14 @@ def remove_by_bertopic(data_file, bertopic_file, outfile, remove):
 
     remove_by_bt(data_file, bertopic_file, outfile, remove)
 
+@preprocess.command()
+@click.argument('jsonl_file')
+@click.argument('dataset_out_path')
+@click.option('--keys', '-k', multiple=True)
+def to_dataset(jsonl_file, dataset_out_path, keys):
+    '''Convert jsonl to Datasets object'''
+    print(keys)
+    jsonl_to_dataset(jsonl_file=jsonl_file, dataset_out=dataset_out_path, keys_to_read=keys)
+
 if __name__ == '__main__':
     preprocess()

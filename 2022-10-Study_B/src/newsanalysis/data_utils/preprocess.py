@@ -17,10 +17,12 @@ import pandas as pd
 import os
 from csv import DictWriter
 from loguru import logger
+from datasets import Dataset
 from bertopic import BERTopic
 from bertopic.vectorizers import ClassTfidfTransformer
 from sentence_transformers import SentenceTransformer
-from transformers import BertTokenizerFast
+from transformers import BertTokenizerFast, AutoTokenizer, AutoModelForTokenClassification
+from torch.utils.data import DataLoader
 try:
     from cuml.cluster import HDBSCAN
     # logger.info(f'cuML HDBSCAN imported')
@@ -669,41 +671,101 @@ def remove_by_bt(data_file, bertopic_file, outfile, remove):
     logger.info(f'Skipped: {skipped} ')
     assert skipped == len(to_discard)
 
+def jsonl_to_dataset(jsonl_file, dataset_out, keys_to_read = ['text', 'processed_stories_id']):
 
-def read_in_annotated_txt(file):
+    data = []
+    logger.info(f'Keys to read are {keys_to_read}')
 
-    '''
-    Title: 2195905526.txt
-    +1 Doc Creator: hubertau
-    +2 Doc Date: 3/31/2023
-    +3 Descriptor Info: 	collect_date: 12/1/2020 10:23	language: en	media_id: 25638	media_name: whatreallyhappened.com	media_url: http://whatreallyhappened.com	publish_date: 12/1/2020 9:57	url: https://www.dailymail.co.uk/news/article-9002367/Debenhams-jobs-danger-fallout-Arcadia-collapse.html	title_text: Everything MUST go: Debenhams will open TOMORROW for 'Wild Wednesday' fire sale of all remaining stock as 242-year-old chain collapses 24 hours after Arcadia - leaving 25,000 jobs at risk	Title: 2195905526.txt
-    +4 Codes Applied: 	not relevant
+    # Read data from the JSONLines file line by line
+    for story in story_iter(jsonl_file, only_text = False, full_object=True):
 
-    +5 Excerpt Creator: hubertau
-    +6 Excerpt Created On: 4/18/2023
-    +7 Excerpt Range: 0-80269
-    '''
+        if 'query' in story:
+            metadata = story
+            continue
 
-    results = []
+        if keys_to_read:
+            # Select the specified keys from the JSON object
+            selected_data = {key: story.get(key) for key in keys_to_read}
 
-    with open(file, 'r') as f:
-        x = f.readlines()
-        x = [i.replace('\n', '').replace('\ufeff', '') for i in x]
+            # Append the selected data to the list
+            data.append(selected_data)
+        else:
+            data.append(story)
 
-    start_indices = []
-    for index, row in enumerate(x):
-        if row.startwith('Title: ') and row.endswith('.txt'):
-            start_indices.append(index)
+    # Create a dataset from the list of dictionaries
+    dataset = Dataset.from_list(data)
 
-    for i in start_indices:
+    dataset.save_to_disk(dataset_out)
+    logger.info(f'Saved to {dataset_out}')
 
-        results.append({
-            'doc_id': row[i].strip().replace('Title: ', '').replace('.txt', ''),
-            'annotator': row[i+1].strip().replace('Doc Creater: ', ''),
-            'Codes Applied': row[i+4].strip().replace('Codes Applied: ', '')
-        })
 
-    return results
+def ner(dataset_path, model = "julian-schelb/roberta-ner-multilingual/"):
+
+    #load model
+    ner_tokenizer = AutoTokenizer.from_pretrained(model, add_prefix_space=True)
+    ner_model = AutoModelForTokenClassification.from_pretrained(model)
+
+    # Create a Dataset object from the data generator function
+    dataset = Dataset.load_from_disk(dataset_path)
+
+    # Tokenize the 'text' column of the dataset
+    tokenized_dataset = dataset.map(lambda examples: ner_tokenizer(examples['text']), batched=True)
+
+    # Create a DataLoader object with batch size 32
+    dataloader = DataLoader(tokenized_dataset, batch_size=32)
+
+    # Iterate over the dataloader for inference
+    for batch in dataloader:
+        # Perform inference using the 'batch' data
+        inputs = ner_tokenizer(batch['input_ids'], truncation=True, padding=True, return_tensors='pt')
+        outputs = ner_model(**inputs)
+        predictions = outputs.logits.argmax(dim=2)
+
+        # Decode the predictions
+        predicted_labels = [ner_tokenizer.decode(pred) for pred in predictions]
+
+        # Print the predicted labels
+        print(predicted_labels)
+
+
+
+
+
+
+# def read_in_annotated_txt(file):
+
+#     '''
+#     Title: 2195905526.txt
+#     +1 Doc Creator: hubertau
+#     +2 Doc Date: 3/31/2023
+#     +3 Descriptor Info: 	collect_date: 12/1/2020 10:23	language: en	media_id: 25638	media_name: whatreallyhappened.com	media_url: http://whatreallyhappened.com	publish_date: 12/1/2020 9:57	url: https://www.dailymail.co.uk/news/article-9002367/Debenhams-jobs-danger-fallout-Arcadia-collapse.html	title_text: Everything MUST go: Debenhams will open TOMORROW for 'Wild Wednesday' fire sale of all remaining stock as 242-year-old chain collapses 24 hours after Arcadia - leaving 25,000 jobs at risk	Title: 2195905526.txt
+#     +4 Codes Applied: 	not relevant
+
+#     +5 Excerpt Creator: hubertau
+#     +6 Excerpt Created On: 4/18/2023
+#     +7 Excerpt Range: 0-80269
+#     '''
+
+#     results = []
+
+#     with open(file, 'r') as f:
+#         x = f.readlines()
+#         x = [i.replace('\n', '').replace('\ufeff', '') for i in x]
+
+#     start_indices = []
+#     for index, row in enumerate(x):
+#         if row.startwith('Title: ') and row.endswith('.txt'):
+#             start_indices.append(index)
+
+#     for i in start_indices:
+
+#         results.append({
+#             'doc_id': row[i].strip().replace('Title: ', '').replace('.txt', ''),
+#             'annotator': row[i+1].strip().replace('Doc Creater: ', ''),
+#             'Codes Applied': row[i+4].strip().replace('Codes Applied: ', '')
+#         })
+
+#     return results
 
 # def model_prep(annotated_file):
 
