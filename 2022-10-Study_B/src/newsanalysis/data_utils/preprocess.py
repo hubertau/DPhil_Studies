@@ -20,6 +20,7 @@ from loguru import logger
 from datasets import Dataset
 from bertopic import BERTopic
 from bertopic.vectorizers import ClassTfidfTransformer
+import nltk
 from sentence_transformers import SentenceTransformer
 from transformers import BertTokenizerFast, AutoTokenizer, AutoModelForTokenClassification
 from torch.utils.data import DataLoader
@@ -571,9 +572,12 @@ def export_to(data_file, source = None, outpath = None, id = None, format='txt',
                         f.write(story.get('text'))
 
 
-def sample(data_file, savepath, by=None, total=20, lang=None, with_text = True, exclude = None, min_date = None, max_date = None):
+def sample(data_file, savepath, by=None, total=20, lang=None, with_text = True, 
+exclude = None, min_date = None, max_date = None):
+    to_exclude = []
     if exclude:
-        to_exclude = pd.read_csv(exclude)
+        for i in exclude:
+            to_exclude.append(pd.read_csv(i))
     df_records = []
     for story in story_iter(data_file, only_text= False, full_object=True):
         df_records.append(
@@ -597,7 +601,8 @@ def sample(data_file, savepath, by=None, total=20, lang=None, with_text = True, 
 
     # each_group_min = np.ceil(total/len(lang))
     if exclude:
-        df = df[~df['id'].isin(to_exclude['id'])]
+        for i in to_exclude:
+            df = df[~df['id'].isin(i['id'])]
         logger.info('Exclusion applied')
 
     if min_date:
@@ -671,7 +676,8 @@ def remove_by_bt(data_file, bertopic_file, outfile, remove):
     logger.info(f'Skipped: {skipped} ')
     assert skipped == len(to_discard)
 
-def jsonl_to_dataset(jsonl_file, dataset_out, keys_to_read = ['text', 'processed_stories_id']):
+def jsonl_to_dataset(jsonl_file, dataset_out, keys_to_read = ['text', 'processed_stories_id'], splitting= False):
+    '''Convert JSONL to dataset object ready for ML interface'''
 
     data = []
     logger.info(f'Keys to read are {keys_to_read}')
@@ -686,11 +692,32 @@ def jsonl_to_dataset(jsonl_file, dataset_out, keys_to_read = ['text', 'processed
         if keys_to_read:
             # Select the specified keys from the JSON object
             selected_data = {key: story.get(key) for key in keys_to_read}
-
-            # Append the selected data to the list
-            data.append(selected_data)
         else:
-            data.append(story)
+            selected_data = story
+
+        # check split
+        if splitting:
+            if story.get('language') in ['zh', 'ja', 'ko', 'bn', 'hi', 'ta', 'gu', 'kn', 'te', 'ml', 'th', 'my', 'mr', 'vi', 'ne', 'lo', 'ur', 'si', 'or', 'ceb']:
+                words = re.split('[ ，,".]', story.get('text'))
+                # to_return = []
+                for group in words:
+                    if len(group) > 510:
+                        logger.warning('Brute force applied')
+                        group = list([group[i:i+500] for i in range(0, len(group), 500)])
+                        for x in group:
+                            selected_data['text'] = x
+                            data.append(selected_data)
+                    else:
+                        selected_data['text'] = group
+                        data.append(selected_data)
+                # # flatten
+                # to_return = [item for sublist in to_return for item in sublist]
+                # return to_return
+            else:
+                nltk.download('punkt')
+                nltk.sent_tokenize()
+        else:
+            data.append(selected_data)
 
     # Create a dataset from the list of dictionaries
     dataset = Dataset.from_list(data)

@@ -208,7 +208,7 @@ def export(data_file, source, outpath, id, format, count):
 @click.option('--by', '-b', help='What to sample on', multiple=True)
 @click.option('--lang', '-l', help='Languages to sample on. Can be multiple', multiple = True)
 @click.option('--total', '-t', help='Total number of articles to have sampled by the end.', type=int)
-@click.option('--exclude', '-e', help='File of existing sample to exclude')
+@click.option('--exclude', '-e', help='File of existing sample to exclude', multiple=True)
 @click.option('--min_date', help='min date')
 @click.option('--max_date', help='min date')
 def gen_sample(data_file, savepath, by, lang, total, exclude, min_date, max_date):
