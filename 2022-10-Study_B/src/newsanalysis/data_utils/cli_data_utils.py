@@ -230,10 +230,19 @@ def remove_by_bertopic(data_file, bertopic_file, outfile, remove):
 @click.argument('jsonl_file')
 @click.argument('dataset_out_path')
 @click.option('--keys', '-k', multiple=True)
-def to_dataset(jsonl_file, dataset_out_path, keys):
+@click.option('--split/--no-split', default=True)
+@click.option('--up_to', type=int)
+def to_dataset(jsonl_file, dataset_out_path, keys, split, up_to):
     '''Convert jsonl to Datasets object'''
     print(keys)
-    jsonl_to_dataset(jsonl_file=jsonl_file, dataset_out=dataset_out_path, keys_to_read=keys)
+    logger.info(f'Splitting is {split}')
+    jsonl_to_dataset(
+        jsonl_file=jsonl_file,
+        dataset_out=dataset_out_path,
+        keys_to_read=keys,
+        splitting=split,
+        up_to=up_to
+    )
 
 if __name__ == '__main__':
     preprocess()

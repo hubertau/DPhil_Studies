@@ -22,7 +22,8 @@ from bertopic import BERTopic
 from bertopic.vectorizers import ClassTfidfTransformer
 import nltk
 from sentence_transformers import SentenceTransformer
-from transformers import BertTokenizerFast, AutoTokenizer, AutoModelForTokenClassification
+from transformers import BertTokenizerFast, AutoTokenizer, AutoModelForTokenClassification, pipeline
+import torch
 from torch.utils.data import DataLoader
 try:
     from cuml.cluster import HDBSCAN
@@ -676,14 +677,46 @@ def remove_by_bt(data_file, bertopic_file, outfile, remove):
     logger.info(f'Skipped: {skipped} ')
     assert skipped == len(to_discard)
 
-def jsonl_to_dataset(jsonl_file, dataset_out, keys_to_read = ['text', 'processed_stories_id'], splitting= False):
+
+def chunk_text(text, max_length=500):
+    words = nltk.word_tokenize(text)
+
+    chunks = []
+    current_chunk = []
+    current_length = 0
+
+    for word in words:
+        # +1 is to account for a space
+        if current_length + len(word) + 1 <= max_length:
+            current_length += len(word) + 1
+            current_chunk.append(word)
+        else:
+            # Join the current chunk into a string and add it to the list of chunks
+            chunks.append(' '.join(current_chunk))
+            # Start a new chunk with the current word
+            current_chunk = [word]
+            current_length = len(word)
+
+    # Don't forget to add the last chunk
+    chunks.append(' '.join(current_chunk))
+
+    return chunks
+
+def jsonl_to_dataset(jsonl_file, dataset_out, keys_to_read = ['text', 'processed_stories_id'], splitting= False, up_to=None):
     '''Convert JSONL to dataset object ready for ML interface'''
 
     data = []
     logger.info(f'Keys to read are {keys_to_read}')
 
+    if up_to:
+        count = 0
     # Read data from the JSONLines file line by line
     for story in story_iter(jsonl_file, only_text = False, full_object=True):
+
+        if up_to:
+            if count >= up_to:
+                break
+            count += 1
 
         if 'query' in story:
             metadata = story
@@ -696,26 +729,60 @@ def jsonl_to_dataset(jsonl_file, dataset_out, keys_to_read = ['text', 'processed
             selected_data = story
 
         # check split
+        sent_tok_dict = {
+            'cs': 'czech',
+            'da': 'danish',
+            'nl': 'dutch',
+            'en': 'english',
+            'et': 'estonian',
+            'fi': 'finnish',
+            'fr': 'french',
+            'de': 'german',
+            'el': 'greek',
+            'it': 'italian',
+            'no': 'norwegian',
+            'pl': 'polish',
+            'pt': 'portuguese',
+            'ru': 'russian',
+            'sl': 'slovene',
+            'es': 'spanish',
+            'sv': 'swedish',
+            'tr': 'turkish'
+        }
         if splitting:
-            if story.get('language') in ['zh', 'ja', 'ko', 'bn', 'hi', 'ta', 'gu', 'kn', 'te', 'ml', 'th', 'my', 'mr', 'vi', 'ne', 'lo', 'ur', 'si', 'or', 'ceb']:
+            if story.get('language') in sent_tok_dict:
+                # nltk.download('punkt')
+                sentences = nltk.sent_tokenize(story.get('text'), language = sent_tok_dict[story.get('language')])
+                for num, sentence in enumerate(sentences):
+                    if len(nltk.word_tokenize(sentence)) > 500:
+                        logger.warning('Brute force applied')
+                        chunked = chunk_text(sentence)
+                        for x in chunked:
+                            to_append = selected_data.copy()
+                            to_append['text'] = x
+                            data.append(to_append)
+                    else:
+                        to_append = selected_data.copy()
+                        to_append['text'] = sentence
+                        data.append(to_append)
+            else: 
+            # #story.get('language') in ['zh', 'ja', 'ko', 'bn', 'hi', 'ta', 'gu', 'kn', 'te', 'ml', 'th', 'my', 'mr', 'vi', 'ne', 'lo', 'ur', 'si', 'or', 'ceb']:
                 words = re.split('[ ，,".]', story.get('text'))
                 # to_return = []
-                for group in words:
-                    if len(group) > 510:
-                        logger.warning('Brute force applied')
-                        group = list([group[i:i+500] for i in range(0, len(group), 500)])
-                        for x in group:
-                            selected_data['text'] = x
-                            data.append(selected_data)
+                for num, group in enumerate(words):
+                    if len(group) > 500:
+                        # logger.warning('Brute force applied')
+                        chunks = []
+                        for i in range(0, len(group), 500):
+                            chunks.append(group[i:i+500])
+                        for x in chunks:
+                            to_append = selected_data.copy()
+                            to_append['text'] = x
+                            data.append(to_append)
                     else:
-                        selected_data['text'] = group
-                        data.append(selected_data)
-                # # flatten
-                # to_return = [item for sublist in to_return for item in sublist]
-                # return to_return
-            else:
-                nltk.download('punkt')
-                nltk.sent_tokenize()
+                        to_append = selected_data.copy()
+                        to_append['text'] = group
+                        data.append(to_append)
         else:
             data.append(selected_data)
 
@@ -726,6 +793,26 @@ def jsonl_to_dataset(jsonl_file, dataset_out, keys_to_read = ['text', 'processed
     logger.info(f'Saved to {dataset_out}')
 
 
+
+def combine_person_tags(iob2_sequence):
+    entities = []
+    current_entity_tokens = []
+    for token, tag in iob2_sequence:
+        if tag == 'B-PER':
+            # If there is an ongoing entity, add it to the list
+            if current_entity_tokens:
+                entities.append(''.join(current_entity_tokens))
+            # Start a new entity
+            current_entity_tokens = [token.lstrip('_')]
+        elif tag == 'I-PER':
+            # If there is an ongoing entity, add the token to it
+            if current_entity_tokens:
+                current_entity_tokens.append(token.lstrip('_'))
+    # Don't forget to add the last entity to the list
+    if current_entity_tokens:
+        entities.append(''.join(current_entity_tokens))
+    return entities
+
 def ner(dataset_path, model = "julian-schelb/roberta-ner-multilingual/"):
 
     #load model
@@ -735,24 +822,60 @@ def ner(dataset_path, model = "julian-schelb/roberta-ner-multilingual/"):
     # Create a Dataset object from the data generator function
     dataset = Dataset.load_from_disk(dataset_path)
 
-    # Tokenize the 'text' column of the dataset
-    tokenized_dataset = dataset.map(lambda examples: ner_tokenizer(examples['text']), batched=True)
+    # tokenized_dataset = dataset.map(lambda examples: ner_tokenizer(examples['text'], return_tensors='pt', padding=True, truncation=True, max_length=512), batched=True)
 
-    # Create a DataLoader object with batch size 32
-    dataloader = DataLoader(tokenized_dataset, batch_size=32)
+    # Move model to GPU if available
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    ner_model = ner_model.to(device)
+    result = []
+    batch_size=32
 
-    # Iterate over the dataloader for inference
-    for batch in dataloader:
-        # Perform inference using the 'batch' data
-        inputs = ner_tokenizer(batch['input_ids'], truncation=True, padding=True, return_tensors='pt')
-        outputs = ner_model(**inputs)
-        predictions = outputs.logits.argmax(dim=2)
+    for i in range(0, len(dataset), batch_size):
+        batch = dataset[i: i + batch_size]
+        batch_ids = batch['processed_stories_id']
+        batch_texts = batch['text']
 
-        # Decode the predictions
-        predicted_labels = [ner_tokenizer.decode(pred) for pred in predictions]
+        inputs = ner_tokenizer(batch_texts, padding=True, truncation=True, return_tensors='pt')
 
-        # Print the predicted labels
-        print(predicted_labels)
+        # Move the inputs to device
+        inputs = {name: tensor.to(device) for name, tensor in inputs.items()}
+
+        with torch.no_grad():
+            # Forward pass
+            outputs = ner_model(**inputs)
+
+        # Convert logits into labels
+        logits = outputs.logits
+        predictions = torch.argmax(logits, dim=-1)
+
+        for j, prediction in enumerate(predictions):
+            tokens = ner_tokenizer.convert_ids_to_tokens(inputs['input_ids'][j])
+            labels = [ner_model.config.id2label[label_id.item()] for label_id in prediction]
+
+            # Filter out tokens that are not 'I-PER' or 'B-PER'
+            filtered_tokens_labels = [(token, label) for token, label in zip(tokens, labels) if label in ['I-PER', 'B-PER'] and token != '<pad>']
+
+
+            # Append to result
+            result.append({
+                'processed_stories_id': batch_ids[j],
+                'NER': combine_person_tags(filtered_tokens_labels)
+            })
+
+    logger.info('Organising results...')
+
+    # First, organize the results by 'processed_stories_id'
+    results_by_id = {}
+
+    for item in result:
+        if item['processed_stories_id'] in results_by_id:
+            results_by_id[item['processed_stories_id']].extend(item['NER'])
+        else:
+            results_by_id[item['processed_stories_id']] = item['NER']
+
+    # Now transform the results back into a list of dictionaries
+    final_result = [{'processed_stories_id': id, 'NER': ner} for id, ner in results_by_id.items()]
+
 
 
 
