@@ -812,7 +812,7 @@ def combine_person_tags(indexed_iob2_sequence):
     entities = [i.replace('▁', ' ').replace("_", " ").strip() for i in entities]
     return entities
 
-def ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multilingual/"):
+def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multilingual/"):
 
     #load model
     ner_tokenizer = AutoTokenizer.from_pretrained(model, add_prefix_space=True)
