@@ -251,7 +251,7 @@ def to_dataset(jsonl_file, dataset_out_path, keys, split, up_to):
 @click.option('--model', '-m', default='51la5/roberta-large-NER')
 def ner(dataset_path, outpath, model):
     '''Apply NER'''
-    ner(dataset_path, outpah, model=model)
+    ner(dataset_path, outpath, model=model)
 
 
 if __name__ == '__main__':

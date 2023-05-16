@@ -833,7 +833,7 @@ def ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multilingual/"
         batch_ids = batch['processed_stories_id']
         batch_texts = batch['text']
 
-        inputs = ner_tokenizer(batch_texts, padding=True, return_tensors='pt')
+        inputs = ner_tokenizer(batch_texts, padding=True, truncation= True, return_tensors='pt')
 
         # Move the inputs to device
         inputs = {name: tensor.to(device) for name, tensor in inputs.items()}
