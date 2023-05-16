@@ -249,9 +249,10 @@ def to_dataset(jsonl_file, dataset_out_path, keys, split, up_to):
 @click.argument('dataset_path')
 @click.argument('outpath')
 @click.option('--model', '-m', default='51la5/roberta-large-NER')
-def ner(dataset_path, outpath, model):
+@click.option('--cache', '-c', default = '~/.cache')
+def ner(dataset_path, outpath, model, cache):
     '''Apply NER'''
-    detect_ner(dataset_path, outpath, model=model)
+    detect_ner(dataset_path, outpath, model=model, cache_dir=cache)
 
 
 if __name__ == '__main__':
