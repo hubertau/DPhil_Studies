@@ -794,26 +794,24 @@ def jsonl_to_dataset(jsonl_file, dataset_out, keys_to_read = ['text', 'processed
 
 
 
-def combine_person_tags(iob2_sequence):
+def combine_person_tags(indexed_iob2_sequence):
     entities = []
     current_entity_tokens = []
-    for token, tag in iob2_sequence:
-        if tag == 'B-PER':
-            # If there is an ongoing entity, add it to the list
+    for index, token, tag in indexed_iob2_sequence:
+        # If token starts with '_' or tag is not 'I-PER', add current_entity_tokens to entities
+        if token.startswith('_') or tag != 'I-PER':
             if current_entity_tokens:
-                entities.append(''.join(current_entity_tokens))
-            # Start a new entity
-            current_entity_tokens = [token.lstrip('_')]
-        elif tag == 'I-PER':
-            # If there is an ongoing entity, add the token to it
-            if current_entity_tokens:
-                current_entity_tokens.append(token.lstrip('_'))
+                entities.append(''.join([t.lstrip('_') for t in current_entity_tokens]))
+                current_entity_tokens = []
+        # Add the token to current_entity_tokens (removing the '_' if it's there)
+        current_entity_tokens.append(token.lstrip('_'))
     # Don't forget to add the last entity to the list
     if current_entity_tokens:
-        entities.append(''.join(current_entity_tokens))
+        entities.append(''.join([t for t in current_entity_tokens]))
+    entities = [i.replace('▁', ' ').replace("_", " ").strip() for i in entities]
     return entities
 
-def ner(dataset_path, model = "julian-schelb/roberta-ner-multilingual/"):
+def ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multilingual/"):
 
     #load model
     ner_tokenizer = AutoTokenizer.from_pretrained(model, add_prefix_space=True)
@@ -828,14 +826,14 @@ def ner(dataset_path, model = "julian-schelb/roberta-ner-multilingual/"):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     ner_model = ner_model.to(device)
     result = []
-    batch_size=32
+    batch_size=64
 
     for i in range(0, len(dataset), batch_size):
         batch = dataset[i: i + batch_size]
         batch_ids = batch['processed_stories_id']
         batch_texts = batch['text']
 
-        inputs = ner_tokenizer(batch_texts, padding=True, truncation=True, return_tensors='pt')
+        inputs = ner_tokenizer(batch_texts, padding=True, return_tensors='pt')
 
         # Move the inputs to device
         inputs = {name: tensor.to(device) for name, tensor in inputs.items()}
@@ -853,16 +851,18 @@ def ner(dataset_path, model = "julian-schelb/roberta-ner-multilingual/"):
             labels = [ner_model.config.id2label[label_id.item()] for label_id in prediction]
 
             # Filter out tokens that are not 'I-PER' or 'B-PER'
-            filtered_tokens_labels = [(token, label) for token, label in zip(tokens, labels) if label in ['I-PER', 'B-PER'] and token != '<pad>']
+            filtered_tokens_labels = [(index, token, label) for index, token, label in zip(range(len(tokens)), tokens, labels) if (label in ['I-PER', 'B-PER'] and token != '<pad>')]
 
 
             # Append to result
             result.append({
                 'processed_stories_id': batch_ids[j],
-                'NER': combine_person_tags(filtered_tokens_labels)
+                'NER': combine_person_tags(filtered_tokens_labels),
+                'original': filtered_tokens_labels
             })
+        break
 
-    logger.info('Organising results...')
+    logger.info('now organising')
 
     # First, organize the results by 'processed_stories_id'
     results_by_id = {}
@@ -875,6 +875,9 @@ def ner(dataset_path, model = "julian-schelb/roberta-ner-multilingual/"):
 
     # Now transform the results back into a list of dictionaries
     final_result = [{'processed_stories_id': id, 'NER': ner} for id, ner in results_by_id.items()]
+
+    ner_dataset = Dataset.from_list(final_result)
+    ner_dataset.save_to_disk(outpath)
 
 
 

@@ -244,5 +244,15 @@ def to_dataset(jsonl_file, dataset_out_path, keys, split, up_to):
         up_to=up_to
     )
 
+
+@preprocess.command()
+@click.argument('dataset_path')
+@click.argument('outpath')
+@click.option('--model', '-m', default='51la5/roberta-large-NER')
+def ner(dataset_path, outpath, model):
+    '''Apply NER'''
+    ner(dataset_path, outpah, model=model)
+
+
 if __name__ == '__main__':
     preprocess()
