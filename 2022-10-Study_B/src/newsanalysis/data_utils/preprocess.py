@@ -708,15 +708,16 @@ def jsonl_to_dataset(jsonl_file, dataset_out, keys_to_read = ['text', 'processed
     data = []
     logger.info(f'Keys to read are {keys_to_read}')
 
-    if up_to:
-        count = 0
+    count = 0
     # Read data from the JSONLines file line by line
     for story in story_iter(jsonl_file, only_text = False, full_object=True):
 
         if up_to:
             if count >= up_to:
                 break
-            count += 1
+        count += 1
+        if count % 10000 == 0:
+            logger.info(f'{count} processed.')
 
         if 'query' in story:
             metadata = story
@@ -755,7 +756,7 @@ def jsonl_to_dataset(jsonl_file, dataset_out, keys_to_read = ['text', 'processed
                 sentences = nltk.sent_tokenize(story.get('text'), language = sent_tok_dict[story.get('language')])
                 for num, sentence in enumerate(sentences):
                     if len(nltk.word_tokenize(sentence)) > 500:
-                        logger.warning('Brute force applied')
+                        logger.debug('Brute force applied')
                         chunked = chunk_text(sentence)
                         for x in chunked:
                             to_append = selected_data.copy()
