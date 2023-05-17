@@ -827,10 +827,11 @@ def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multili
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     ner_model = ner_model.to(device)
     result = []
-    batch_size=64
+    batch_size=128
 
     for i in range(0, len(dataset), batch_size):
-        logger.info(f'Processing batch {i}')
+        if i % 10000 == 0:
+            logger.info(f'Processing batch {i}')
         batch = dataset[i: i + batch_size]
         batch_ids = batch['processed_stories_id']
         batch_texts = batch['text']
@@ -860,9 +861,8 @@ def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multili
             result.append({
                 'processed_stories_id': batch_ids[j],
                 'NER': combine_person_tags(filtered_tokens_labels),
-                'original': filtered_tokens_labels
+                # 'original': filtered_tokens_labels
             })
-        break
 
     logger.info('now organising')
 
@@ -876,7 +876,7 @@ def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multili
             results_by_id[item['processed_stories_id']] = item['NER']
 
     # Now transform the results back into a list of dictionaries
-    final_result = [{'processed_stories_id': id, 'NER': ner} for id, ner in results_by_id.items()]
+    final_result = [{'processed_stories_id': id, 'NER': set(ner)} for id, ner in results_by_id.items()]
 
     ner_dataset = Dataset.from_list(final_result)
     ner_dataset.save_to_disk(outpath)
