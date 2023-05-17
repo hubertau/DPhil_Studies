@@ -824,8 +824,11 @@ def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multili
     # tokenized_dataset = dataset.map(lambda examples: ner_tokenizer(examples['text'], return_tensors='pt', padding=True, truncation=True, max_length=512), batched=True)
 
     # Move model to GPU if available
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     ner_model = ner_model.to(device)
+    if torch.cuda.device_count() > 1:
+        logger.info('Multiple GPUs detected, applying torch.nn.DataParallel')
+        ner_model = torch.nn.DataParallel(ner_model)
     result = []
     batch_size=128
 
@@ -875,11 +878,16 @@ def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multili
         else:
             results_by_id[item['processed_stories_id']] = item['NER']
 
+    logger.info('Transforming back to list of dict')
     # Now transform the results back into a list of dictionaries
     final_result = [{'processed_stories_id': id, 'NER': set(ner)} for id, ner in results_by_id.items()]
 
+    logger.info('Generating Dataset')
     ner_dataset = Dataset.from_list(final_result)
+
+    logger.info('Saving')
     ner_dataset.save_to_disk(outpath)
+    logger.info('Complete')
 
 
 
