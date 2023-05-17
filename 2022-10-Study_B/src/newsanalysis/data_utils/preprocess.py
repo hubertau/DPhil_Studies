@@ -830,6 +830,7 @@ def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multili
     batch_size=64
 
     for i in range(0, len(dataset), batch_size):
+        logger.info(f'Processing batch {i}')
         batch = dataset[i: i + batch_size]
         batch_ids = batch['processed_stories_id']
         batch_texts = batch['text']
