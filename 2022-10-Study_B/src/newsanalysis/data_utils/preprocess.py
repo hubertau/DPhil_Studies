@@ -826,9 +826,11 @@ def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multili
     # Move model to GPU if available
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     ner_model = ner_model.to(device)
+    label_dict = ner_model.config.id2label
     if torch.cuda.device_count() > 1:
         logger.info('Multiple GPUs detected, applying torch.nn.DataParallel')
         ner_model = torch.nn.DataParallel(ner_model)
+        label_dict = ner_model.module.config.id2label
     result = []
     batch_size=128
 
@@ -854,7 +856,7 @@ def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multili
 
         for j, prediction in enumerate(predictions):
             tokens = ner_tokenizer.convert_ids_to_tokens(inputs['input_ids'][j])
-            labels = [ner_model.config.id2label[label_id.item()] for label_id in prediction]
+            labels = [label_dict[label_id.item()] for label_id in prediction]
 
             # Filter out tokens that are not 'I-PER' or 'B-PER'
             filtered_tokens_labels = [(index, token, label) for index, token, label in zip(range(len(tokens)), tokens, labels) if (label in ['I-PER', 'B-PER'] and token != '<pad>')]
