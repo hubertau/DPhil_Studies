@@ -751,26 +751,33 @@ def jsonl_to_dataset(jsonl_file, dataset_out, keys_to_read = ['text', 'processed
             'tr': 'turkish'
         }
         if splitting:
+            # begin part counter to unique ids for every split of a doc
+            part_counter = 0
+
             if story.get('language') in sent_tok_dict:
                 # nltk.download('punkt')
                 sentences = nltk.sent_tokenize(story.get('text'), language = sent_tok_dict[story.get('language')])
-                for num, sentence in enumerate(sentences):
+                for sentence in sentences:
                     if len(nltk.word_tokenize(sentence)) > 500:
                         logger.debug('Brute force applied')
                         chunked = chunk_text(sentence)
                         for x in chunked:
                             to_append = selected_data.copy()
                             to_append['text'] = x
+                            to_append['part_id'] = f'{selected_data.get("processed_stories_id")}_{part_counter}'
+                            part_counter += 1
                             data.append(to_append)
                     else:
                         to_append = selected_data.copy()
                         to_append['text'] = sentence
+                        to_append['part_id'] = f'{selected_data.get("processed_stories_id")}_{part_counter}'
+                        part_counter += 1
                         data.append(to_append)
             else: 
             # #story.get('language') in ['zh', 'ja', 'ko', 'bn', 'hi', 'ta', 'gu', 'kn', 'te', 'ml', 'th', 'my', 'mr', 'vi', 'ne', 'lo', 'ur', 'si', 'or', 'ceb']:
                 words = re.split('[ ，,".]', story.get('text'))
                 # to_return = []
-                for num, group in enumerate(words):
+                for group in words:
                     if len(group) > 500:
                         # logger.warning('Brute force applied')
                         chunks = []
@@ -779,10 +786,14 @@ def jsonl_to_dataset(jsonl_file, dataset_out, keys_to_read = ['text', 'processed
                         for x in chunks:
                             to_append = selected_data.copy()
                             to_append['text'] = x
+                            to_append['part_id'] = f'{selected_data.get("processed_stories_id")}_{part_counter}'
+                            part_counter += 1
                             data.append(to_append)
                     else:
                         to_append = selected_data.copy()
                         to_append['text'] = group
+                        to_append['part_id'] = f'{selected_data.get("processed_stories_id")}_{part_counter}'
+                        part_counter += 1
                         data.append(to_append)
         else:
             data.append(selected_data)
@@ -812,29 +823,37 @@ def combine_person_tags(indexed_iob2_sequence):
     entities = [i.replace('▁', ' ').replace("_", " ").strip() for i in entities]
     return entities
 
-def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multilingual/", cache_dir = '~/.cache', num_batches=None):
+def annotate(dataset_path,
+             outpath,
+             model = "julian-schelb/roberta-ner-multilingual/",
+             cache_dir = '~/.cache',
+             num_batches=None,
+             kind = 'ner',
+             max_length=512
+             ):
 
     logger.info(f'Model: {model}')
+    logger.info(f'Annotation type: {kind}')
 
     #load model
-    ner_tokenizer = AutoTokenizer.from_pretrained(model, add_prefix_space=True, cache_dir = cache_dir)
-    ner_model = AutoModelForTokenClassification.from_pretrained(model)
+    annot_tokenizer = AutoTokenizer.from_pretrained(model, add_prefix_space=True, cache_dir = cache_dir)
+    annot_model = AutoModelForTokenClassification.from_pretrained(model)
 
     # Create a Dataset object from the data generator function
     logger.info(f'Loading Dataset.')
     dataset = Dataset.load_from_disk(dataset_path)
     logger.info('Loading Dataset Complete.')
 
-    # tokenized_dataset = dataset.map(lambda examples: ner_tokenizer(examples['text'], return_tensors='pt', padding=True, truncation=True, max_length=512), batched=True)
+    # tokenized_dataset = dataset.map(lambda examples: annot_tokenizer(examples['text'], return_tensors='pt', padding=True, truncation=True, max_length=512), batched=True)
 
     # Move model to GPU if available
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    ner_model = ner_model.to(device)
-    label_dict = ner_model.config.id2label
+    annot_model = annot_model.to(device)
+    label_dict = annot_model.config.id2label
     if torch.cuda.device_count() > 1:
         logger.info('Multiple GPUs detected, applying torch.nn.DataParallel')
-        ner_model = torch.nn.DataParallel(ner_model)
-        label_dict = ner_model.module.config.id2label
+        annot_model = torch.nn.DataParallel(annot_model)
+        label_dict = annot_model.module.config.id2label
     result = []
     batch_size=128
 
@@ -848,58 +867,65 @@ def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multili
         batch_ids = batch['processed_stories_id']
         batch_texts = batch['text']
 
-        inputs = ner_tokenizer(batch_texts, padding='max_length', truncation= True, return_tensors='pt', max_length=512)
+        inputs = annot_tokenizer(batch_texts, padding='max_length', truncation= True, return_tensors='pt', max_length=max_length)
 
         # Move the inputs to device
         inputs = {name: tensor.to(device) for name, tensor in inputs.items()}
 
         with torch.no_grad():
             # Forward pass
-            outputs = ner_model(**inputs)
+            outputs = annot_model(**inputs)
 
         # Convert logits into labels
         logits = outputs.logits
         predictions = torch.argmax(logits, dim=-1)
 
         for j, prediction in enumerate(predictions):
-            tokens = ner_tokenizer.convert_ids_to_tokens(inputs['input_ids'][j])
+            tokens = annot_tokenizer.convert_ids_to_tokens(inputs['input_ids'][j])
             labels = [label_dict[label_id.item()] for label_id in prediction]
 
-            # Filter out tokens that are not 'I-PER' or 'B-PER'
-            filtered_tokens_labels = [(index, token, label) for index, token, label in zip(range(len(tokens)), tokens, labels) if (label in ['I-PER', 'B-PER'] and token != '<pad>')]
+
+            if kind == 'ner':
+
+                # Filter out tokens that are not 'I-PER' or 'B-PER'
+                filtered_tokens_labels = [(index, token, label) for index, token, label in zip(range(len(tokens)), tokens, labels) if (label in ['I-PER', 'B-PER'] and token != '<pad>')]
 
 
-            # Append to result
-            result.append({
-                'processed_stories_id': batch_ids[j],
-                'NER': combine_person_tags(filtered_tokens_labels),
-                # 'original': filtered_tokens_labels
-            })
+                # Append to result
+                result.append({
+                    'processed_stories_id': batch_ids[j],
+                    'NER': combine_person_tags(filtered_tokens_labels),
+                    # 'original': filtered_tokens_labels
+                })
 
         if i == num_batches - 1:
             logger.info(f'REACHED SPECIFIED MAX OF {num_batches} BATCHES')
             break
 
-    logger.info('now organising')
 
-    # First, organize the results by 'processed_stories_id'
-    results_by_id = {}
+    if kind == 'ner':
+        logger.info('now organising')
 
-    for item in result:
-        if item['processed_stories_id'] in results_by_id:
-            results_by_id[item['processed_stories_id']].extend(item['NER'])
-        else:
-            results_by_id[item['processed_stories_id']] = item['NER']
+        # First, organize the results by 'processed_stories_id'
+        results_by_id = {}
 
-    logger.info('Transforming back to list of dict')
-    # Now transform the results back into a list of dictionaries
-    final_result = [{'processed_stories_id': id, 'NER': set(ner)} for id, ner in results_by_id.items()]
+        for item in result:
+            if item['processed_stories_id'] in results_by_id:
+                results_by_id[item['processed_stories_id']].extend(item['NER'])
+            else:
+                results_by_id[item['processed_stories_id']] = item['NER']
+
+        logger.info('Transforming back to list of dict')
+        # Now transform the results back into a list of dictionaries
+        final_result = [{'processed_stories_id': id, 'NER': set(ner)} for id, ner in results_by_id.items()]
+    elif kind == 'relevance':
+        pass
 
     logger.info('Generating Dataset')
-    ner_dataset = Dataset.from_list(final_result)
+    annot_dataset = Dataset.from_list(final_result)
 
     logger.info('Saving')
-    ner_dataset.save_to_disk(outpath)
+    annot_dataset.save_to_disk(outpath)
     logger.info('Complete')
 
 
