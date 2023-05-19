@@ -835,11 +835,12 @@ def annotate(dataset_path,
     logger.info(f'Annotation type: {kind}')
 
     #load model
-    annot_tokenizer = AutoTokenizer.from_pretrained(model, add_prefix_space=True)
     if kind == 'ner':
         annot_model = AutoModelForTokenClassification.from_pretrained(model)
+        annot_tokenizer = AutoTokenizer.from_pretrained(model, add_prefix_space=True)
     else:
         annot_model = AutoModelForSequenceClassification.from_pretrained(model)
+        annot_tokenizer = AutoTokenizer.from_pretrained('sentence-transformers/LaBSE')
 
     # Create a Dataset object from the data generator function
     logger.info(f'Loading Dataset.')
