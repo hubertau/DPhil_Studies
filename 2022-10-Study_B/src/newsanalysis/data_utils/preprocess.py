@@ -841,7 +841,7 @@ def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multili
         batch_ids = batch['processed_stories_id']
         batch_texts = batch['text']
 
-        inputs = ner_tokenizer(batch_texts, padding=True, truncation= True, return_tensors='pt')
+        inputs = ner_tokenizer(batch_texts, padding='max_length', truncation= True, return_tensors='pt')
 
         # Move the inputs to device
         inputs = {name: tensor.to(device) for name, tensor in inputs.items()}
