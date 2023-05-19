@@ -814,6 +814,8 @@ def combine_person_tags(indexed_iob2_sequence):
 
 def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multilingual/", cache_dir = '~/.cache', num_batches=None):
 
+    logger.info(f'Model: {model}')
+
     #load model
     ner_tokenizer = AutoTokenizer.from_pretrained(model, add_prefix_space=True, cache_dir = cache_dir)
     ner_model = AutoModelForTokenClassification.from_pretrained(model)
