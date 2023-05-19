@@ -812,7 +812,7 @@ def combine_person_tags(indexed_iob2_sequence):
     entities = [i.replace('▁', ' ').replace("_", " ").strip() for i in entities]
     return entities
 
-def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multilingual/", cache_dir = '~/.cache'):
+def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multilingual/", cache_dir = '~/.cache', num_batches=None):
 
     #load model
     ner_tokenizer = AutoTokenizer.from_pretrained(model, add_prefix_space=True, cache_dir = cache_dir)
@@ -833,6 +833,9 @@ def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multili
         label_dict = ner_model.module.config.id2label
     result = []
     batch_size=128
+
+    if num_batches:
+        logger.info(f'Maximum batch number specified: {num_batches}')
 
     for i in range(0, len(dataset), batch_size):
         if i % 10000 == 0:
@@ -868,6 +871,10 @@ def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multili
                 'NER': combine_person_tags(filtered_tokens_labels),
                 # 'original': filtered_tokens_labels
             })
+
+        if i == num_batches - 1:
+            logger.info(f'REACHED SPECIFIED MAX OF {num_batches} BATCHES')
+            break
 
     logger.info('now organising')
 
