@@ -907,7 +907,7 @@ def annotate(dataset_path,
             for i, j in zip(batch['part_id'], predictions):
                 result[i] = j
 
-        if i == num_batches - 1:
+        if num_batches and (i == num_batches - 1):
             logger.info(f'REACHED SPECIFIED MAX OF {num_batches} BATCHES')
             break
 
