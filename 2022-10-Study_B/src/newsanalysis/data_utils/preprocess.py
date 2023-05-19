@@ -821,7 +821,9 @@ def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multili
     ner_model = AutoModelForTokenClassification.from_pretrained(model)
 
     # Create a Dataset object from the data generator function
+    logger.info(f'Loading Dataset.')
     dataset = Dataset.load_from_disk(dataset_path)
+    logger.info('Loading Dataset Complete.')
 
     # tokenized_dataset = dataset.map(lambda examples: ner_tokenizer(examples['text'], return_tensors='pt', padding=True, truncation=True, max_length=512), batched=True)
 
@@ -846,7 +848,7 @@ def detect_ner(dataset_path, outpath, model = "julian-schelb/roberta-ner-multili
         batch_ids = batch['processed_stories_id']
         batch_texts = batch['text']
 
-        inputs = ner_tokenizer(batch_texts, padding='max_length', truncation= True, return_tensors='pt')
+        inputs = ner_tokenizer(batch_texts, padding='max_length', truncation= True, return_tensors='pt', max_length=512)
 
         # Move the inputs to device
         inputs = {name: tensor.to(device) for name, tensor in inputs.items()}
