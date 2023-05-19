@@ -826,6 +826,7 @@ def combine_person_tags(indexed_iob2_sequence):
 def annotate(dataset_path,
              outpath,
              model = "julian-schelb/roberta-ner-multilingual/",
+             tok = None,
              num_batches=None,
              kind = 'ner',
              max_length=512
@@ -834,13 +835,16 @@ def annotate(dataset_path,
     logger.info(f'Model: {model}')
     logger.info(f'Annotation type: {kind}')
 
+    if tok is None:
+        tok = model
+
     #load model
     if kind == 'ner':
         annot_model = AutoModelForTokenClassification.from_pretrained(model)
         annot_tokenizer = AutoTokenizer.from_pretrained(model, add_prefix_space=True)
     else:
         annot_model = AutoModelForSequenceClassification.from_pretrained(model)
-        annot_tokenizer = AutoTokenizer.from_pretrained('sentence-transformers/LaBSE')
+        annot_tokenizer = AutoTokenizer.from_pretrained(tok)
 
     # Create a Dataset object from the data generator function
     logger.info(f'Loading Dataset.')
