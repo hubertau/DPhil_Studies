@@ -826,7 +826,6 @@ def combine_person_tags(indexed_iob2_sequence):
 def annotate(dataset_path,
              outpath,
              model = "julian-schelb/roberta-ner-multilingual/",
-             cache_dir = '~/.cache',
              num_batches=None,
              kind = 'ner',
              max_length=512
@@ -857,12 +856,15 @@ def annotate(dataset_path,
         logger.info('Multiple GPUs detected, applying torch.nn.DataParallel')
         annot_model = torch.nn.DataParallel(annot_model)
         label_dict = annot_model.module.config.id2label
-    result = []
     batch_size=128
 
     if num_batches:
         logger.info(f'Maximum batch number specified: {num_batches}')
 
+    if kind == 'ner':
+        result = []
+    elif kind == 'relevance':
+        result = {}
     for i in range(0, len(dataset), batch_size):
         if i % 10000 == 0:
             logger.info(f'Processing batch {i}')
@@ -902,11 +904,8 @@ def annotate(dataset_path,
             logits = outputs.logits
             predictions = torch.argmax(logits, dim=-1)
 
-            result.append({
-                'processed_stories_id': batch_ids[j],
-                'part_id': batch['part_id']
-                # 'relevance': 
-            })
+            for i, j in zip(batch['part_id'], predictions):
+                result[i] = j
 
         if i == num_batches - 1:
             logger.info(f'REACHED SPECIFIED MAX OF {num_batches} BATCHES')
@@ -928,15 +927,19 @@ def annotate(dataset_path,
         logger.info('Transforming back to list of dict')
         # Now transform the results back into a list of dictionaries
         final_result = [{'processed_stories_id': id, 'NER': set(ner)} for id, ner in results_by_id.items()]
+
+
+        logger.info('Generating Dataset')
+        annot_dataset = Dataset.from_list(final_result)
+
+        logger.info('Saving')
+        annot_dataset.save_to_disk(outpath)
+        logger.info('Complete')
+
     elif kind == 'relevance':
-        pass
+        with open(outpath, 'wb') as f:
+            pickle.dump(result, f)
 
-    logger.info('Generating Dataset')
-    annot_dataset = Dataset.from_list(final_result)
-
-    logger.info('Saving')
-    annot_dataset.save_to_disk(outpath)
-    logger.info('Complete')
 
 
 
