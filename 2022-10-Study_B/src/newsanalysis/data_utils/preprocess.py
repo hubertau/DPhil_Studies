@@ -22,7 +22,7 @@ from bertopic import BERTopic
 from bertopic.vectorizers import ClassTfidfTransformer
 import nltk
 from sentence_transformers import SentenceTransformer
-from transformers import BertTokenizerFast, AutoTokenizer, AutoModelForTokenClassification, pipeline
+from transformers import BertTokenizerFast, AutoTokenizer, AutoModelForTokenClassification, pipeline, AutoModelForSequenceClassification
 import torch
 from torch.utils.data import DataLoader
 try:
@@ -836,8 +836,11 @@ def annotate(dataset_path,
     logger.info(f'Annotation type: {kind}')
 
     #load model
-    annot_tokenizer = AutoTokenizer.from_pretrained(model, add_prefix_space=True, cache_dir = cache_dir)
-    annot_model = AutoModelForTokenClassification.from_pretrained(model)
+    annot_tokenizer = AutoTokenizer.from_pretrained(model, add_prefix_space=True)
+    if kind == 'ner':
+        annot_model = AutoModelForTokenClassification.from_pretrained(model)
+    else:
+        annot_model = AutoModelForSequenceClassification.from_pretrained(model)
 
     # Create a Dataset object from the data generator function
     logger.info(f'Loading Dataset.')
@@ -876,12 +879,11 @@ def annotate(dataset_path,
             # Forward pass
             outputs = annot_model(**inputs)
 
-        for j, prediction in enumerate(predictions):
-
-            if kind == 'ner':
-                # Convert logits into labels
-                logits = outputs.logits
-                predictions = torch.argmax(logits, dim=-1)
+        if kind == 'ner':
+            # Convert logits into labels
+            logits = outputs.logits
+            predictions = torch.argmax(logits, dim=-1)
+            for j, prediction in enumerate(predictions):
                 tokens = annot_tokenizer.convert_ids_to_tokens(inputs['input_ids'][j])
                 labels = [label_dict[label_id.item()] for label_id in prediction]
 
@@ -896,15 +898,15 @@ def annotate(dataset_path,
                     # 'original': filtered_tokens_labels
                 })
 
-            elif kind == 'relevance':
-                logits = outputs.logits
-                predictions = torch.argmax(logits, dim=-1)
+        elif kind == 'relevance':
+            logits = outputs.logits
+            predictions = torch.argmax(logits, dim=-1)
 
-                result.append({
-                    'processed_stories_id': batch_ids[j],
-                    'part_id': batch['part_id']
-                    # 'relevance': 
-                })
+            result.append({
+                'processed_stories_id': batch_ids[j],
+                'part_id': batch['part_id']
+                # 'relevance': 
+            })
 
         if i == num_batches - 1:
             logger.info(f'REACHED SPECIFIED MAX OF {num_batches} BATCHES')

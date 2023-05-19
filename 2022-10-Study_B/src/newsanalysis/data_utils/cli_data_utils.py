@@ -244,14 +244,13 @@ def to_dataset(jsonl_file, dataset_out_path, keys, split, up_to):
         up_to=up_to
     )
 
-
 @preprocess.command()
 @click.argument('dataset_path')
 @click.argument('outpath')
 @click.option('--model', '-m', default='51la5/roberta-large-NER')
 @click.option('--cache', '-c', default = '~/.cache')
 @click.option('--num_batches', '-n', default=None, type=int)
-@click.option('--kind', '-k', defeault = 'ner')
+@click.option('--kind', '-k', default = 'ner')
 def annot(dataset_path, outpath, model, cache, num_batches, kind):
     '''Apply NER'''
     annotate(
