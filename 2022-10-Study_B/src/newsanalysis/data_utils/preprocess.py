@@ -861,7 +861,7 @@ def annotate(dataset_path,
         logger.info('Multiple GPUs detected, applying torch.nn.DataParallel')
         annot_model = torch.nn.DataParallel(annot_model)
         label_dict = annot_model.module.config.id2label
-    batch_size=128
+    batch_size=1024*4
 
     if num_batches:
         logger.info(f'Maximum batch number specified: {num_batches}')
