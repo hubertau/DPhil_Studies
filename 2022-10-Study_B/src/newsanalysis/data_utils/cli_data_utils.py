@@ -251,7 +251,8 @@ def to_dataset(jsonl_file, dataset_out_path, keys, split, up_to):
 @click.option('--tok', '-t', default=None)
 @click.option('--num_batches', '-n', default=None, type=int)
 @click.option('--kind', '-k', default = 'ner')
-def annot(dataset_path, outpath, model, tok, num_batches, kind):
+@click.option('--batchsize', '-b', default=800, type=int)
+def annot(dataset_path, outpath, model, tok, num_batches, kind, batchsize):
     '''Apply NER'''
     annotate(
         dataset_path,
@@ -259,7 +260,8 @@ def annot(dataset_path, outpath, model, tok, num_batches, kind):
         model=model,
         tok = tok,
         num_batches=num_batches,
-        kind = kind
+        kind = kind,
+        batch_size = batchsize
     )
 
 
