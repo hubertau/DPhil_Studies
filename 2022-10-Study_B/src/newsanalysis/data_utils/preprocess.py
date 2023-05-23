@@ -876,9 +876,11 @@ def annotate(dataset_path,
     elif kind == 'relevance':
         result = {}
 
-    for counter, i in enumerate(range(0, len(dataset), batch_size)):
-        if i % 10000 == 0:
-            logger.info(f'Processing batch {i}')
+    batch_iterator = list(enumerate(range(0, len(dataset), batch_size)))
+    for counter, i in batch_iterator:
+        # if counter % 10000 == 0:
+        if counter % 100 == 0:
+            logger.info(f'Processing batch {counter}: {counter/len(batch_iterator)*100:.2f}%')
         batch = dataset[i: i + batch_size]
         batch_ids = batch['processed_stories_id']
         batch_texts = batch['text']
