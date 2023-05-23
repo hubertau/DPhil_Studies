@@ -857,7 +857,7 @@ def annotate(dataset_path,
 
     # Move model to GPU if available
     # label_dict = annot_model.config.id2label
-    label2id = model.config.label2id
+    label2id = annot_model.config.label2id
     if kind == 'ner':
         ids_of_interest = [v for k,v in label2id.items() if k in ['I-PER', 'B-PER']]
     if torch.cuda.device_count() > 1:
