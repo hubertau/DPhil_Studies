@@ -46,7 +46,7 @@ def prof_annotate(log, dataset, model, outpath, num_batches, batchsizepergpu):
     )
 
     with open(log, "w", encoding="utf-8") as f:
-        lp.print_stats(f)
+        lp.print_stats(f, output_unit=1e-03)
 
 if __name__ == '__main__':
 
