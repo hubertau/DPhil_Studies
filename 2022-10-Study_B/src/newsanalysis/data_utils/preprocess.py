@@ -903,19 +903,13 @@ def annotate(dataset_path,
             predictions = torch.argmax(logits, dim=-1)
             for j, prediction in enumerate(predictions):
                 # tokens = annot_tokenizer.convert_ids_to_tokens(inputs['input_ids'][j])
-                tokens = inputs[j].tokens
+                tokens = np.array(inputs[j].tokens)
 
                 # labels = [label_dict[label_id.item()] for label_id in prediction]
                 # get indices of tokens we care about
                 indices_of_relevant_labels = torch.where(prediction == torch.tensor(ids_of_interest).to(device))[0].cpu().numpy().astype(int)
 
-                try:
-
-                    tokens_of_relevant_labels = tokens[indices_of_relevant_labels]
-                except TypeError:
-                    logger.info(f'{tokens}')
-                    logger.info(f'{indices_of_relevant_labels}')
-                    logger.info(f'{prediction}')
+                tokens_of_relevant_labels = tokens[indices_of_relevant_labels]
 
                 filtered_tokens_labels = [(index, token, id) for index, token, id in zip(
                     indices_of_relevant_labels,
