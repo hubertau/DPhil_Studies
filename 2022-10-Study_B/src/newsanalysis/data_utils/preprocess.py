@@ -870,7 +870,8 @@ def annotate(dataset_path,
         result = []
     elif kind == 'relevance':
         result = {}
-    for i in range(0, len(dataset), batch_size):
+
+    for counter, i in enumerate(range(0, len(dataset), batch_size)):
         if i % 10000 == 0:
             logger.info(f'Processing batch {i}')
         batch = dataset[i: i + batch_size]
@@ -912,7 +913,7 @@ def annotate(dataset_path,
             for i, j in zip(batch['part_id'], predictions):
                 result[i] = j
 
-        if num_batches and (i == num_batches - 1):
+        if num_batches and (counter == num_batches - 1):
             logger.info(f'REACHED SPECIFIED MAX OF {num_batches} BATCHES')
             break
 
