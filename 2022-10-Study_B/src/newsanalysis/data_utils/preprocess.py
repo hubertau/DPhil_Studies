@@ -830,12 +830,16 @@ def annotate(dataset_path,
              num_batches=None,
              kind = 'ner',
              max_length=512,
-             batch_size_per_gpu=800
+             batch_size_per_gpu=800,
+             from_batch = None
              ):
 
     logger.info(f'Model: {model}')
     logger.info(f'Annotation type: {kind}')
     logger.info(f'Batch size per GPU: {batch_size_per_gpu}')
+    logger.info(f'Savepath: {outpath}')
+
+    os.makedirs(Path(outpath).absolute(), exist_ok = True)
 
     if tok is None:
         tok = model
@@ -883,6 +887,7 @@ def annotate(dataset_path,
 
     batch_iterator = list(enumerate(range(0, len(dataset), batch_size)))
     for counter, i in batch_iterator:
+        batch_result = []
         # if counter % 10000 == 0:
         if counter % 100 == 0:
             logger.info(f'Processing batch {counter}: {counter/len(batch_iterator)*100:.2f}%')
@@ -899,28 +904,25 @@ def annotate(dataset_path,
             # Forward pass
             outputs = annot_model(**inputs)
 
-        if  kind == 'ner':
+        if  kind == 'ner_new':
             logits = outputs.logits
             predictions = torch.argmax(logits, dim=-1)
             for j, prediction in enumerate(predictions):
                 # tokens = annot_tokenizer.convert_ids_to_tokens(inputs['input_ids'][j])
                 tokens = np.array(inputs[j].tokens)
 
-                # labels = [label_dict[label_id.item()] for label_id in prediction]
-                # get indices of tokens we care about
-
-                # Filter out tokens that are not 'I-PER' or 'B-PER'
-                # filtered_tokens_labels = [(index, token, label) for index, token, label in zip(range(len(tokens)), tokens, labels) if (label in ['I-PER', 'B-PER'] and token != '<pad>')]
-
-
                 # Append to result
-                result.append({
+                batch_result.append({
                     'processed_stories_id': batch_ids[j],
                     'tokens': tokens,
                     'prediction': prediction
                     # 'original': filtered_tokens_labels
                 })
-        elif kind == 'ner_old':
+
+                with open(Path(outpath) / f'ner_batch_{counter}.pkl', 'wb') as f:
+                    pickle.dump(batch_result, f)
+
+        elif kind == 'ner':
             # Convert logits into labels
             logits = outputs.logits
             predictions = torch.argmax(logits, dim=-1)
@@ -945,11 +947,13 @@ def annotate(dataset_path,
 
 
                 # Append to result
-                result.append({
+                batch_result.append({
                     'processed_stories_id': batch_ids[j],
-                    'NER': combine_person_tags(filtered_tokens_labels, iper_id = iper_id),
-                    # 'original': filtered_tokens_labels
+                    'NER': combine_person_tags(filtered_tokens_labels, iper_id = iper_id)
                 })
+
+                with open(Path(outpath) / f'ner_batch_{counter}.pkl', 'wb') as f:
+                    pickle.dump(batch_result, f)
 
         elif kind == 'relevance':
             logits = outputs.logits
@@ -963,41 +967,42 @@ def annotate(dataset_path,
             break
 
 
-    if kind == 'ner':
-        logger.info('Generating Dataset')
-        annot_dataset = Dataset.from_list(result)
+    # if kind == 'ner':
+    #     logger.info('Generating Dataset')
+    #     annot_dataset = Dataset.from_list(final_result)
 
-        logger.info('Saving')
-        annot_dataset.save_to_disk(outpath)
-        logger.info('Complete')
-    elif kind == 'ner_old':
-        logger.info('now organising')
+    #     logger.info('Saving')
+    #     annot_dataset.save_to_disk(outpath)
+    #     logger.info('Complete')
+    # elif kind == 'ner_old':
+    #     logger.info('now organising')
 
-        # First, organize the results by 'processed_stories_id'
-        results_by_id = {}
+    #     # First, organize the results by 'processed_stories_id'
+    #     results_by_id = {}
 
-        for item in result:
-            if item['processed_stories_id'] in results_by_id:
-                results_by_id[item['processed_stories_id']].extend(item['NER'])
-            else:
-                results_by_id[item['processed_stories_id']] = item['NER']
+    #     for item in result:
+    #         if item['processed_stories_id'] in results_by_id:
+    #             results_by_id[item['processed_stories_id']].extend(item['NER'])
+    #         else:
+    #             results_by_id[item['processed_stories_id']] = item['NER']
 
-        logger.info('Transforming back to list of dict')
-        # Now transform the results back into a list of dictionaries
-        final_result = [{'processed_stories_id': id, 'NER': set(ner)} for id, ner in results_by_id.items()]
+    #     logger.info('Transforming back to list of dict')
+    #     # Now transform the results back into a list of dictionaries
+    #     final_result = [{'processed_stories_id': id, 'NER': set(ner)} for id, ner in results_by_id.items()]
 
 
-        logger.info('Generating Dataset')
-        annot_dataset = Dataset.from_list(final_result)
+    #     logger.info('Generating Dataset')
+    #     annot_dataset = Dataset.from_list(final_result)
 
-        logger.info('Saving')
-        annot_dataset.save_to_disk(outpath)
-        logger.info('Complete')
+    #     logger.info('Saving')
+    #     annot_dataset.save_to_disk(outpath)
+    #     logger.info('Complete')
 
-    elif kind == 'relevance':
-        with open(outpath, 'wb') as f:
-            pickle.dump(result, f)
+    # elif kind == 'relevance':
+    #     with open(outpath, 'wb') as f:
+    #         pickle.dump(result, f)
 
+    logger.info('Complete')
     return None
 
 
