@@ -964,6 +964,13 @@ def annotate(dataset_path,
 
 
     if kind == 'ner':
+        logger.info('Generating Dataset')
+        annot_dataset = Dataset.from_list(result)
+
+        logger.info('Saving')
+        annot_dataset.save_to_disk(outpath)
+        logger.info('Complete')
+    elif kind == 'ner_old':
         logger.info('now organising')
 
         # First, organize the results by 'processed_stories_id'
