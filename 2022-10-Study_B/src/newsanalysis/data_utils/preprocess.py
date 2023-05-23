@@ -899,7 +899,28 @@ def annotate(dataset_path,
             # Forward pass
             outputs = annot_model(**inputs)
 
-        if kind == 'ner':
+        if  kind == 'ner':
+            logits = outputs.logits
+            predictions = torch.argmax(logits, dim=-1)
+            for j, prediction in enumerate(predictions):
+                # tokens = annot_tokenizer.convert_ids_to_tokens(inputs['input_ids'][j])
+                tokens = np.array(inputs[j].tokens)
+
+                # labels = [label_dict[label_id.item()] for label_id in prediction]
+                # get indices of tokens we care about
+
+                # Filter out tokens that are not 'I-PER' or 'B-PER'
+                # filtered_tokens_labels = [(index, token, label) for index, token, label in zip(range(len(tokens)), tokens, labels) if (label in ['I-PER', 'B-PER'] and token != '<pad>')]
+
+
+                # Append to result
+                result.append({
+                    'processed_stories_id': batch_ids[j],
+                    'tokens': tokens,
+                    'prediction': prediction
+                    # 'original': filtered_tokens_labels
+                })
+        elif kind == 'ner_old':
             # Convert logits into labels
             logits = outputs.logits
             predictions = torch.argmax(logits, dim=-1)
