@@ -24,7 +24,7 @@ def profile(func, outtxt):
 @click.option('--outpath', '-o')
 @click.option('--batchsizepergpu', '-b', default = 800, type = int)
 @click.option('--num_batches', '-n', default=2, type=int)
-def prof_annotate(out, dataset, outpath, num_batches, batchsizepergpu):
+def prof_annotate(log, dataset, outpath, num_batches, batchsizepergpu):
 
     profile(annotate(dataset,
         outpath,
@@ -35,7 +35,7 @@ def prof_annotate(out, dataset, outpath, num_batches, batchsizepergpu):
         max_length=512,
         batch_size_per_gpu=batchsizepergpu
         ),
-        out
+        log
     )
 
 if __name__ == '__main__':
