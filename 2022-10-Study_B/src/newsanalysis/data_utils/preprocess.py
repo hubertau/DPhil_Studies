@@ -830,11 +830,12 @@ def annotate(dataset_path,
              num_batches=None,
              kind = 'ner',
              max_length=512,
-             batch_size=800
+             batch_size_per_gpu=800
              ):
 
     logger.info(f'Model: {model}')
     logger.info(f'Annotation type: {kind}')
+    logger.info(f'Batch size per GPU: {batch_size_per_gpu}')
 
     if tok is None:
         tok = model
@@ -862,6 +863,10 @@ def annotate(dataset_path,
         logger.info('Multiple GPUs detected, applying torch.nn.DataParallel')
         annot_model = torch.nn.DataParallel(annot_model)
         label_dict = annot_model.module.config.id2label
+        batch_size = batch_size_per_gpu*torch.cuda.device_count()
+    else:
+        batch_size = batch_size_per_gpu
+    logger.info(f'Adjusted batch size with GPU count of {torch.cuda.device_count()}: {batch_size}')
 
     if num_batches:
         logger.info(f'Maximum batch number specified: {num_batches}')
