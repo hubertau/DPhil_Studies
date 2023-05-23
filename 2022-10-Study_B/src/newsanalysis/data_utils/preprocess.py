@@ -909,7 +909,13 @@ def annotate(dataset_path,
                 # get indices of tokens we care about
                 indices_of_relevant_labels = torch.where(prediction == torch.tensor(ids_of_interest).to(device))[0].cpu().numpy().astype(int)
 
-                tokens_of_relevant_labels = tokens[indices_of_relevant_labels]
+                try:
+
+                    tokens_of_relevant_labels = tokens[indices_of_relevant_labels]
+                except TypeError:
+                    logger.info(f'{tokens}')
+                    logger.info(f'{indices_of_relevant_labels}')
+                    logger.info(f'{prediction}')
 
                 filtered_tokens_labels = [(index, token, id) for index, token, id in zip(
                     indices_of_relevant_labels,
