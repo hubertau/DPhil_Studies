@@ -2,9 +2,12 @@
 
 from newsanalysis.data_utils.preprocess import annotate
 import click
+from loguru import logger
+from pathlib import Path
 
 def profile(func, outtxt):
     from functools import wraps
+    logger.info(Path(outtxt).absolute())
 
     @wraps(func)
     def wrapper(*args, **kwargs):
