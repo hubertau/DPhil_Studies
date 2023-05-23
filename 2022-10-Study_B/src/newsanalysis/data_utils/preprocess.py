@@ -907,10 +907,7 @@ def annotate(dataset_path,
 
                 # labels = [label_dict[label_id.item()] for label_id in prediction]
                 # get indices of tokens we care about
-                indices_of_relevant_labels = torch.where(prediction == torch.tensor(ids_of_interest).to(device))[0].cpu().numpy()
-                if j == 0:
-                    logger.info(indices_of_relevant_labels)
-                indices_of_relevant_labels.astype(int)
+                indices_of_relevant_labels = torch.where(prediction == torch.tensor(ids_of_interest).to(device))[0].cpu().numpy().astype(int)
 
                 tokens_of_relevant_labels = tokens[indices_of_relevant_labels]
 
