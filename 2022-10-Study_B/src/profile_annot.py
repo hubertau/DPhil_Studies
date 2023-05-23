@@ -1,6 +1,7 @@
 ### SCRIPT TO PROFILE NER ANNOTATION
 
 from newsanalysis.data_utils.preprocess import annotate
+import click
 
 def profile(func, outtxt):
     from functools import wraps
@@ -17,14 +18,26 @@ def profile(func, outtxt):
 
     return wrapper
 
-prof_annotate = profile(annotate, '/home/hubert/DPhil_Studies/2022-10-Study_B/src/profile_annot.txt')
+@click.command()
+@click.option('--log', '-l')
+@click.option('--dataset', '-d')
+@click.option('--outpath', '-o')
+@click.option('--batchsizepergpu', '-b', default = 800, type = int)
+@click.option('--num_batches', '-n', default=2, type=int)
+def prof_annotate(out, dataset, outpath, num_batches, batchsizepergpu):
 
-prof_annotate('/home/hubert/DPhil_Studies/2022-10-Study_B/data/01_raw/data_cleaned_bt_ner_test',
-        '/home/hubert/DPhil_Studies/2022-10-Study_B/data/03_raw/NER_TEST_PROFILE',
+    profile(annotate(dataset,
+        outpath,
         model = "51la5/roberta-large-NER",
         tok = None,
-        num_batches=2,
+        num_batches=num_batches,
         kind = 'ner',
         max_length=512,
-        batch_size=8
-        )
+        batch_size_per_gpu=batchsizepergpu
+        ),
+        out
+    )
+
+if __name__ == '__main__':
+
+    prof_annotate()
