@@ -7,7 +7,7 @@ from pathlib import Path
 
 def profile(func, outtxt):
     from functools import wraps
-    logger.info(Path(outtxt).absolute())
+    logger.info(f'{Path(outtxt).absolute()}')
 
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -29,6 +29,7 @@ def profile(func, outtxt):
 @click.option('--batchsizepergpu', '-b', default = 800, type = int)
 @click.option('--num_batches', '-n', default=2, type=int)
 def prof_annotate(log, dataset, model, outpath, num_batches, batchsizepergpu):
+    logger.info(log)
 
     profile(annotate(dataset,
         outpath,
