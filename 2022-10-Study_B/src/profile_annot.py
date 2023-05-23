@@ -6,22 +6,6 @@ from loguru import logger
 from line_profiler import LineProfiler
 from pathlib import Path
 
-def profile(func, outtxt):
-    from functools import wraps
-    logger.info(f'{Path(outtxt).absolute()}')
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        prof = LineProfiler()
-        try:
-            return prof(func)(*args, **kwargs)
-        finally:
-            logger.info('Writing to file')
-            with open(outtxt, "w", encoding="utf-8") as f:
-                prof.print_stats(f)
-
-    return wrapper
-
 @click.command()
 @click.option('--log', '-l')
 @click.option('--dataset', '-d')
