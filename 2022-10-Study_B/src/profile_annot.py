@@ -32,7 +32,7 @@ def profile(func, outtxt):
 def prof_annotate(log, dataset, model, outpath, num_batches, batchsizepergpu):
     logger.info(log)
 
-    profile(annotate(dataset,
+    annotator = profile(annotate(dataset,
         outpath,
         model = model,
         tok = None,
@@ -43,6 +43,8 @@ def prof_annotate(log, dataset, model, outpath, num_batches, batchsizepergpu):
         ),
         log
     )
+
+    annotator()
 
 if __name__ == '__main__':
 
