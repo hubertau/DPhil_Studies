@@ -899,7 +899,8 @@ def annotate(dataset_path,
             logits = outputs.logits
             predictions = torch.argmax(logits, dim=-1)
             for j, prediction in enumerate(predictions):
-                tokens = annot_tokenizer.convert_ids_to_tokens(inputs['input_ids'][j])
+                # tokens = annot_tokenizer.convert_ids_to_tokens(inputs['input_ids'][j])
+                tokens = inputs[j].tokens
                 labels = [label_dict[label_id.item()] for label_id in prediction]
 
                 # Filter out tokens that are not 'I-PER' or 'B-PER'
