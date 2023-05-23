@@ -856,8 +856,6 @@ def annotate(dataset_path,
     # tokenized_dataset = dataset.map(lambda examples: annot_tokenizer(examples['text'], return_tensors='pt', padding=True, truncation=True, max_length=512), batched=True)
 
     # Move model to GPU if available
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    annot_model = annot_model.to(device)
     label_dict = annot_model.config.id2label
     if torch.cuda.device_count() > 1:
         logger.info('Multiple GPUs detected, applying torch.nn.DataParallel')
@@ -866,6 +864,8 @@ def annotate(dataset_path,
         batch_size = batch_size_per_gpu*torch.cuda.device_count()
     else:
         batch_size = batch_size_per_gpu
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    annot_model = annot_model.to(device)
     logger.info(f'Adjusted batch size with GPU count of {torch.cuda.device_count()}: {batch_size}')
 
     if num_batches:
@@ -885,10 +885,10 @@ def annotate(dataset_path,
         batch_ids = batch['processed_stories_id']
         batch_texts = batch['text']
 
-        inputs = annot_tokenizer(batch_texts, padding='max_length', truncation= True, return_tensors='pt', max_length=max_length)
+        inputs = annot_tokenizer(batch_texts, padding='max_length', truncation= True, return_tensors='pt', max_length=max_length).to(device)
 
         # Move the inputs to device
-        inputs = {name: tensor.to(device) for name, tensor in inputs.items()}
+        # inputs = {name: tensor.to(device) for name, tensor in inputs.items()}
 
         with torch.no_grad():
             # Forward pass
