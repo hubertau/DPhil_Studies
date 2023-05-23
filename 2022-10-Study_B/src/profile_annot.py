@@ -3,6 +3,7 @@
 from newsanalysis.data_utils.preprocess import annotate
 import click
 from loguru import logger
+from line_profiler import LineProfiler
 from pathlib import Path
 
 def profile(func, outtxt):
@@ -11,7 +12,6 @@ def profile(func, outtxt):
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        from line_profiler import LineProfiler
         prof = LineProfiler()
         try:
             return prof(func)(*args, **kwargs)
@@ -32,7 +32,10 @@ def profile(func, outtxt):
 def prof_annotate(log, dataset, model, outpath, num_batches, batchsizepergpu):
     logger.info(log)
 
-    annotator = profile(annotate(dataset,
+    lp = LineProfiler()
+    lp_wrapper = lp(annotate)
+
+    lp_wrapper(dataset,
         outpath,
         model = model,
         tok = None,
@@ -40,11 +43,10 @@ def prof_annotate(log, dataset, model, outpath, num_batches, batchsizepergpu):
         kind = 'ner',
         max_length=512,
         batch_size_per_gpu=batchsizepergpu
-        ),
-        log
     )
 
-    annotator()
+    with open(log, "w", encoding="utf-8") as f:
+        lp.print_stats(f)
 
 if __name__ == '__main__':
 
