@@ -806,12 +806,12 @@ def jsonl_to_dataset(jsonl_file, dataset_out, keys_to_read = ['text', 'processed
 
 
 
-def combine_person_tags(indexed_iob2_sequence):
+def combine_person_tags(indexed_iob2_sequence, iper_id = 0):
     entities = []
     current_entity_tokens = []
     for index, token, tag in indexed_iob2_sequence:
         # If token starts with '_' or tag is not 'I-PER', add current_entity_tokens to entities
-        if token.startswith('_') or tag != 'I-PER':
+        if token.startswith('_') or tag != iper_id:
             if current_entity_tokens:
                 entities.append(''.join([t.lstrip('_') for t in current_entity_tokens]))
                 current_entity_tokens = []
@@ -856,11 +856,14 @@ def annotate(dataset_path,
     # tokenized_dataset = dataset.map(lambda examples: annot_tokenizer(examples['text'], return_tensors='pt', padding=True, truncation=True, max_length=512), batched=True)
 
     # Move model to GPU if available
-    label_dict = annot_model.config.id2label
+    # label_dict = annot_model.config.id2label
+    label2id = model.config.label2id
+    if kind == 'ner':
+        ids_of_interest = [v for k,v in label2id.items() if k in ['I-PER', 'B-PER']]
     if torch.cuda.device_count() > 1:
         logger.info('Multiple GPUs detected, applying torch.nn.DataParallel')
         annot_model = torch.nn.DataParallel(annot_model)
-        label_dict = annot_model.module.config.id2label
+        # label_dict = annot_model.module.config.id2label
         batch_size = batch_size_per_gpu*torch.cuda.device_count()
     else:
         batch_size = batch_size_per_gpu
@@ -901,16 +904,27 @@ def annotate(dataset_path,
             for j, prediction in enumerate(predictions):
                 # tokens = annot_tokenizer.convert_ids_to_tokens(inputs['input_ids'][j])
                 tokens = inputs[j].tokens
-                labels = [label_dict[label_id.item()] for label_id in prediction]
+
+                # labels = [label_dict[label_id.item()] for label_id in prediction]
+                # get indices of tokens we care about
+                indices_of_relevant_labels = torch.where(prediction == torch.tensor(ids_of_interest))[0]
+
+                tokens_of_relevant_labels = tokens[indices_of_relevant_labels]
+
+                filtered_tokens_labels = [(index, token, id) for index, token, id in zip(
+                    indices_of_relevant_labels,
+                    tokens_of_relevant_labels,
+                    predictions[indices_of_relevant_labels]
+                )]
 
                 # Filter out tokens that are not 'I-PER' or 'B-PER'
-                filtered_tokens_labels = [(index, token, label) for index, token, label in zip(range(len(tokens)), tokens, labels) if (label in ['I-PER', 'B-PER'] and token != '<pad>')]
+                # filtered_tokens_labels = [(index, token, label) for index, token, label in zip(range(len(tokens)), tokens, labels) if (label in ['I-PER', 'B-PER'] and token != '<pad>')]
 
 
                 # Append to result
                 result.append({
                     'processed_stories_id': batch_ids[j],
-                    'NER': combine_person_tags(filtered_tokens_labels),
+                    'NER': combine_person_tags(filtered_tokens_labels, iper_id = label2id['I-PER']),
                     # 'original': filtered_tokens_labels
                 })
 
