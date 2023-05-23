@@ -22,13 +22,14 @@ def profile(func, outtxt):
 @click.option('--log', '-l')
 @click.option('--dataset', '-d')
 @click.option('--outpath', '-o')
+@click.option('--model', '-m')
 @click.option('--batchsizepergpu', '-b', default = 800, type = int)
 @click.option('--num_batches', '-n', default=2, type=int)
-def prof_annotate(log, dataset, outpath, num_batches, batchsizepergpu):
+def prof_annotate(log, dataset, model, outpath, num_batches, batchsizepergpu):
 
     profile(annotate(dataset,
         outpath,
-        model = "51la5/roberta-large-NER",
+        model = model,
         tok = None,
         num_batches=num_batches,
         kind = 'ner',
