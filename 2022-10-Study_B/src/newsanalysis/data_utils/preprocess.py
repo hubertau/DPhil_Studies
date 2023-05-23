@@ -858,6 +858,8 @@ def annotate(dataset_path,
     # Move model to GPU if available
     # label_dict = annot_model.config.id2label
     label2id = annot_model.config.label2id
+    iper_id = label2id['I-PER']
+    assert isinstance(iper_id, int)
     if kind == 'ner':
         ids_of_interest = [v for k,v in label2id.items() if k in ['I-PER', 'B-PER']]
     if torch.cuda.device_count() > 1:
@@ -914,7 +916,7 @@ def annotate(dataset_path,
                 filtered_tokens_labels = [(index, token, id) for index, token, id in zip(
                     indices_of_relevant_labels,
                     tokens_of_relevant_labels,
-                    predictions[indices_of_relevant_labels]
+                    prediction[indices_of_relevant_labels]
                 )]
 
                 # Filter out tokens that are not 'I-PER' or 'B-PER'
@@ -924,7 +926,7 @@ def annotate(dataset_path,
                 # Append to result
                 result.append({
                     'processed_stories_id': batch_ids[j],
-                    'NER': combine_person_tags(filtered_tokens_labels, iper_id = label2id['I-PER']),
+                    'NER': combine_person_tags(filtered_tokens_labels, iper_id = iper_id),
                     # 'original': filtered_tokens_labels
                 })
 
