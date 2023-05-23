@@ -953,11 +953,7 @@ def annotate(dataset_path,
         with open(outpath, 'wb') as f:
             pickle.dump(result, f)
 
-
-
-
-
-
+    return None
 
 
 # def read_in_annotated_txt(file):
