@@ -16,6 +16,7 @@ def profile(func, outtxt):
         try:
             return prof(func)(*args, **kwargs)
         finally:
+            logger.info('Writing to file')
             with open(outtxt, "w", encoding="utf-8") as f:
                 prof.print_stats(f)
 
