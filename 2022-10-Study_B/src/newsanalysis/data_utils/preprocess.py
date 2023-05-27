@@ -887,6 +887,8 @@ def annotate(dataset_path,
 
     batch_iterator = list(enumerate(range(0, len(dataset), batch_size)))
     for counter, i in batch_iterator:
+        if from_batch and counter < from_batch:
+            continue
         batch_result = []
         # if counter % 10000 == 0:
         if counter % 100 == 0:
