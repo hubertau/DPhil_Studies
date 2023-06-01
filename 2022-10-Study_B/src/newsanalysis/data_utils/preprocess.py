@@ -863,9 +863,9 @@ def annotate(dataset_path,
     # Move model to GPU if available
     # label_dict = annot_model.config.id2label
     label2id = annot_model.config.label2id
-    iper_id = label2id['I-PER']
     assert isinstance(iper_id, int)
     if kind == 'ner':
+        iper_id = label2id['I-PER']
         ids_of_interest = [v for k,v in label2id.items() if k in ['I-PER', 'B-PER']]
     if torch.cuda.device_count() > 1:
         logger.info('Multiple GPUs detected, applying torch.nn.DataParallel')
