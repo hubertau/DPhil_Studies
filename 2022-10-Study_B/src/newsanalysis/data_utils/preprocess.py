@@ -1032,6 +1032,9 @@ def collate_ner(ner_batch_dir, outpath, omit_tokens = ['<pad>']):
                 omit_tokens = omit_tokens
             )
 
-    output = Dataset.from_dict(combined_result)
+    # output = Dataset.from_dict(combined_result)
 
-    output.save_to_disk(outpath)
+    # output.save_to_disk(outpath)
+
+    with open(outpath, 'wb') as f:
+        pickle.dump(outpath, f)
