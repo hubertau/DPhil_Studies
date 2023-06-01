@@ -266,6 +266,18 @@ def annot(dataset_path, outpath, model, tok, num_batches, kind, batchsizepergpu,
         from_batch = from_batch
     )
 
+@preprocess.command()
+@click.argument('ner_batch_path')
+@click.argument('outpath')
+@click.option('--omit_tokens', '-o', default=['<pad>'])
+def combine_ner(ner_batch_path, outpath, omit_tokens):
+    '''Combine resulting NER batches'''
+
+    collate_ner(
+        ner_batch_dir=ner_batch_path,
+        outpath = outpath,
+        omit_tokens = omit_tokens
+    )
 
 if __name__ == '__main__':
     preprocess()

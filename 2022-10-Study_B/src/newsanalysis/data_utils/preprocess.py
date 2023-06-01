@@ -32,6 +32,7 @@ except ImportError:
     from hdbscan import HDBSCAN
     # logger.info('Regular HSBDSCAN imported')
 import pickle
+import glob
 import pandas as pd
 import jsonlines
 from time import perf_counter
@@ -1008,45 +1009,60 @@ def annotate(dataset_path,
     return None
 
 
-# def read_in_annotated_txt(file):
+def collate_ner(ner_batch_dir, outpath, omit_tokens = ['<pad>']):
+    '''Function to collate batched ner results into one dataset file
+    '''
 
-#     '''
-#     Title: 2195905526.txt
-#     +1 Doc Creator: hubertau
-#     +2 Doc Date: 3/31/2023
-#     +3 Descriptor Info: 	collect_date: 12/1/2020 10:23	language: en	media_id: 25638	media_name: whatreallyhappened.com	media_url: http://whatreallyhappened.com	publish_date: 12/1/2020 9:57	url: https://www.dailymail.co.uk/news/article-9002367/Debenhams-jobs-danger-fallout-Arcadia-collapse.html	title_text: Everything MUST go: Debenhams will open TOMORROW for 'Wild Wednesday' fire sale of all remaining stock as 242-year-old chain collapses 24 hours after Arcadia - leaving 25,000 jobs at risk	Title: 2195905526.txt
-#     +4 Codes Applied: 	not relevant
+    # check directory
+    assert os.path.isdir(ner_batch_dir)
 
-#     +5 Excerpt Creator: hubertau
-#     +6 Excerpt Created On: 4/18/2023
-#     +7 Excerpt Range: 0-80269
-#     '''
+    # obtain files
+    filenames = glob.glob('ner_batch*.pkl')
 
-#     results = []
+    # function to sort glob data
+    def extract_number(filename):
+        # Extract the number using regular expressions (regex)
+        match = re.search(r'\d+', filename)
+        # If a number is found, return it as an integer
+        if match:
+            return int(match.group())
+        else:
+            return 0
 
-#     with open(file, 'r') as f:
-#         x = f.readlines()
-#         x = [i.replace('\n', '').replace('\ufeff', '') for i in x]
+    # function to extend list
+    def extend_set_with_list(existing_set=None, list_of_values=None, omit_tokens = None):
+        # If existing_set is None, initialize it as an empty set
+        if existing_set is None:
+            existing_set = set()
 
-#     start_indices = []
-#     for index, row in enumerate(x):
-#         if row.startwith('Title: ') and row.endswith('.txt'):
-#             start_indices.append(index)
+        # omit tokens
+        if omit_tokens:
+            for tok_to_omit in omit_tokens:
+                list_of_values = [i.replace(f'{tok_to_omit}', '') for i in list_of_values]
 
-#     for i in start_indices:
+        # If list_of_values is not None, add its elements to the set
+        if list_of_values is not None:
+            existing_set.update(list_of_values)
 
-#         results.append({
-#             'doc_id': row[i].strip().replace('Title: ', '').replace('.txt', ''),
-#             'annotator': row[i+1].strip().replace('Doc Creater: ', ''),
-#             'Codes Applied': row[i+4].strip().replace('Codes Applied: ', '')
-#         })
+        return existing_set
 
-#     return results
+    # Sort the filenames based on the number
+    filenames_sorted = sorted(filenames, key=extract_number)
 
-# def model_prep(annotated_file):
+    combined_result = {}
+    for counter, file in enumerate(filenames_sorted):
+        if counter % 100 == 0:
+            logger.info(f'Processing {counter} of {len(filenames_sorted)}: {100*counter/len(filenames_sorted):.1f}%')
+        with open(file,'rb') as f:
+            data = pickle.load(f)
 
-#     annot = pd.read_csv(annotated_file)
-#     codes = [i.replace('Code: ', '') for i in annot.columns if 'Code' in i]
+        for item in data:
+            combined_result[item['processed_stories_id']] = extend_set_with_list(
+                existing_set=combined_result[item['processed_stories_id']].get('NER'),
+                list_of_values=item['NER'],
+                omit_tokens = omit_tokens
+            )
 
-#     # discard not relevant and broken links
-#     annot = annot[annot['Code: for review']]
+    output = Dataset.from_dict(combined_result)
+
+    output.save_to_disk(outpath)
