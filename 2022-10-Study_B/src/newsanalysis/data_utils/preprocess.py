@@ -840,7 +840,8 @@ def annotate(dataset_path,
     logger.info(f'Batch size per GPU: {batch_size_per_gpu}')
     logger.info(f'Savepath: {outpath}')
 
-    os.makedirs(Path(outpath).absolute(), exist_ok = True)
+    if kind == 'ner':
+        os.makedirs(Path(outpath).absolute(), exist_ok = True)
 
     if tok is None:
         tok = model
