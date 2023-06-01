@@ -970,40 +970,9 @@ def annotate(dataset_path,
             break
 
 
-    # if kind == 'ner':
-    #     logger.info('Generating Dataset')
-    #     annot_dataset = Dataset.from_list(final_result)
-
-    #     logger.info('Saving')
-    #     annot_dataset.save_to_disk(outpath)
-    #     logger.info('Complete')
-    # elif kind == 'ner_old':
-    #     logger.info('now organising')
-
-    #     # First, organize the results by 'processed_stories_id'
-    #     results_by_id = {}
-
-    #     for item in result:
-    #         if item['processed_stories_id'] in results_by_id:
-    #             results_by_id[item['processed_stories_id']].extend(item['NER'])
-    #         else:
-    #             results_by_id[item['processed_stories_id']] = item['NER']
-
-    #     logger.info('Transforming back to list of dict')
-    #     # Now transform the results back into a list of dictionaries
-    #     final_result = [{'processed_stories_id': id, 'NER': set(ner)} for id, ner in results_by_id.items()]
-
-
-    #     logger.info('Generating Dataset')
-    #     annot_dataset = Dataset.from_list(final_result)
-
-    #     logger.info('Saving')
-    #     annot_dataset.save_to_disk(outpath)
-    #     logger.info('Complete')
-
-    # elif kind == 'relevance':
-    #     with open(outpath, 'wb') as f:
-    #         pickle.dump(result, f)
+    if kind == 'relevance':
+        with open(outpath, 'wb') as f:
+            pickle.dump(result, f)
 
     logger.info('Complete')
     return None
@@ -1017,7 +986,7 @@ def collate_ner(ner_batch_dir, outpath, omit_tokens = ['<pad>']):
     assert os.path.isdir(ner_batch_dir)
 
     # obtain files
-    filenames = glob.glob(Path(ner_batch_dir) / 'ner_batch*.pkl')
+    filenames = glob.glob(os.path.join(ner_batch_dir, 'ner_batch*.pkl'))
 
     # function to sort glob data
     def extract_number(filename):
