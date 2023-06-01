@@ -1039,3 +1039,4 @@ def collate_ner(ner_batch_dir, outpath, omit_tokens = ['<pad>']):
 
     with open(outpath, 'wb') as f:
         pickle.dump(outpath, f)
+    logger.info(f'Saved to {outpath}')
