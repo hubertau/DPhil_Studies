@@ -964,7 +964,7 @@ def annotate(dataset_path,
             predictions = torch.argmax(logits, dim=-1)
 
             for i, j in zip(batch['part_id'], predictions):
-                result[i] = j
+                result[i] = j.item()
 
         if num_batches and (counter == num_batches - 1):
             logger.info(f'REACHED SPECIFIED MAX OF {num_batches} BATCHES')
