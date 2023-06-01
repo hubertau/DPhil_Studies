@@ -1027,7 +1027,7 @@ def collate_ner(ner_batch_dir, outpath, omit_tokens = ['<pad>']):
 
         for item in data:
             combined_result[item['processed_stories_id']] = extend_set_with_list(
-                existing_set=combined_result.get(item['processed_stories_id'], dict()).get('NER'),
+                existing_set=combined_result.get(item['processed_stories_id'], set()),
                 list_of_values=item['NER'],
                 omit_tokens = omit_tokens
             )
