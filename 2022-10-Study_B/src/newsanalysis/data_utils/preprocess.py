@@ -1017,7 +1017,7 @@ def collate_ner(ner_batch_dir, outpath, omit_tokens = ['<pad>']):
     assert os.path.isdir(ner_batch_dir)
 
     # obtain files
-    filenames = glob.glob('ner_batch*.pkl')
+    filenames = glob.glob(Path(ner_batch_dir) / 'ner_batch*.pkl')
 
     # function to sort glob data
     def extract_number(filename):
