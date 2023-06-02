@@ -832,37 +832,53 @@ def annotate(dataset_path,
              kind = 'ner',
              max_length=512,
              batch_size_per_gpu=800,
+             rel_filter = None,
              from_batch = None
              ):
+    '''Function for carrying out annotations of data, whether that be of relevance annotatations, NER annotations, or substance annotations.
+    '''
 
     logger.info(f'Model: {model}')
     logger.info(f'Annotation type: {kind}')
     logger.info(f'Batch size per GPU: {batch_size_per_gpu}')
     logger.info(f'Savepath: {outpath}')
 
-    if kind == 'ner':
-        os.makedirs(Path(outpath).absolute(), exist_ok = True)
 
+    # check if custom tokenizer is supplied
     if tok is None:
         tok = model
 
     #load model
     if kind == 'ner':
+        # create directory to save batched ner output
+        os.makedirs(Path(outpath).absolute(), exist_ok = True)
         annot_model = AutoModelForTokenClassification.from_pretrained(model)
         annot_tokenizer = AutoTokenizer.from_pretrained(model, add_prefix_space=True)
     else:
         annot_model = AutoModelForSequenceClassification.from_pretrained(model)
         annot_tokenizer = AutoTokenizer.from_pretrained(tok)
 
+
     # Create a Dataset object from the data generator function
     logger.info(f'Loading Dataset.')
     dataset = Dataset.load_from_disk(dataset_path)
     logger.info('Loading Dataset Complete.')
 
-    # tokenized_dataset = dataset.map(lambda examples: annot_tokenizer(examples['text'], return_tensors='pt', padding=True, truncation=True, max_length=512), batched=True)
+    # if we are doing substance annotations, load in the relevance annotations
+    if kind in ['substance', 'subs']:
+        with open(rel_filter, 'rb') as f:
+            rel_annot = pickle.load(f)
+        logger.info(f'Relevance filter loaded in from {rel_filter}')
 
-    # Move model to GPU if available
-    # label_dict = annot_model.config.id2label
+        # sanity check
+        assert all(value in rel_annot for value in dataset['processed_stories_id'])
+
+        # now filter the dataset
+        logger.info(f'Dataset length before filtering is {len(dataset)}')
+        dataset = dataset.filter(lambda x: rel_annot.get(x['processed_stories_id']) == 1)
+        logger.info(f'Datset length AFTER filtering is {len(dataset)}')
+
+    # prepare: batch size and NER label prep
     label2id = annot_model.config.label2id
     if kind == 'ner':
         iper_id = label2id['I-PER']
@@ -875,6 +891,8 @@ def annotate(dataset_path,
         batch_size = batch_size_per_gpu*torch.cuda.device_count()
     else:
         batch_size = batch_size_per_gpu
+
+    # Move model to GPU if available
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     annot_model = annot_model.to(device)
     logger.info(f'Adjusted batch size with GPU count of {torch.cuda.device_count()}: {batch_size}')
@@ -882,30 +900,34 @@ def annotate(dataset_path,
     if num_batches:
         logger.info(f'Maximum batch number specified: {num_batches}')
 
+    # setup output data container
     if kind == 'ner':
         result = []
-    elif kind == 'relevance':
+    elif kind in ['relevance', 'rel', 'subs', 'substance']:
         result = {}
 
+    # batch enumerator
     batch_iterator = list(enumerate(range(0, len(dataset), batch_size)))
+
+    # iterate over batches
     for counter, i in batch_iterator:
+
+        # skip previous ones if from_batch is provided
         if from_batch and counter < from_batch:
             continue
         batch_result = []
-        # if counter % 10000 == 0:
         if counter % 100 == 0:
             logger.info(f'Processing batch {counter}: {counter/len(batch_iterator)*100:.2f}%')
         batch = dataset[i: i + batch_size]
         batch_ids = batch['processed_stories_id']
         batch_texts = batch['text']
 
+        # generate inputs to model
         inputs = annot_tokenizer(batch_texts, padding='max_length', truncation= True, return_tensors='pt', max_length=max_length).to(device)
 
-        # Move the inputs to device
-        # inputs = {name: tensor.to(device) for name, tensor in inputs.items()}
 
+        # Forward pass
         with torch.no_grad():
-            # Forward pass
             outputs = annot_model(**inputs)
 
         if  kind == 'ner_new':
@@ -959,7 +981,7 @@ def annotate(dataset_path,
                 with open(Path(outpath) / f'ner_batch_{counter}.pkl', 'wb') as f:
                     pickle.dump(batch_result, f)
 
-        elif kind == 'relevance':
+        elif kind in ['relevance', 'rel', 'subs', 'substance']:
             logits = outputs.logits
             predictions = torch.argmax(logits, dim=-1)
 
@@ -971,7 +993,7 @@ def annotate(dataset_path,
             break
 
 
-    if kind == 'relevance':
+    if kind in ['relevance', 'rel', 'subs', 'substance']:
         with open(outpath, 'wb') as f:
             pickle.dump(result, f)
 
