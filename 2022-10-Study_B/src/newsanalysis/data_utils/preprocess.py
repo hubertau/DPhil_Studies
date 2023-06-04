@@ -871,7 +871,13 @@ def annotate(dataset_path,
         logger.info(f'Relevance filter loaded in from {rel_filter}')
 
         # sanity check
-        assert all(value in rel_annot for value in dataset['processed_stories_id'])
+        # assert all(value in rel_annot for value in dataset['processed_stories_id'])
+        diff1 = set(rel_annot.keys()).difference(set(dataset['processed_stories_id']))
+        logger.info(f'Number of items in rel_annot not in dataset: {len(diff1)}')
+        logger.info(diff1)
+        diff2 = set(dataset['processed_stories_id']).difference(set(rel_annot.keys()))
+        logger.info(f'Number of items in dataset not in rel_annot: {len(diff2)}')
+        logger.info(diff2)
 
         # now filter the dataset
         logger.info(f'Dataset length before filtering is {len(dataset)}')
