@@ -18,6 +18,7 @@ import os
 from csv import DictWriter
 from loguru import logger
 from datasets import Dataset
+from datasets.utils.logging import disable_progress_bar
 from bertopic import BERTopic
 from bertopic.vectorizers import ClassTfidfTransformer
 import nltk
@@ -882,6 +883,7 @@ def annotate(dataset_path,
 
         # now filter the dataset
         logger.info(f'Dataset length before filtering is {len(dataset)}')
+        disable_progress_bar()
         dataset = dataset.filter(lambda x: rel_annot.get(x['part_id']) == 1)
         logger.info(f'Datset length AFTER filtering is {len(dataset)}')
 
