@@ -630,6 +630,7 @@ exclude = None, min_date = None, max_date = None):
 
 
 def remove_by_bt(data_file, bertopic_file, outfile, remove):
+    '''Remove topics by BERTopic'''
 
 
     # records which data and bertopic file
@@ -809,6 +810,8 @@ def jsonl_to_dataset(jsonl_file, dataset_out, keys_to_read = ['text', 'processed
 
 
 def combine_person_tags(indexed_iob2_sequence, iper_id = 0):
+    '''Function to extract person tags from an NER model output.
+    '''
     entities = []
     current_entity_tokens = []
     for index, token, tag in indexed_iob2_sequence:
@@ -872,14 +875,7 @@ def annotate(dataset_path,
         logger.info(f'Relevance filter loaded in from {rel_filter}')
 
         # sanity check
-        # assert all(value in rel_annot for value in dataset['processed_stories_id'])
         assert len(rel_annot) == len(dataset)
-        # diff1 = set(rel_annot.keys()).difference(set(dataset['processed_stories_id']))
-        # logger.info(f'Number of items in rel_annot not in dataset: {len(diff1)}')
-        # logger.info(diff1)
-        # diff2 = set(dataset['processed_stories_id']).difference(set(rel_annot.keys()))
-        # logger.info(f'Number of items in dataset not in rel_annot: {len(diff2)}')
-        # logger.info(diff2)
 
         # now filter the dataset
         logger.info(f'Dataset length before filtering is {len(dataset)}')
