@@ -1,5 +1,5 @@
 from .dataviz import cli_dataviz
-from .data_utils import cli_data_utils
+from .data_utils import cli_data_utils, mediacloud_collect
 from .modelling import cli_modelling
 import click
 from loguru import logger
@@ -51,7 +51,9 @@ def cli(ctx, debug, gpu, dask, log_file):
 
 cli.add_command(cli_dataviz.viz)
 cli.add_command(cli_data_utils.preprocess)
+cli.add_command(cli_data_utils.postprocess)
 cli.add_command(cli_modelling.model)
+cli.add_command(mediacloud_collect.mediac)
 
 if __name__ == '__main__':
     cli()
