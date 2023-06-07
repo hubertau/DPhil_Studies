@@ -81,10 +81,13 @@ def consolidatener(ner_file, outfile, dataset, names, surnames):
     with open(ner_file, 'rb') as f:
         ner_annot = pickle.load(f)
 
+    logger.info('NER loaded i n')
+
     # get languages of articles
     og_dataset = Dataset.load_from_disk(dataset)
     og_dataset = og_dataset.to_pandas()
     og_dataset = og_dataset.set_index('processed_stories_id')
+    logger.info("Dataset loaded in")
 
     ner_filtered = {}
     for k, v in ner_annot.items():
@@ -94,6 +97,7 @@ def consolidatener(ner_file, outfile, dataset, names, surnames):
         else:
 
             ner_filtered[k] = [i for i in v if 1 < len(i.split())<5 ]
+    logger.info('Dataset filtered')
 
     # import name list to compare against
     name_database = pd.read_csv(names,header=None, names = ['name', 'frequency', 'males', 'females'])
@@ -101,6 +105,7 @@ def consolidatener(ner_file, outfile, dataset, names, surnames):
 
     #combine
     allname_database = pd.concat((name_database['name'], surname_database['name'])).to_list()
+    logger.info('Names loaded in')
 
     unique_tokens = set()
     for k, v in ner_filtered.items():
@@ -110,13 +115,17 @@ def consolidatener(ner_file, outfile, dataset, names, surnames):
         else:
             for i in v:
                 unique_tokens.update(i.split())
+    logger.info('Unique tokens extracted')
 
-    def process_one_token(token, names_ref):
+    def process_one_token(number, token, names_ref):
+        if number % 10000 == 0:
+            logger.info(f'{number}')
         return (token, rapidfuzz.process.extractOne(token.upper(), names_ref))
 
     logger.info(f'Beginning ProcessPoolExecutor')
     with ProcessPoolExecutor(max_workers=48) as executor:
-        processpoolout = executor.map(process_one_token, unique_tokens, repeat(allname_database))
+        processpoolout = executor.map(process_one_token, range(len(unique_tokens)), unique_tokens, repeat(allname_database))
+    logger.info('ProcessPool done')
 
     final_dict = {}
     for tok, corrected in processpoolout:
