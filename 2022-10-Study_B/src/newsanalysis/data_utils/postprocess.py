@@ -5,8 +5,15 @@ import click
 from loguru import logger
 import pandas as pd
 from collections import Counter
+from itertools import repeat
 from datasets import Dataset
+from pathlib import Path
 import pickle
+
+import pickle
+from pathlib import Path
+import rapidfuzz
+from concurrent.futures import ProcessPoolExecutor
 
 @click.group(help='Commands for postprocessing')
 @click.pass_context
@@ -14,15 +21,15 @@ def postprocess(ctx):
     pass
 
 @postprocess.command()
-@click.argument('file')
-@click.option('--outfile', '-o', required=True)
-@click.option('--original_data', '-d', required=True)
-@click.option('--mcsourceinfo', '-m', required=True)
+@click.argument('subsfile')
+@click.option('--outfolder', '-o', required=True)
+@click.option('--original_data', '-d', required=False)
+@click.option('--mcsourceinfo', '-m', required=False)
 @click.option('--nerinfo', '-n', required=False)
-def consolidatesubs(file, outfile, original_data, mcsourceinfo, nerinfo):
+def consolidatesubs(subsfile, outfolder, original_data, mcsourceinfo, nerinfo):
     '''Conslidate substance annotations from split back into stories'''
 
-    with open(file, 'rb') as f:
+    with open(subsfile, 'rb') as f:
         original_dict = pickle.load(f)
 
     new_dict = {}
@@ -43,28 +50,78 @@ def consolidatesubs(file, outfile, original_data, mcsourceinfo, nerinfo):
 
     df.index.names=['processed_stories_id']
 
-    # supply media id information
-    original_raw = Dataset.load_from_disk(original_data)
-    original_df = original_raw.to_pandas()
-    original_df = original_df.set_index('processed_stories_id')
-    original_df.index = original_df.index.map(str)
+    if original_data:
+        # supply media id information
+        original_raw = Dataset.load_from_disk(original_data)
+        original_df = original_raw.to_pandas()
+        original_df = original_df.set_index('processed_stories_id')
+        original_df.index = original_df.index.map(str)
 
-    df = df.join(original_df[['media_id', 'language', 'publish_date']])
+        df = df.join(original_df[['media_id', 'language', 'publish_date']])
 
     # supply media locale information:
-    with open(mcsourceinfo, 'rb') as f:
-        mc = pickle.load(f)
-    df['country'] = df['media_id'].apply(mc)
+    if mcsourceinfo:
+        with open(mcsourceinfo, 'rb') as f:
+            mc = pickle.load(f)
+        df['country'] = df['media_id'].replace(mc)
 
     if nerinfo:
-        with open(mcsourceinfo, 'rb') as f:
+        with open(nerinfo, 'rb') as f:
             ner = pickle.load(f)
 
-    df.to_csv(outfile)
+    df.to_csv(f'{outfolder}/{Path(subsfile).stem}{"_" if any([original_data, mcsourceinfo,nerinfo]) else ""}{"d" if original_data else ""}{"m" if mcsourceinfo else ""}{"n" if nerinfo else ""}.csv')
 
 @postprocess.command()
-@click.argument('file')
-def consolidatener(file):
-    with open(file, 'rb') as f:
-        ner_annot = pickle.dump(f)
+@click.argument('ner_file')
+@click.argument('outfile')
+@click.option('--dataset', '-d', required=True)
+@click.option('--names', '-n', required=True)
+@click.option('--surnames', '-s', required=True)
+def consolidatener(ner_file, outfile, dataset, names, surnames):
+    with open(ner_file, 'rb') as f:
+        ner_annot = pickle.load(f)
 
+    # get languages of articles
+    og_dataset = Dataset.load_from_disk(dataset)
+    og_dataset = og_dataset.to_pandas()
+    og_dataset = og_dataset.set_index('processed_stories_id')
+
+    ner_filtered = {}
+    for k, v in ner_annot.items():
+        lang = og_dataset.loc[k]['language']
+        if lang in ['zh', 'ja', 'ko', 'bn', 'hi', 'ta', 'gu', 'kn', 'te', 'ml', 'th', 'my', 'mr', 'vi', 'ne', 'lo', 'ur', 'si', 'or', 'ceb']:
+            ner_filtered[k] = v
+        else:
+
+            ner_filtered[k] = [i for i in v if 1 < len(i.split())<5 ]
+
+    # import name list to compare against
+    name_database = pd.read_csv(names,header=None, names = ['name', 'frequency', 'males', 'females'])
+    surname_database = pd.read_csv(surnames, header=None, names = ['name', 'frequency'])
+
+    #combine
+    allname_database = pd.concat((name_database['name'], surname_database['name'])).to_list()
+
+    unique_tokens = set()
+    for k, v in ner_filtered.items():
+        lang = og_dataset.loc[k]['language']
+        if lang in ['zh', 'ja', 'ko', 'bn', 'hi', 'ta', 'gu', 'kn', 'te', 'ml', 'th', 'my', 'mr', 'vi', 'ne', 'lo', 'ur', 'si', 'or', 'ceb']:
+            pass
+        else:
+            for i in v:
+                unique_tokens.update(i.split())
+
+    def process_one_token(token, names_ref):
+        return (token, rapidfuzz.process.extractOne(token.upper(), names_ref))
+
+    logger.info(f'Beginning ProcessPoolExecutor')
+    with ProcessPoolExecutor(max_workers=48) as executor:
+        processpoolout = executor.map(process_one_token, unique_tokens, repeat(allname_database))
+
+    final_dict = {}
+    for tok, corrected in processpoolout:
+        final_dict[tok] = corrected
+
+    with open(outfile, 'wb') as f:
+        pickle.dump(final_dict, f)
+    logger.info(f'Saved to {outfile}')
