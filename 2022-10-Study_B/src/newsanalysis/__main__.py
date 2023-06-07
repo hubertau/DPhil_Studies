@@ -40,9 +40,9 @@ def cli(ctx, debug, gpu, dask, log_file):
     # logger.info(f"Debug mode is {'on' if debug else 'off'}")
     if not debug:
         logger.remove()
-        logger.add(sys.stderr, level="INFO", backtrace=True, diagnose=True)
+        logger.add(sys.stderr, level="INFO", backtrace=True, diagnose=True, enqueue=True)
     if log_file:
-        logger.add(log_file, backtrace=True, diagnose=True)
+        logger.add(log_file, backtrace=True, diagnose=True, enqueue=True)
 
     ctx.obj = {}
     ctx.obj['DEBUG'] = debug

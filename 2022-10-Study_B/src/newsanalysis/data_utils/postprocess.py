@@ -81,7 +81,7 @@ def consolidatener(ner_file, outfile, dataset, names, surnames):
     with open(ner_file, 'rb') as f:
         ner_annot = pickle.load(f)
 
-    logger.info('NER loaded i n')
+    logger.info('NER loaded i ')
 
     # get languages of articles
     og_dataset = Dataset.load_from_disk(dataset)
