@@ -3,84 +3,171 @@
 """
 import mediacloud.error
 import mediacloud.api
-import newsanalysis.data_utils.constants
 import datetime
 import os
 import time
+import pandas as pd
 import click
+import requests
+import json
 import jsonlines
-import logging
+from loguru import logger
+import pickle
 
-@click.command()
+from . import constants
+
+@click.group(help='Commands relating to MediaCloud')
+@click.pass_context
+def mediac(ctx):
+    pass
+
+@mediac.command()
+@click.argument('publisher_csv')
+@click.option('--outfile', '-o', required=True)
+def mediainfo(publisher_csv, outfile):
+    '''Collect media list data from a publisher csv file'''
+    pubs = pd.read_csv(publisher_csv)
+    # INDIA_NATIONAL_COLLECTION = 34412118
+    # SOURCES_PER_PAGE = 100  # the number of sources retrieved per page
+    # mc_directory = mediacloud.api.DirectoryApi(constants.API_KEY)
+    sources = []
+
+    # # while True:
+    # for row in pubs.itertuples():
+    #     if row.Index % 10 == 0:
+    #         logger.info(f'Processing {row.Index+1} of {len(pubs)}: {(row.Index+1)/len(pubs):.1f}%')
+    #     offset = 0   # offset for paging through
+    #     while True:
+    #         # grab a page of sources in the collection
+    #         # response = mc_directory.source_list(collection_id=INDIA_NATIONAL_COLLECTION, limit=SOURCES_PER_PAGE, offset=offset)
+    #         response = mc_directory.source_list(
+    #             name=row.name.strip(),
+    #             limit=SOURCES_PER_PAGE,
+    #             offset=offset
+    #         )
+    #         check = [i.get('id') for i in response['results']]
+    #         if row.id in check:
+    #             # add it to our running list of all the sources in the collection
+    #             sources.extend(response['results'])
+    #             break
+    #         # if there is no next page then we're done so bail out
+    #         if response['next'] is None:
+    #             logger.warning(f'WARNING: {row.id} ({row.name}) not found in API call.')
+    #             break
+    #         # otherwise setup to fetch the next page of sources
+    #         offset += len(response['results'])
+
+    for row in pubs.itertuples():
+        if row.Index % 100 == 0:
+            logger.info(f'Processing {row.Index+1} of {len(pubs)}: {100*(row.Index+1)/len(pubs):.1f}%')
+        try:
+            x = requests.get(url = f'https://api.mediacloud.org/api/v2/media/single/{row.id}', params= {'key': constants.V2_API_KEY}, timeout=60)
+            sources.append(x.json())
+        except:
+            logger.warning(f'WARNING: {row.id} ({row.name}) not found in API call.')
+
+    with open(outfile, 'wb') as f:
+        pickle.dump(sources, f)
+
+    logger.info("Sources collected: {}".format(len(sources)))
+
+
+
+    # convert to df
+    # sources_df = pd.DataFrame.from_records(sources)
+    # sources_df.to_csv(outfile)
+    # check
+    # valid = pubs['id'].isin(sources_df['id'])
+    # print(f'Numer of pubs in sources scraped: {100*valid.sum()/len(valid):.1f}%')
+
+@mediac.command()
+@click.argument('file')
+def consolidatemc(file):
+    '''Function to consolidate and process mediacloud source info, from mediainfo command.'''
+
+    with open(file, 'rb') as f:
+        raw_mc_source_info = pickle.load(f)
+
+    result = {}
+    for source in raw_mc_source_info:
+        for tag_info in source['media_source_tags']:
+            if tag_info['tag_set'] ==  'pub_country':
+                result[source.get('media_id')] = tag_info['tag']
+                break
+            elif tag_info['tag_set'] == 'geographic_collection':
+                result[source.get('media_id')] = tag_info['tag']
+                break
+            elif tag_info['tag_set'] == 'emm_country':
+                result[source.get('media_id')] = tag_info['tag']
+                break
+            elif tag_info['tag_set'] in ['mexico_state', 'portuguese_state', 'portuguese_media_type', 'egypt_media_type', 'kenya_media_source', 'gv_country', 'usnewspapercirculation']:
+                result[source.get('media_id')] = tag_info['tag']
+                break
+            elif tag_info['tag_set'] == 'subject_country':
+                result[source.get('media_id')] = tag_info['tag']
+                break
+
+
+@mediac.command()
+def profile():
+    url = 'https://api.mediacloud.org/api/v2/auth/profile'
+    response = requests.get(url=url, params={
+        "key":'1dfb1fc62779662c965c8b197cae48c05eae20d8cd2403f0296513d9e56a33e5'
+    })
+    print(json.dumps(response.json(),indent=4))
+
+@mediac.command()
 @click.option('--outfile', required=True)
 @click.option('--query', required=True, type=str)
 @click.option('--start', help='In format YYYY-MM-DD', required=True)
 @click.option('--end', help='In format YYYY-MM-DD', required=True)
 @click.option('--count', help='Just get count for the query specified. Does not log, just prints to console.', is_flag=True)
-@click.option('--log_level',
-    required=False,
-    default='INFO',
-    type=click.Choice(['NONE','CRITICAL','ERROR','WARNING','INFO','DEBUG']),
-)
-@click.option('--log_dir',
-    required=False,
-    help='Directory in which to save logs',
-    default = os.getcwd()
-)
-@click.option('--log_handler_level',
-    required=False,
-    default='stream',
-    type=click.Choice(['both', 'file', 'stream']),
-    help='Whether to log to both a file and stream to console, or just one.'
-)
-def main(
+def story_collect(
     outfile,
     query,
     start,
     end,
-    count,
-    log_level,
-    log_dir,
-    log_handler_level
+    count
 ):
 
     # if just getting a count, no need to log.
     if not count:
-        logging_dict = {
-            'NONE': None,
-            'CRITICAL': logging.CRITICAL,
-            'ERROR': logging.ERROR,
-            'WARNING': logging.WARNING,
-            'INFO': logging.INFO,
-            'DEBUG': logging.DEBUG
-        }
+        pass
+        # logging_dict = {
+        #     'NONE': None,
+        #     'CRITICAL': logging.CRITICAL,
+        #     'ERROR': logging.ERROR,
+        #     'WARNING': logging.WARNING,
+        #     'INFO': logging.INFO,
+        #     'DEBUG': logging.DEBUG
+        # }
 
-        logging_level = logging_dict[log_level]
+        # logging_level = logging_dict[log_level]
 
-        if logging_level is not None:
+        # if logging_level is not None:
 
-            logging_fmt   = '[%(levelname)s] %(asctime)s - %(name)s - %(message)s'
-            today_datetime = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
-            if log_dir is not None:
-                assert os.path.isdir(log_dir)
-                logging_file  = os.path.join(log_dir, f'{os.path.split(outfile)[-1].split(".")[0]}_mediacloud_collect.log')
+        #     logging_fmt   = '[%(levelname)s] %(asctime)s - %(name)s - %(message)s'
+        #     today_datetime = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
+        #     if log_dir is not None:
+        #         assert os.path.isdir(log_dir)
+        #         logging_file  = os.path.join(log_dir, f'{os.path.split(outfile)[-1].split(".")[0]}_mediacloud_collect.log')
 
-            if log_handler_level == 'both':
-                handlers = [
-                    logging.FileHandler(filename=logging_file,mode='w+'),
-                    logging.StreamHandler()
-                ]
-            elif log_handler_level == 'file':
-                handlers = [logging.FileHandler(filename=logging_file,mode='w+')]
-            elif log_handler_level == 'stream':
-                handlers = [logging.StreamHandler()]
-            logging.basicConfig(
-                handlers=handlers,
-                format=logging_fmt,
-                level=logging_level,
-                datefmt='%m/%d/%Y %I:%M:%S %p'
-            )
-            logger = logging.getLogger(__name__)
+        #     if log_handler_level == 'both':
+        #         handlers = [
+        #             logging.FileHandler(filename=logging_file,mode='w+'),
+        #             logging.StreamHandler()
+        #         ]
+        #     elif log_handler_level == 'file':
+        #         handlers = [logging.FileHandler(filename=logging_file,mode='w+')]
+        #     elif log_handler_level == 'stream':
+        #         handlers = [logging.StreamHandler()]
+        #     logging.basicConfig(
+        #         handlers=handlers,
+        #         format=logging_fmt,
+        #         level=logging_level,
+        #         datefmt='%m/%d/%Y %I:%M:%S %p'
+        #     )
+        #     logger = logging.getLogger(__name__)
     else:
         print('ONLY GETTING COUNT')
 
@@ -172,4 +259,4 @@ def main(
     return None
 
 if __name__=='__main__':
-    main()
+    mediac()

@@ -3,8 +3,8 @@ Quick script to show the rate limits left for an account
 """
 
 import requests
-import newsanalysis.data_utils.constants
 import json
+from . import constants
 
 def main():
     url = 'https://api.mediacloud.org/api/v2/auth/profile'
