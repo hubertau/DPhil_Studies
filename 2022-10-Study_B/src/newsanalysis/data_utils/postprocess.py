@@ -122,11 +122,11 @@ def consolidatener(ner_file, outfile, dataset, names, surnames):
 
     logger.info(f'Beginning ProcessPoolExecutor')
     processpoolout = []
-    with ProcessPoolExecutor(max_workers=48) as executor:
+    with ProcessPoolExecutor(max_workers=None) as executor:
         for number, token,  in zip(range(len(unique_tokens)), unique_tokens):
             if number % 10000 == 0:
                 logger.info(f'{number}')
-            processpoolout.append(executor.submit(process_one_token, token, allname_database)) 
+            processpoolout.append(executor.submit(process_one_token, token, allname_database))
         # processpoolout = executor.map(process_one_token, range(len(unique_tokens)), unique_tokens, repeat(allname_database))
     logger.info('ProcessPool done')
     processpoolout = [i.result() for i in processpoolout]
