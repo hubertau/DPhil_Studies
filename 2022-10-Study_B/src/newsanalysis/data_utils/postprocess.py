@@ -81,7 +81,7 @@ def consolidatener(ner_file, outfile, dataset, names, surnames):
     with open(ner_file, 'rb') as f:
         ner_annot = pickle.load(f)
 
-    logger.info('NER loaded i ')
+    logger.info('NER loaded in')
 
     # get languages of articles
     og_dataset = Dataset.load_from_disk(dataset)
@@ -117,19 +117,23 @@ def consolidatener(ner_file, outfile, dataset, names, surnames):
                 unique_tokens.update(i.split())
     logger.info('Unique tokens extracted')
 
-    def process_one_token(number, token, names_ref):
-        if number % 10000 == 0:
-            logger.info(f'{number}')
+    def process_one_token(token, names_ref):
         return (token, rapidfuzz.process.extractOne(token.upper(), names_ref))
 
     logger.info(f'Beginning ProcessPoolExecutor')
+    processpoolout = []
     with ProcessPoolExecutor(max_workers=48) as executor:
-        processpoolout = executor.map(process_one_token, range(len(unique_tokens)), unique_tokens, repeat(allname_database))
+        for number, token,  in zip(range(len(unique_tokens)), unique_tokens):
+            if number % 10000 == 0:
+                logger.info(f'{number}')
+            processpoolout.append(executor.submit(process_one_token, token, allname_database)) 
+        # processpoolout = executor.map(process_one_token, range(len(unique_tokens)), unique_tokens, repeat(allname_database))
     logger.info('ProcessPool done')
+    processpoolout = [i.result() for i in processpoolout]
 
     final_dict = {}
     for tok, corrected in processpoolout:
-        final_dict[tok] = corrected
+        final_dict[tok] = corrected[0]
 
     with open(outfile, 'wb') as f:
         pickle.dump(final_dict, f)
