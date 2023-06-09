@@ -71,6 +71,9 @@ def consolidatesubs(subsfile, outfolder, original_data, mcsourceinfo, nerinfo):
 
     df.to_csv(f'{outfolder}/{Path(subsfile).stem}{"_" if any([original_data, mcsourceinfo,nerinfo]) else ""}{"d" if original_data else ""}{"m" if mcsourceinfo else ""}{"n" if nerinfo else ""}.csv')
 
+def process_one_token(token, names_ref):
+    return (token, rapidfuzz.process.extractOne(token.upper(), names_ref))
+
 @postprocess.command()
 @click.argument('ner_file')
 @click.argument('outfile')
@@ -116,10 +119,6 @@ def consolidatener(ner_file, outfile, dataset, names, surnames):
             for i in v:
                 unique_tokens.update(i.split())
     logger.info('Unique tokens extracted')
-
-    def process_one_token(token, names_ref):
-        return (token, rapidfuzz.process.extractOne(token.upper(), names_ref))
-
     logger.info(f'Beginning ProcessPoolExecutor')
     processpoolout = []
     with ProcessPoolExecutor(max_workers=None) as executor:
