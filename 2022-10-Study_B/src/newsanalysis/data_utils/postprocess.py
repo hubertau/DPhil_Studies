@@ -120,6 +120,9 @@ def consolidatener(ner_file, outfile, dataset, names, surnames, up_to):
             for i in v:
                 unique_tokens.update(i.split())
     unique_tokens = list(unique_tokens)
+    if up_to:
+        logger.info(f'DEBUGGING UP TO {up_to}')
+        unique_tokens = unique_tokens[:up_to]
     logger.info('Unique tokens extracted')
     logger.info(f'Beginning ProcessPoolExecutor')
     processpoolout = []
