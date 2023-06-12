@@ -80,7 +80,8 @@ def process_one_token(token, names_ref):
 @click.option('--dataset', '-d', required=True)
 @click.option('--names', '-n', required=True)
 @click.option('--surnames', '-s', required=True)
-def consolidatener(ner_file, outfile, dataset, names, surnames):
+@click.option('--up_to', '-u', type=int)
+def consolidatener(ner_file, outfile, dataset, names, surnames, up_to):
     with open(ner_file, 'rb') as f:
         ner_annot = pickle.load(f)
 
@@ -118,11 +119,12 @@ def consolidatener(ner_file, outfile, dataset, names, surnames):
         else:
             for i in v:
                 unique_tokens.update(i.split())
+    unique_tokens = list(unique_tokens)
     logger.info('Unique tokens extracted')
     logger.info(f'Beginning ProcessPoolExecutor')
     processpoolout = []
     with ProcessPoolExecutor(max_workers=None) as executor:
-        for number, token,  in zip(range(len(unique_tokens)), unique_tokens):
+        for number, token in zip(range(len(unique_tokens)), unique_tokens):
             if number % 10000 == 0:
                 logger.info(f'{number}')
             processpoolout.append(executor.submit(process_one_token, token, allname_database))
