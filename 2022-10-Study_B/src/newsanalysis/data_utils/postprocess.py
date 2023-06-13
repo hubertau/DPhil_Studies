@@ -135,7 +135,7 @@ def consolidatener(ner_file, outfile, dataset, names, surnames, up_to):
         #     processpoolout.append(executor.submit(process_one_token, token, allname_database))
         processpoolout = executor.map(process_one_token, range(len(unique_tokens)), unique_tokens, repeat(allname_database))
     logger.info('ProcessPool done')
-    processpoolout = [i.result() for i in processpoolout]
+    # processpoolout = [i.result() for i in processpoolout]
 
     final_dict = {}
     for tok, corrected in processpoolout:
