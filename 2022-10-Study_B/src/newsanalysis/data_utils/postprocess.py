@@ -71,7 +71,9 @@ def consolidatesubs(subsfile, outfolder, original_data, mcsourceinfo, nerinfo):
 
     df.to_csv(f'{outfolder}/{Path(subsfile).stem}{"_" if any([original_data, mcsourceinfo,nerinfo]) else ""}{"d" if original_data else ""}{"m" if mcsourceinfo else ""}{"n" if nerinfo else ""}.csv')
 
-def process_one_token(token, names_ref):
+def process_one_token(number, token, names_ref):
+    if number % 10000 == 0:
+        logger.info(f'{number}')
     return (token, rapidfuzz.process.extractOne(token.upper(), names_ref))
 
 @postprocess.command()
@@ -127,11 +129,11 @@ def consolidatener(ner_file, outfile, dataset, names, surnames, up_to):
     logger.info(f'Beginning ProcessPoolExecutor')
     processpoolout = []
     with ProcessPoolExecutor(max_workers=None) as executor:
-        for number, token in zip(range(len(unique_tokens)), unique_tokens):
-            if number % 10000 == 0:
-                logger.info(f'{number}')
-            processpoolout.append(executor.submit(process_one_token, token, allname_database))
-        # processpoolout = executor.map(process_one_token, range(len(unique_tokens)), unique_tokens, repeat(allname_database))
+        # for number, token in zip(range(len(unique_tokens)), unique_tokens):
+        #     if number % 10000 == 0:
+        #         logger.info(f'{number}')
+        #     processpoolout.append(executor.submit(process_one_token, token, allname_database))
+        processpoolout = executor.map(process_one_token, range(len(unique_tokens)), unique_tokens, repeat(allname_database))
     logger.info('ProcessPool done')
     processpoolout = [i.result() for i in processpoolout]
 
