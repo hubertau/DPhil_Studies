@@ -25,6 +25,7 @@ import nltk
 from sentence_transformers import SentenceTransformer
 from transformers import BertTokenizerFast, AutoTokenizer, AutoModelForTokenClassification, pipeline, AutoModelForSequenceClassification
 import torch
+from torch.nn import functional as F
 from torch.utils.data import DataLoader
 try:
     from cuml.cluster import HDBSCAN
@@ -991,7 +992,7 @@ def annotate(dataset_path,
         elif kind in ['relevance', 'rel', 'subs', 'substance']:
             logits = outputs.logits
             if savelogits:
-                predictions = torch.max(logits, dim=-1)
+                predictions = torch.max(F.softmax(logits, dim = -1), dim=-1)
 
                 for i, j, k in zip(batch['part_id'], predictions.values, predictions.indices):
                     result[i] = (j.item(), k.item())
