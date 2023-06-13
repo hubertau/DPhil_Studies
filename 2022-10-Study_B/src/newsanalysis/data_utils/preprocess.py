@@ -837,7 +837,8 @@ def annotate(dataset_path,
              max_length=512,
              batch_size_per_gpu=800,
              rel_filter = None,
-             from_batch = None
+             from_batch = None,
+             logits = True
              ):
     '''Function for carrying out annotations of data, whether that be of relevance annotatations, NER annotations, or substance annotations.
     '''
@@ -846,6 +847,7 @@ def annotate(dataset_path,
     logger.info(f'Annotation type: {kind}')
     logger.info(f'Batch size per GPU: {batch_size_per_gpu}')
     logger.info(f'Savepath: {outpath}')
+    logger.info(f'Logits saving is {logits}')
 
 
     # check if custom tokenizer is supplied
@@ -988,10 +990,16 @@ def annotate(dataset_path,
 
         elif kind in ['relevance', 'rel', 'subs', 'substance']:
             logits = outputs.logits
-            predictions = torch.argmax(logits, dim=-1)
+            if logits:
+                predictions = torch.max(logits, dim=-1)
 
-            for i, j in zip(batch['part_id'], predictions):
-                result[i] = j.item()
+                for i, j, k in zip(batch['part_id'], predictions.values, predictions.indices):
+                    result[i] = (j.item(), k.item())
+            else:
+                predictions = torch.argmax(logits, dim=-1)
+
+                for i, j in zip(batch['part_id'], predictions):
+                    result[i] = j.item()
 
         if num_batches and (counter == num_batches - 1):
             logger.info(f'REACHED SPECIFIED MAX OF {num_batches} BATCHES')

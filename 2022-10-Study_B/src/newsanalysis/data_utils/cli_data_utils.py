@@ -254,6 +254,7 @@ def to_dataset(jsonl_file, dataset_out_path, keys, split, up_to):
 @click.option('--batchsizepergpu', '-b', default=800, type=int, help='Batch Size per GPU')
 @click.option('--from_batch', '-f', default=None, type=int)
 @click.option('--rel_filter', '-r', default=None)
+@click.option('--no-logits/logits', '-l', default=True)
 def annot(dataset_path, outpath, model, tok, num_batches, kind, batchsizepergpu, from_batch, rel_filter):
     '''Apply NER'''
     annotate(
