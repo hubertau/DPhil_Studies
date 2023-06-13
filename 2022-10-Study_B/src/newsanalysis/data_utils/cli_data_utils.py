@@ -267,7 +267,7 @@ def annot(dataset_path, outpath, model, tok, num_batches, kind, batchsizepergpu,
         kind = kind,
         batch_size_per_gpu = batchsizepergpu,
         from_batch = from_batch,
-        logits = logits
+        savelogits = logits
     )
 
 @preprocess.command()

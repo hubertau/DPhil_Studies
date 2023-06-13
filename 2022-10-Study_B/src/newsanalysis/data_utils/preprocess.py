@@ -838,7 +838,7 @@ def annotate(dataset_path,
              batch_size_per_gpu=800,
              rel_filter = None,
              from_batch = None,
-             logits = True
+             savelogits = True
              ):
     '''Function for carrying out annotations of data, whether that be of relevance annotatations, NER annotations, or substance annotations.
     '''
@@ -847,7 +847,7 @@ def annotate(dataset_path,
     logger.info(f'Annotation type: {kind}')
     logger.info(f'Batch size per GPU: {batch_size_per_gpu}')
     logger.info(f'Savepath: {outpath}')
-    logger.info(f'Logits saving is {logits}')
+    logger.info(f'Logits saving is {savelogits}')
 
 
     # check if custom tokenizer is supplied
@@ -990,7 +990,7 @@ def annotate(dataset_path,
 
         elif kind in ['relevance', 'rel', 'subs', 'substance']:
             logits = outputs.logits
-            if logits:
+            if savelogits:
                 predictions = torch.max(logits, dim=-1)
 
                 for i, j, k in zip(batch['part_id'], predictions.values, predictions.indices):
