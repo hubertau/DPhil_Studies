@@ -883,7 +883,12 @@ def annotate(dataset_path,
         # now filter the dataset
         logger.info(f'Dataset length before filtering is {len(dataset)}')
         disable_progress_bar()
-        dataset = dataset.filter(lambda x: rel_annot.get(x['part_id']) == 1)
+        # check to see if logits are in this one
+        if isinstance(list(rel_annot.values())[0], tuple):
+            logger.info('Relevant annotation loaded in has logits')
+            dataset = dataset.filter(lambda x: rel_annot.get(x['part_id'])[-1] == 1)
+        else:
+            dataset = dataset.filter(lambda x: rel_annot.get(x['part_id']) == 1)
         logger.info(f'Dataset length AFTER filtering is {len(dataset)}')
 
     # prepare: batch size and NER label prep
