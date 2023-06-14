@@ -98,7 +98,7 @@ def consolidatesubs(subsfile, outfolder, original_data, mcsourceinfo, relfile, s
             mc = pickle.load(f)
         df['country'] = df['media_id'].replace(mc)
 
-    df.to_csv(f'{outfolder}/{Path(subsfile).stem}{"_" if any([original_data, mcsourceinfo,nerinfo]) else ""}{"d" if original_data else ""}{"m" if mcsourceinfo else ""}{"n" if nerinfo else ""}{f"_r{relthresh}" if relthresh else ""}{f"_r{substhresh}" if substhresh else ""}.csv')
+    df.to_csv(f'{outfolder}/{Path(subsfile).stem}{"_" if any([original_data, mcsourceinfo]) else ""}{"d" if original_data else ""}{"m" if mcsourceinfo else ""}{f"_r{relthresh}" if relthresh else ""}{f"_r{substhresh}" if substhresh else ""}.csv')
 
 def process_one_token(number, token, names_ref):
     if number % 10000 == 0:
