@@ -24,24 +24,57 @@ def postprocess(ctx):
 @click.argument('subsfile')
 @click.option('--outfolder', '-o', required=True)
 @click.option('--original_data', '-d', required=False)
+@click.option('--relfile', '-r', required=False)
 @click.option('--mcsourceinfo', '-m', required=False)
-@click.option('--nerinfo', '-n', required=False)
-def consolidatesubs(subsfile, outfolder, original_data, mcsourceinfo, nerinfo):
+@click.option('--substhresh', '-st', type=float, default=None)
+@click.option('--relthresh', '-rt', type=float, default=None)
+def consolidatesubs(subsfile, outfolder, original_data, mcsourceinfo, relfile, substhresh, relthresh):
     '''Conslidate substance annotations from split back into stories'''
 
+    # Load in substance annotation file
     with open(subsfile, 'rb') as f:
         original_dict = pickle.load(f)
 
+    # Load in relevance annotation file
+    with open(relfile, 'rb') as f:
+        rel_dict = pickle.load(f)
+
+    has_logits = isinstance(list[original_dict.values()][0], tuple)
+    logger.info(f'Logits is {has_logits}')
+
+    # get the substance annotations back into stories and not parts
     new_dict = {}
-    for k, v in original_dict.items():
-        id, _ = k.split('_')
-        if id not in new_dict:
-            new_dict[id] = {v: 1}
-        else:
-            if v in new_dict[id]:
-                new_dict[id][v] += 1
+    if has_logits:
+        for k, predict_tuple in original_dict.items():
+            id, _ = k.split('_')
+
+            # check relevance threshold (N.B. don't need to check if predict is 1 because otherwise it wouldn't be in subs dict):
+            if rel_dict[k][0] < relthresh:
+                continue
+
+            # check subs threshold
+            logit, v  = predict_tuple
+            if logit < substhresh:
+                continue
+
+            if id not in new_dict:
+                new_dict[id] = {v: 1}
             else:
-                new_dict[id][v] = 1
+                if v in new_dict[id]:
+                    new_dict[id][v] += 1
+                else:
+                    new_dict[id][v] = 1
+
+    else:
+        for k, v in original_dict.items():
+            id, _ = k.split('_')
+            if id not in new_dict:
+                new_dict[id] = {v: 1}
+            else:
+                if v in new_dict[id]:
+                    new_dict[id][v] += 1
+                else:
+                    new_dict[id][v] = 1
 
     # Convert the new dictionary to a DataFrame
     df = pd.DataFrame.from_dict({k: Counter(v) for k, v in new_dict.items()}, orient='index')
@@ -65,11 +98,7 @@ def consolidatesubs(subsfile, outfolder, original_data, mcsourceinfo, nerinfo):
             mc = pickle.load(f)
         df['country'] = df['media_id'].replace(mc)
 
-    if nerinfo:
-        with open(nerinfo, 'rb') as f:
-            ner = pickle.load(f)
-
-    df.to_csv(f'{outfolder}/{Path(subsfile).stem}{"_" if any([original_data, mcsourceinfo,nerinfo]) else ""}{"d" if original_data else ""}{"m" if mcsourceinfo else ""}{"n" if nerinfo else ""}.csv')
+    df.to_csv(f'{outfolder}/{Path(subsfile).stem}{"_" if any([original_data, mcsourceinfo,nerinfo]) else ""}{"d" if original_data else ""}{"m" if mcsourceinfo else ""}{"n" if nerinfo else ""}{f"_r{relthresh}" if relthresh else ""}{f"_r{substhresh}" if substhresh else ""}.csv')
 
 def process_one_token(number, token, names_ref):
     if number % 10000 == 0:
