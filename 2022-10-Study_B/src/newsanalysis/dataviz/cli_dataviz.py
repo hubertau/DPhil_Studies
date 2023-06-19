@@ -97,7 +97,8 @@ def plot_success_rate(enrichment_csv, savedir, min_count):
 @click.argument('enrichment_csv')
 @click.argument('savedir')
 @click.option('--min_count', default=0)
-def plot_success_rate_time(enrichment_csv, savedir, min_count):
+@click.option('--langs', default = None, multiple = True)
+def plot_success_rate_time(enrichment_csv, savedir, min_count, langs):
     '''Plot success rate by time and language'''
     df = pd.read_csv(enrichment_csv)
     df['date'] = pd.to_datetime(df['date'], format = '%Y-%m-%d %H:%M:%S')
@@ -112,7 +113,7 @@ def plot_success_rate_time(enrichment_csv, savedir, min_count):
     by_lang['success_rate'] = 100*by_lang['enriched_sum']/by_lang['enriched_count']
     by_lang = by_lang.reset_index()
     by_lang['month'] = by_lang['month'].astype(str)
-    plot_success_rate_by_lang_and_time(by_lang,savedir, min_count=min_count)
+    plot_success_rate_by_lang_and_time(by_lang,savedir, min_count=min_count, langs = langs)
 
 @viz.command()
 @click.argument('enrichment_csv')

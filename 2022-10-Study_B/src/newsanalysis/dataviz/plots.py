@@ -7,6 +7,14 @@ import numpy as np
 from dataclasses import dataclass, asdict, field
 from collections import Counter
 import unicodedata
+import pycountry
+
+def get_full_language_name(iso_code):
+    try:
+        lang = pycountry.languages.get(alpha_2=iso_code)
+        return lang.name
+    except Exception as e:
+        return None
 
 @dataclass(frozen=True)
 class publisher:
@@ -163,27 +171,49 @@ def plot_success_rate_by_lang(df, savedir, min_count = 0):
     plt.savefig(os.path.join(savedir, 'desc_success_rate_by_lang.png'), bbox_inches='tight', dpi=300)
 
 
-def plot_success_rate_by_lang_and_time(df, savedir, min_count = 0):
+def plot_success_rate_by_lang_and_time(df, savedir, min_count = 0, langs=None):
 
     df = df[df['enriched_count'] > min_count]
     df.loc[:,'month'] = pd.to_datetime(df.loc[:,'month'])
 
+    if langs:
+        df = df[df['language'].isin(langs)]
+
+    # replace with language name
+    df['language'] = df['language'].apply(get_full_language_name)
+
     fig  = plt.figure(figsize=(15,8))
-    sns.set_theme()
+    # sns.set_theme()
+    sns.set_style('white')
+    sns.set_context("paper", font_scale = 2)
     g = sns.lineplot(
         data=df,
         x = 'month',
         y = 'success_rate',
-        hue = 'language'
+        hue = 'language',
+        style='language'
     )
     # g.set_xticklabels(g.get_xticklabels(), rotation=45)
     plt.xticks(rotation=45, ha='right')
-    plt.savefig(os.path.join(savedir, 'desc_success_rate_by_lang_and_time.png'), bbox_inches='tight', dpi=300)
+    plt.xlabel('Date')
+    plt.ylim(0,110)
+    plt.ylabel('Enrichment Success Rate')
+    if langs:
+        filename_langs = f"_{'_'.join(langs)}"
+    else:
+        filename_langs = ""
+    plt.savefig(os.path.join(savedir, f'desc_success_rate_by_lang_and_time{filename_langs}.png'), bbox_inches='tight', dpi=300)
 
-def plot_enriched_count_by_lang_and_time(df, savedir, min_count = 0):
+def plot_enriched_count_by_lang_and_time(df, savedir, min_count = 0, langs = None):
 
     df = df[df['enriched_count'] > min_count]
     df.loc[:,'month'] = pd.to_datetime(df.loc[:,'month'])
+
+    if langs:
+        df = df[df['language'].isin(langs)]
+
+    # replace with language name
+    df['language'] = df['language'].apply(get_full_language_name)
 
     fig  = plt.figure(figsize=(15,8))
     sns.set_theme()
@@ -196,7 +226,12 @@ def plot_enriched_count_by_lang_and_time(df, savedir, min_count = 0):
     g.set_yscale("log")
     # g.set_xticklabels(g.get_xticklabels(), rotation=45)
     plt.xticks(rotation=45, ha='right')
-    plt.savefig(os.path.join(savedir, 'desc_enrichment_count_by_lang_and_time.png'), bbox_inches='tight', dpi=300)
+    plt.ylabel('Enrichment Count')
+    if langs:
+        filename_langs = f"_{'_'.join(langs)}"
+    else:
+        filename_langs = ""
+    plt.savefig(os.path.join(savedir, f'desc_enrichment_count_by_lang_and_time{filename_langs}.png'), bbox_inches='tight', dpi=300)
 
 def plot_story_length_boxplot(df, savedir):
 

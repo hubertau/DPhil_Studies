@@ -39,7 +39,9 @@ def consolidatesubs(subsfile, outfolder, original_data, mcsourceinfo, relfile, s
     with open(relfile, 'rb') as f:
         rel_dict = pickle.load(f)
 
-    has_logits = isinstance(list[original_dict.values()][0], tuple)
+    for k,v in original_dict.items():
+        has_logits = isinstance(v, tuple)
+        break
     logger.info(f'Logits is {has_logits}')
 
     # get the substance annotations back into stories and not parts
@@ -98,7 +100,7 @@ def consolidatesubs(subsfile, outfolder, original_data, mcsourceinfo, relfile, s
             mc = pickle.load(f)
         df['country'] = df['media_id'].replace(mc)
 
-    df.to_csv(f'{outfolder}/{Path(subsfile).stem}{"_" if any([original_data, mcsourceinfo]) else ""}{"d" if original_data else ""}{"m" if mcsourceinfo else ""}{f"_r{relthresh}" if relthresh else ""}{f"_r{substhresh}" if substhresh else ""}.csv')
+    df.to_csv(f'{outfolder}/{Path(subsfile).stem}{"_" if any([original_data, mcsourceinfo]) else ""}{"d" if original_data else ""}{"m" if mcsourceinfo else ""}{f"_r{relthresh}" if relthresh else ""}{f"_s{substhresh}" if substhresh else ""}.csv')
 
 def process_one_token(number, token, names_ref):
     if number % 10000 == 0:
