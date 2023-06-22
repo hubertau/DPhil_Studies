@@ -361,7 +361,7 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
 @click.option('--resample', '-r', help='timeframe to resample. Can be W, M, or Y', default='W')
 @click.option('--min_count', '-m', type=int, default=500)
 def ci(original_df_file, outdir, peaks, resample, min_count):
-    
+
     complete_df = pd.read_pickle(original_df_file)
     logger.info(f'Data loaded in from {original_df_file}')
 
@@ -377,7 +377,7 @@ def ci(original_df_file, outdir, peaks, resample, min_count):
             cimpact,
             repeat(complete_df),
             countries,
-            peaks_df,
+            repeat(peaks_df),
             repeat(min_count),
             repeat(resample)
         )
