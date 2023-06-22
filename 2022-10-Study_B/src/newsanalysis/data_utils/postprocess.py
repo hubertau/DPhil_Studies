@@ -187,7 +187,9 @@ def consolidatener(ner_file, outfile, dataset, names, surnames, up_to):
     logger.info(f'Saved to {outfile}')
 
 
-def extract_trend(complete_df, country, min_count = 500, resample_time = 'W'): 
+def extract_trend(complete_df, country, min_count = 500, resample_time = 'W'):
+    
+    logger.info(f'Processing {country}')
 
     reg_df = complete_df.copy()
     reg_df = reg_df.set_index('publish_date')
@@ -221,7 +223,6 @@ def extract_trend(complete_df, country, min_count = 500, resample_time = 'W'):
     # Build the variational surrogate posteriors `qs`.
     variational_posteriors = tfp.sts.build_factored_surrogate_posterior(
         model=model)
-    
 
     # Allow external control of optimization to reduce test runtimes.
     num_variational_steps = 200 # @param { isTemplate: true}
@@ -230,12 +231,11 @@ def extract_trend(complete_df, country, min_count = 500, resample_time = 'W'):
     # Build and optimize the variational loss function.
     elbo_loss_curve = tfp.vi.fit_surrogate_posterior(
         target_log_prob_fn=model.joint_distribution(
-            observed_time_series=obs_data.log_prob,
+            observed_time_series=obs_data).log_prob,
         surrogate_posterior=variational_posteriors,
         optimizer=tf.optimizers.Adam(learning_rate=0.1),
         num_steps=num_variational_steps,
         jit_compile=True)
-    )
 
     # plt.plot(elbo_loss_curve)
     # plt.show()
@@ -248,6 +248,8 @@ def extract_trend(complete_df, country, min_count = 500, resample_time = 'W'):
         observed_time_series=obs_data,
         parameter_samples=param_samples
     )
+
+    logger.info(f'DONE Processing {country}')
 
     return country, model, elbo_loss_curve, param_samples, component_dists 
 
