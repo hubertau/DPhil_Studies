@@ -362,6 +362,8 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
         model=model,
         model_args = {'fit_method': 'hmc'}
     )
+
+    logger.info(f'DONE {country}')
     return country, ci
 
 @postprocess.command()
