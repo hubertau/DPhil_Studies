@@ -294,6 +294,7 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
     peak = datetime.strptime(peaks.loc[country, 'peak_date'], "%Y-%m-%d")
 
     resample_time='M'
+    logger.info(f'Processing {country}')
 
     reg_df = complete_df.copy()
     reg_df = reg_df.set_index('publish_date')
@@ -308,23 +309,26 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
     if resample_time == 'D':
         # pre_period=['2014-10-17', '2017-10-17']
         # post_period=['2017-10-18', '2020-10-17']
-        pre_period = ['2014-10-17', peak]
+        pre_period = ['2014-10-17', peak.strftime("%Y-%m-%d")]
         post_period = [
             (peak + relativedelta(days=+1)).strftime("%Y-%m-%d"),
             (peak + relativedelta(years=+1)).strftime("%Y-%m-%d")
         ]
     elif resample_time == 'M':
-        pre_period = ['2014-10-17', peak]
+        pre_period = ['2014-10-17', peak.strftime("%Y-%m-%d")]
         post_period = [
             (peak + relativedelta(month=+1)).strftime("%Y-%m-%d"),
             (peak + relativedelta(years=+1)).strftime("%Y-%m-%d")
         ]
     elif resample_time == 'W':
-        pre_period = ['2014-10-17', peak]
+        pre_period = ['2014-10-17', peak.strftime("%Y-%m-%d")]
         post_period = [
             (peak + relativedelta(week=+1)).strftime("%Y-%m-%d"),
             (peak + relativedelta(years=+1)).strftime("%Y-%m-%d")
         ]
+
+    logger.info(pre_period)
+    logger.info(post_period)
 
     data = reg_df[reg_df['country']==country][['myth_total', 'processed_stories_id']]
     if data['processed_stories_id'].sum() < min_count:
