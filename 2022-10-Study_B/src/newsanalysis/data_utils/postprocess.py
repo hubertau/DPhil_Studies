@@ -188,7 +188,7 @@ def consolidatener(ner_file, outfile, dataset, names, surnames, up_to):
 
 
 def extract_trend(complete_df, country, min_count = 500, resample_time = 'W'):
-    
+
     logger.info(f'Processing {country}')
 
     reg_df = complete_df.copy()
@@ -318,7 +318,7 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
             (peak + relativedelta(years=+1)).strftime("%Y-%m-%d")
         ]
     elif resample_time == 'M':
-        pre_period = ['2014-10-17', peak.strftime("%Y-%m-%d")]
+        pre_period = ['2014-10-31', peak.strftime("%Y-%m-%d")]
         post_period = [
             (peak + relativedelta(month=+1)).strftime("%Y-%m-%d"),
             (peak + relativedelta(years=+1)).strftime("%Y-%m-%d")
