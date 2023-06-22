@@ -252,7 +252,7 @@ def extract_trend(complete_df, country, min_count = 500, resample_time = 'W'):
     return country, model, elbo_loss_curve, param_samples, component_dists 
 
 
-@click.command()
+@postprocess.command()
 @click.argument('original_df_file')
 @click.argument('outdir')
 @click.option('--resample', '-r', help='timeframe to resample. Can be W, M, or Y', default='W')
@@ -354,7 +354,7 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
     )
     return country, ci
 
-@click.command()
+@postprocess.command()
 @click.argument('original_df_file')
 @click.argument('outdir')
 @click.option('--peaks', '-p', default = None)
