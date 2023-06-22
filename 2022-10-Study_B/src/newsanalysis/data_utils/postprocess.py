@@ -289,6 +289,8 @@ def structuralts(original_df_file, outdir, resample, min_count):
 def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
     # N.B.  The linear regression must contain the union of pre and post data as required by TensorFlow Probability.
 
+    if country in ['XXX', 'ZZZ']:
+        return None
     peak = peaks.loc[country, 'peak_date']
 
     resample_time='M'
@@ -325,6 +327,8 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
         ]
 
     data = reg_df[reg_df['country']==country][['myth_total', 'processed_stories_id']]
+    if data['processed_stories_id'].sum() < min_count:
+        return None
     normed_data, mu_sig = standardize(data)
     # normed_data = data
 
