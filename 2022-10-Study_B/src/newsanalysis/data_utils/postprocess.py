@@ -291,7 +291,7 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
 
     if country in ['XXX', 'ZZZ']:
         return None
-    peak = peaks.loc[country, 'peak_date']
+    peak = datetime.strptime(peaks.loc[country, 'peak_date'], "%Y-%m-%d")
 
     resample_time='M'
 
