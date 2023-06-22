@@ -261,6 +261,9 @@ def extract_trend(complete_df, country, min_count = 500, resample_time = 'W'):
 @click.option('--min_count', '-m', type=int, default=500)
 def structuralts(original_df_file, outdir, resample, min_count):
 
+
+    tf.get_logger().setLevel('INFO')
+
     complete_df = pd.read_pickle(original_df_file)
     logger.info(f'Data loaded in from {original_df_file}')
 
