@@ -377,6 +377,8 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
 @click.option('--min_count', '-m', type=int, default=500)
 def ci(original_df_file, outdir, peaks, resample, min_count):
 
+    tf.get_logger().setLevel('ERROR')
+
     complete_df = pd.read_pickle(original_df_file)
     logger.info(f'Data loaded in from {original_df_file}')
 
