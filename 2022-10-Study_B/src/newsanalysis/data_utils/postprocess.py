@@ -353,8 +353,10 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
 
     logger.info(pre_period)
     logger.info(post_period)
+    if post_period[0] == post_period[1]:
+        logger.info(f'No post period')
+        return None
 
-    
     normed_data, mu_sig = standardize(data)
     # normed_data = data
 
