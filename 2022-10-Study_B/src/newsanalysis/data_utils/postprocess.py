@@ -386,20 +386,30 @@ def ci(original_df_file, outdir, peaks, resample, min_count):
     countries = list(complete_df['country'].unique())
     logger.info(f'Unique contries collected')
 
-    logger.info(f'Begin ProcessPoolExecutor')
-    with ProcessPoolExecutor() as executor:
-        results = executor.map(
-            cimpact,
-            repeat(complete_df),
-            countries,
-            repeat(peaks_df),
-            repeat(min_count),
-            repeat(resample)
-        )
+    # logger.info(f'Begin ProcessPoolExecutor')
+    # with ProcessPoolExecutor() as executor:
+        # results = executor.map(
+        #     cimpact,
+        #     repeat(complete_df),
+        #     countries,
+        #     repeat(peaks_df),
+        #     repeat(min_count),
+        #     repeat(resample)
+        # )
 
-    logger.info(f'End ProcessPoolExecutor')
+    results = []
+    for country in countries:
+        results.append(cimpact(
+            complete_df,
+            country,
+            peaks_df,
+            min_count=min_count,
+            resample_time=resample
+        ))
 
-    results = [i for i in results]
+    # logger.info(f'End ProcessPoolExecutor')
+
+    # results = [i for i in results]
 
     outfile = Path(outdir) / f'cimpact_results_{min_count}_{resample}.pkl'
     with open(outfile, 'wb') as f:
