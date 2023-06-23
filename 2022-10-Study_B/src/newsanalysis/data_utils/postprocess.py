@@ -15,7 +15,7 @@ from tensorflow_probability import distributions as tfd
 from tensorflow_probability import sts
 import tensorflow as tf
 from dateutil.relativedelta import relativedelta
-from datetime import datetime
+from datetime import datetime, timedelta
 from causalimpact import CausalImpact
 from causalimpact.misc import standardize
 
@@ -290,9 +290,9 @@ def structuralts(original_df_file, outdir, resample, min_count):
 
 def last_day_of_month(any_day):
     # The day 28 exists in every month. 4 days later, it's always next month
-    next_month = any_day.replace(day=28) + datetime.timedelta(days=4)
+    next_month = any_day.replace(day=28) + timedelta(days=4)
     # subtracting the number of the current day brings us back one month
-    return next_month - datetime.timedelta(days=next_month.day)
+    return next_month - timedelta(days=next_month.day)
 
 def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
     # N.B.  The linear regression must contain the union of pre and post data as required by TensorFlow Probability.
