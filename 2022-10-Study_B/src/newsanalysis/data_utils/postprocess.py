@@ -249,10 +249,15 @@ def extract_trend(complete_df, country, min_count = 500, resample_time = 'W'):
         parameter_samples=param_samples
     )
 
+    component_means_, component_stddevs_ = (
+    {k.name: c.mean() for k, c in component_dists.items()},
+    {k.name: c.stddev() for k, c in component_dists.items()})
+
+    param_names = [i.name for i in model.parameters]
+
     logger.info(f'DONE Processing {country}')
 
-    return country, model, elbo_loss_curve, param_samples, component_dists 
-
+    return country, param_names, param_samples, component_means_, component_stddevs_
 
 @postprocess.command()
 @click.argument('original_df_file')
@@ -270,19 +275,18 @@ def structuralts(original_df_file, outdir, resample, min_count):
     countries = list(complete_df['country'].unique())
     logger.info(f'Unique contries collected')
 
-    logger.info(f'Begin ProcessPoolExecutor')
-    with ProcessPoolExecutor() as executor:
-        results = executor.map(
-            extract_trend,
-            repeat(complete_df),
-            countries,
-            repeat(min_count),
-            repeat(resample)
+    results = {}
+    for i, country in enumerate(countries):
+        output = extract_trend(
+            complete_df,
+            country
         )
-
-    logger.info(f'End ProcessPoolExecutor')
-
-    results = [i for i in results]
+        results[output[0]] =  {
+            'param_names': i[1],
+            'param_samples': i[2],
+            'component_means': i[3],
+            'component_stddevs' : i[4]
+        }
 
     outfile = Path(outdir) / f'sts_results_{min_count}_{resample}.pkl'
     with open(outfile, 'wb') as f:
@@ -388,7 +392,15 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
     )
 
     logger.info(f'DONE {country}')
-    return country, ci
+    return {
+        'p_value': ci.p_value,
+        'summary': ci.summary(),
+        'summary_data': ci.summary_data,
+        'inferences': ci.inferences,
+        'pre_data': ci.pre_data,
+        'post_data': ci.post_data,
+        '_mask': ci._mask
+    }
 
 @postprocess.command()
 @click.argument('original_df_file')
@@ -420,20 +432,20 @@ def ci(original_df_file, outdir, peaks, resample, min_count):
         #     repeat(resample)
         # )
 
-    results = []
+    results = {}
     for country in countries:
-        results.append(cimpact(
+        results[country] = cimpact(
             complete_df,
             country,
             peaks_df,
             min_count=min_count,
             resample_time=resample
-        ))
+        )
 
     # logger.info(f'End ProcessPoolExecutor')
 
     # results = [i for i in results]
 
-    outfile = Path(outdir) / f'cimpact_results_{min_count}_{resample}.pkl'
+    outfile = Path(outdir) / f'cimpact_results_{min_count}_{resample}{"_peaks" if peaks else ""}.pkl'
     with open(outfile, 'wb') as f:
         pickle.dump(results, f) 
