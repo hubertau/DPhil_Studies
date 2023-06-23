@@ -298,8 +298,8 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
     # N.B.  The linear regression must contain the union of pre and post data as required by TensorFlow Probability.
 
     if country in ['XXX', 'ZZZ']:
+        logger.info(f'DONE {country}')
         return None
-    peak = datetime.strptime(peaks.loc[country, 'peak_date'], "%Y-%m-%d")
 
     resample_time='M'
     logger.info(f'Processing {country}')
@@ -316,6 +316,13 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
 
     data = reg_df[reg_df['country']==country][['myth_total', 'processed_stories_id']]
     if data['processed_stories_id'].sum() < min_count:
+        logger.info(f'DONE {country}')
+        return None
+
+    try:
+        peak = datetime.strptime(peaks.loc[country, 'peak_date'], "%Y-%m-%d")
+    except KeyError:
+        logger.warning(f'{country} not found in peaks')
         return None
 
     if resample_time == 'D':
