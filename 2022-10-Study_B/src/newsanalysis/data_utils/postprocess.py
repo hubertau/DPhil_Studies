@@ -335,6 +335,8 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
             last_day_of_month(peak + relativedelta(months=1)).strftime("%Y-%m-%d"),
             last_day_of_month(peak + relativedelta(months=13)).strftime("%Y-%m-%d")
         ]
+        if post_period[1] not in data.index:
+            post_period[1] = data.index[-1].strftime("%Y-%m-%d")
     elif resample_time == 'W':
         pre_period = ['2014-10-17', peak.strftime("%Y-%m-%d")]
         post_period = [
