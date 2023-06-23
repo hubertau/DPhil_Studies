@@ -309,6 +309,10 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
         }
     ).reset_index().set_index('publish_date').sort_index()
 
+    data = reg_df[reg_df['country']==country][['myth_total', 'processed_stories_id']]
+    if data['processed_stories_id'].sum() < min_count:
+        return None
+
     if resample_time == 'D':
         # pre_period=['2014-10-17', '2017-10-17']
         # post_period=['2017-10-18', '2020-10-17']
@@ -318,7 +322,10 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
             (peak + relativedelta(years=+1)).strftime("%Y-%m-%d")
         ]
     elif resample_time == 'M':
-        pre_period = ['2014-10-31', peak.strftime("%Y-%m-%d")]
+        start_date = '2014-10-31'
+        if '2014-10-31' not in data.index:
+            start_date = (data.index[0]).strftime('%Y-%m-%d"')
+        pre_period = [start_date, peak.strftime("%Y-%m-%d")]
         post_period = [
             (peak + relativedelta(months=1)).strftime("%Y-%m-%d"),
             (peak + relativedelta(months=13)).strftime("%Y-%m-%d")
@@ -333,9 +340,7 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
     logger.info(pre_period)
     logger.info(post_period)
 
-    data = reg_df[reg_df['country']==country][['myth_total', 'processed_stories_id']]
-    if data['processed_stories_id'].sum() < min_count:
-        return None
+    
     normed_data, mu_sig = standardize(data)
     # normed_data = data
 
