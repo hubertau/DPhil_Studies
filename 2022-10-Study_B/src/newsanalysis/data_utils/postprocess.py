@@ -423,7 +423,7 @@ def ci(original_df_file, outdir, peaks, resample, min_count):
     custom_peak=False
     if peaks and os.path.isfile(peaks):
         peaks_df = pd.read_csv(peaks).set_index('country')
-    elif peaks and isinstance(str):
+    elif peaks and isinstance(peaks, str):
         peaks_df = peaks
         custom_peak=True
         logger.info(f'Custom peak is {peaks_df}')
