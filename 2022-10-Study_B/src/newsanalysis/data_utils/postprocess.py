@@ -428,8 +428,14 @@ def ci(original_df_file, outdir, peaks, resample, min_count):
         custom_peak=True
         logger.info(f'Custom peak is {peaks_df}')
 
+    outfile = Path(outdir) / f'cimpact_results_{min_count}_{resample}{f"_{peaks_df}" if custom_peak else "_peaks"}.pkl'
+    logger.info(f'Outfile is {outfile}')
+
     countries = list(complete_df['country'].unique())
     logger.info(f'Unique contries collected')
+
+
+
 
     # logger.info(f'Begin ProcessPoolExecutor')
     # with ProcessPoolExecutor() as executor:
@@ -456,6 +462,6 @@ def ci(original_df_file, outdir, peaks, resample, min_count):
 
     # results = [i for i in results]
 
-    outfile = Path(outdir) / f'cimpact_results_{min_count}_{resample}{f"_{peaks_df}" if custom_peak else "_peaks"}.pkl'
+    
     with open(outfile, 'wb') as f:
         pickle.dump(results, f) 
