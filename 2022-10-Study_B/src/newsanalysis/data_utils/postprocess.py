@@ -260,6 +260,13 @@ def extract_trend(complete_df, country, min_count = 500, resample_time = 'W'):
 
     return country, param_names, param_samples, component_means_, component_stddevs_
 
+def diff_month(date1, date2):
+    date1 = datetime.strptime(date1, "%Y-%m-%d")
+    date2 = datetime.strptime(date2, "%Y-%m-%d")
+    r = relativedelta(date2, date1)
+    return r.years*12 + r.months
+
+
 @postprocess.command()
 @click.argument('original_df_file')
 @click.argument('outdir')
@@ -363,7 +370,10 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
     logger.info(pre_period)
     logger.info(post_period)
     if post_period[0] == post_period[1]:
-        logger.info(f'No post period')
+        logger.info(f'No post period - {country}')
+        return None
+    if diff_month(pre_period[0], pre_period[1]) < 3:
+        logger.info(f'Pre period too short - {country}')
         return None
 
     normed_data, mu_sig = standardize(data)
@@ -433,8 +443,6 @@ def ci(original_df_file, outdir, peaks, resample, min_count):
 
     countries = list(complete_df['country'].unique())
     logger.info(f'Unique contries collected')
-
-
 
 
     # logger.info(f'Begin ProcessPoolExecutor')
