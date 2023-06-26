@@ -420,10 +420,12 @@ def ci(original_df_file, outdir, peaks, resample, min_count):
     complete_df = pd.read_pickle(original_df_file)
     logger.info(f'Data loaded in from {original_df_file}')
 
+    custom_peak=False
     if peaks and os.path.isfile(peaks):
         peaks_df = pd.read_csv(peaks).set_index('country')
-    else:
+    elif peaks and isinstance(str):
         peaks_df = peaks
+        custom_peak=True
         logger.info(f'Custom peak is {peaks_df}')
 
     countries = list(complete_df['country'].unique())
@@ -454,6 +456,6 @@ def ci(original_df_file, outdir, peaks, resample, min_count):
 
     # results = [i for i in results]
 
-    outfile = Path(outdir) / f'cimpact_results_{min_count}_{resample}{"_peaks" if peaks else ""}.pkl'
+    outfile = Path(outdir) / f'cimpact_results_{min_count}_{resample}{f"_{peaks_df}" if custom_peak else "_peaks"}.pkl'
     with open(outfile, 'wb') as f:
         pickle.dump(results, f) 
