@@ -8,6 +8,7 @@ from collections import Counter
 from itertools import repeat
 from datasets import Dataset
 from pathlib import Path
+import os
 import pickle
 import numpy as np
 import tensorflow_probability as tfp
@@ -323,11 +324,15 @@ def cimpact(complete_df, country, peaks, min_count = 500, resample_time = 'W'):
         logger.info(f'DONE {country}')
         return None
 
-    try:
-        peak = datetime.strptime(peaks.loc[country, 'peak_date'], "%Y-%m-%d")
-    except KeyError:
-        logger.warning(f'{country} not found in peaks')
-        return None
+    # custom peak means str format
+    if isinstance(peaks, str):
+        peak = datetime.strptime(peaks, "%Y-%m-%d")
+    else:
+        try:
+            peak = datetime.strptime(peaks.loc[country, 'peak_date'], "%Y-%m-%d")
+        except KeyError:
+            logger.warning(f'{country} not found in peaks')
+            return None
 
     if resample_time == 'D':
         # pre_period=['2014-10-17', '2017-10-17']
@@ -415,8 +420,11 @@ def ci(original_df_file, outdir, peaks, resample, min_count):
     complete_df = pd.read_pickle(original_df_file)
     logger.info(f'Data loaded in from {original_df_file}')
 
-    if peaks:
+    if peaks and os.path.isfile(peaks):
         peaks_df = pd.read_csv(peaks).set_index('country')
+    else:
+        peaks_df = peaks
+        logger.info(f'Custom peak is {peaks_df}')
 
     countries = list(complete_df['country'].unique())
     logger.info(f'Unique contries collected')
