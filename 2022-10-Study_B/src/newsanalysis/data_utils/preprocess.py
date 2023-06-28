@@ -23,6 +23,7 @@ from bertopic import BERTopic
 from bertopic.vectorizers import ClassTfidfTransformer
 import nltk
 from sentence_transformers import SentenceTransformer
+from transformers.pipelines.base import KeyDataset
 from transformers import BertTokenizerFast, AutoTokenizer, AutoModelForTokenClassification, pipeline, AutoModelForSequenceClassification
 import torch
 from torch.nn import functional as F
@@ -828,6 +829,60 @@ def combine_person_tags(indexed_iob2_sequence, iper_id = 0):
         entities.append(''.join([t for t in current_entity_tokens]))
     entities = [i.replace('▁', ' ').replace("_", " ").strip() for i in entities]
     return entities
+
+def ner_annot_pipe(dataset_path,
+             outpath,
+             model = "julian-schelb/roberta-ner-multilingual/",
+             num_batches=None,
+             batch_size_per_gpu=800
+            ):
+    '''NER with pipeline and aggregation strategy'''
+
+    logger.info(f'Model: {model}')
+    logger.info(f'Batch size per GPU: {batch_size_per_gpu}')
+    logger.info(f'Savepath: {outpath}')
+
+    logger.info(f'Loading Dataset.')
+    dataset = Dataset.load_from_disk(dataset_path)
+    logger.info('Loading Dataset Complete.')
+
+    annot_model = AutoModelForTokenClassification.from_pretrained(model)
+    annot_tokenizer = AutoTokenizer.from_pretrained(model, add_prefix_space=True)
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    annot_model = annot_model.to(device)
+
+    if torch.cuda.device_count() > 1:
+        logger.info('Multiple GPUs detected, applying torch.nn.DataParallel')
+        annot_model = torch.nn.DataParallel(annot_model)
+        # label_dict = annot_model.module.config.id2label
+        batch_size = batch_size_per_gpu*torch.cuda.device_count()
+    else:
+        batch_size = batch_size_per_gpu
+
+    logger.info(f'Adjusted batch size with GPU count of {torch.cuda.device_count()}: {batch_size}')
+
+    pipe = pipeline(
+        'ner',
+        model=annot_model,
+        tokenizer=annot_tokenizer,
+        device_map='auto'
+    )
+
+    total = len(dataset)
+
+    results = {}
+    for idx, out in enumerate(pipe(KeyDataset(dataset, 'text'), batch_size=8, aggregation_strategy="max")):
+        if idx % 100000 == 0:
+            logger.info(f'Processing {idx} of {total} = {100*idx/total:.2f}%')
+        if num_batches and idx > num_batches:
+            logger.info(f'Max batches of {num_batches} reached. Ending...')
+            break
+        results[dataset[idx]['part_id']] = out
+
+    with open(Path(outpath) / f'ner_pipeline.pkl', 'wb') as f:
+        pickle.dump(results, f)
+
 
 def annotate(dataset_path,
              outpath,

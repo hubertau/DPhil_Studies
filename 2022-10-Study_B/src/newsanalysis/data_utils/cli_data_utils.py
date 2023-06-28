@@ -256,7 +256,7 @@ def to_dataset(jsonl_file, dataset_out_path, keys, split, up_to):
 @click.option('--rel_filter', '-r', default=None)
 @click.option('--logits/--no-logits', default=True)
 def annot(dataset_path, outpath, model, tok, num_batches, kind, batchsizepergpu, from_batch, rel_filter, logits):
-    '''Apply NER'''
+    '''Apply annotation'''
     annotate(
         dataset_path,
         outpath,
@@ -268,6 +268,29 @@ def annot(dataset_path, outpath, model, tok, num_batches, kind, batchsizepergpu,
         batch_size_per_gpu = batchsizepergpu,
         from_batch = from_batch,
         savelogits = logits
+    )
+
+
+@preprocess.command()
+@click.argument('dataset_path')
+@click.argument('outpath')
+@click.option('--model', '-m', default='51la5/roberta-large-NER')
+@click.option('--num_batches', '-n', default=None, type=int)
+@click.option('--batchsizepergpu', '-b', default=800, type=int, help='Batch Size per GPU')
+def annot_ner_pipeline(
+    dataset_path,
+    outpath,
+    model,
+    num_batches,
+    batchsizepergpu
+    ):
+    '''Apply annotation'''
+    ner_annot_pipe(
+        dataset_path,
+        outpath,
+        model=model,
+        num_batches=num_batches,
+        batch_size_per_gpu = batchsizepergpu,
     )
 
 @preprocess.command()
