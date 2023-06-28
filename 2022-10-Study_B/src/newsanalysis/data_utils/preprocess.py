@@ -866,7 +866,7 @@ def ner_annot_pipe(dataset_path,
         'ner',
         model=annot_model,
         tokenizer=annot_tokenizer,
-        device_map='auto'
+        device=device
     )
 
     total = len(dataset)
