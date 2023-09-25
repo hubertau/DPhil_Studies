@@ -63,3 +63,6 @@ tmp/*
 2022-10-Study_B/notebooks/
 2022-10-Study_B/profile_annot.py.lprof
 2022-10-Study_B/src/profile_annot.txt
+2022-10-Study_B/src/profile_annot_no_convert_fn.txt
+2022-10-Study_B/src/profile_annot_no_filter.txt
+2022-10-Study_B/src/profile_annot_savebatch.txt
