@@ -1,0 +1,35 @@
+\begin{center}
+\begin{tabular}{lclc}
+\toprule
+\textbf{Dep. Variable:}      & interval\_minutes & \textbf{  No. Observations:  } &      220    \\
+\textbf{Model:}              &        GLM        & \textbf{  Df Residuals:      } &      207    \\
+\textbf{Model Family:}       &  NegativeBinomial & \textbf{  Df Model:          } &       12    \\
+\textbf{Link Function:}      &        log        & \textbf{  Scale:             } &    1.0000   \\
+\textbf{Method:}             &        IRLS       & \textbf{  Log-Likelihood:    } &   -2202.9   \\
+\textbf{Date:}               &  Sun, 20 Feb 2022 & \textbf{  Deviance:          } &    371.57   \\
+\textbf{Time:}               &      13:56:17     & \textbf{  Pearson chi2:      } &     342.    \\
+\textbf{No. Iterations:}     &        100        & \textbf{  Pseudo R-squ. (CS):} &  0.02276    \\
+\textbf{Covariance Type:}    &     nonrobust     & \textbf{                     } &             \\
+\bottomrule
+\end{tabular}
+\begin{tabular}{lcccccc}
+                             & \textbf{coef} & \textbf{std err} & \textbf{z} & \textbf{P$> |$z$|$} & \textbf{[0.025} & \textbf{0.975]}  \\
+\midrule
+\textbf{Intercept}           &       4.4857  &        0.104     &    42.976  &         0.000        &        4.281    &        4.690     \\
+\textbf{lang\_diff[T.True]}  &       4.4857  &        0.104     &    42.976  &         0.000        &        4.281    &        4.690     \\
+\textbf{org[T.True]}         &       0.1521  &        0.263     &     0.578  &         0.563        &       -0.364    &        0.668     \\
+\textbf{age[T.30-39]}        &       0.5509  &        0.295     &     1.868  &         0.062        &       -0.027    &        1.129     \\
+\textbf{age[T.<=18]}         &       0.1594  &        0.295     &     0.540  &         0.589        &       -0.420    &        0.738     \\
+\textbf{age[T.$>$=40]}       &      -0.2069  &        0.237     &    -0.873  &         0.383        &       -0.671    &        0.258     \\
+\textbf{gender[T.True]}      &       0.4821  &        0.198     &     2.439  &         0.015        &        0.095    &        0.869     \\
+\textbf{reciprocal}          &       0.0034  &        0.019     &     0.177  &         0.860        &       -0.034    &        0.041     \\
+\textbf{act\_pre\_peak\_avg} &       0.4875  &        0.328     &     1.487  &         0.137        &       -0.155    &        1.130     \\
+\textbf{int\_pre\_peak}      &       0.0015  &        0.003     &     0.449  &         0.654        &       -0.005    &        0.008     \\
+\textbf{weight}              &   -6.439e-05  &        0.012     &    -0.005  &         0.996        &       -0.024    &        0.024     \\
+\textbf{percent\_reciprocal} &       0.2783  &        0.307     &     0.906  &         0.365        &       -0.324    &        0.881     \\
+\textbf{likes\_std}          &      -0.0356  &        0.065     &    -0.551  &         0.582        &       -0.162    &        0.091     \\
+\textbf{act\_pre\_peak}      &      -0.0035  &        0.003     &    -1.165  &         0.244        &       -0.009    &        0.002     \\
+\bottomrule
+\end{tabular}
+%\caption{Generalized Linear Model Regression Results}
+\end{center}

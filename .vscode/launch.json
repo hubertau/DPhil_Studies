@@ -5,12 +5,112 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Study_B: Mediacloud Collect",
+            "type": "python",
+            "request": "launch",
+            "program": "/home/hubert/DPhil_Studies/2022-10-Study_B/src/mediacloud_collect.py",
+            "console": "integratedTerminal",
+            "args":[
+                "--outfile",
+                "test_out.json",
+                "--query",
+                "#metoo",
+                "--start",
+                "2016-10-17",
+                "--end",
+                "2020-10-17"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "Plot ABM Eval",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d07_visualisation/plot_abm_eval.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d07_visualisation/",
+            "args": [
+                "3"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "Primary HT",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d02_intermediate/primary_hashtags.py",
+            "console": "integratedTerminal",
+            "args": [
+                "/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/data/01_raw/",
+                "/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/data/03_processed/",
+                "/home/hubert/DPhil_Studies/2021-04_Study_A_Diffusion/references/search_hashtags.txt",
+                "--log_dir",
+                "${workspaceFolder}/2021-04_Study_A_Diffusion/"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "Bsc eval hdf5 collect",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d05_model_evaluation/bsc_hdf5_collect.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d05_model_evaluation/",
+            "args": [
+                "../../data/05_model_output/",
+                "../../data/05_model_output/bsc_cluster_eval.hdf5",
+                "3",
+                "--log_dir",
+                "${workspaceFolder}/2021-04_Study_A_Diffusion/"
+            ]
+        },
+        {
+            "name": "Empirical Distribution",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d01_data/empirical_distribution_sampling.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d01_data/",
+            "args": [
+                "../../data/01_raw/",
+                "../../data/01_group",
+                "../../references/search_hashtags.txt",
+                "1",
+                "../../data/02_intermediate/user_list_full_0_nocount.txt",
+                "--group_daterange_file",
+                "../../data/02_intermediate/FAS_selected_date_ranges.obj",
+                "--verbose"
+            ]
+        },
+        {
+            "name": "Debug: bispec clustering search",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d04_modelling/bispec_clustering_search.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d04_modelling/",
+            "args": [
+                "23",
+                "../../data/02_intermediate/01_group/",
+                "--output_dir",
+                "../../data/05_model_output/01_group/",
+                "--implementation",
+                "python",
+                "--range",
+                "495-1000",
+                "--interval",
+                "5",
+                "--min_user",
+                "100"
+            ]
+        },
+        {
             "name": "CountVectorizer",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/generate_user_to_hashtag_matrix.py",
             "console": "integratedTerminal",
-            "args":[
+            "args": [
                 "/Users/hubert/Nextcloud/DPhil/DPhil_Studies/2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/data"
             ]
         },
@@ -20,7 +120,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/collect_user_timelines_convo_ids.py",
             "console": "integratedTerminal",
-            "args":[
+            "args": [
                 "2021-04_Study_A_Diffusion/collection_results_2021_05_04_16_22/data"
             ]
         },
@@ -41,7 +141,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}/2021-04_Study_A_Diffusion/"
+            "cwd": "${fileDirname}"
         },
         {
             "name": "Parsing Full Archive Search Result Files",
@@ -64,6 +164,16 @@
             "args": [
                 "--file",
                 "results.csv"
+            ]
+        },
+        {
+            "name": "Run Basic Graph/Timeline Stats py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/2021-04_Study_A_Diffusion/src/d04_modelling/basic_timeline_stats.py",
+            "cwd": "${fileDirname}",
+            "args": [
+                "../../data/02_intermediate/user_list_full_0_nocount.txt"
             ]
         }
     ]

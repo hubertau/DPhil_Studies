@@ -1,0 +1,234 @@
+#!/usr/bin/python3.9
+
+'''
+2021-11-05
+This script should be run after timeline data collection. The search parameter of timeline collection is not to include the hashtags. The structure of this solution:
+
+* get tweet ids from FAS files associated with each user 
+'''
+
+import argparse
+import datetime
+import glob
+import logging
+import pickle
+import os
+import re
+
+import jsonlines
+import tqdm
+
+
+def timeline_file_span(timeline_file):
+
+    '''
+    Obtain the date span of a sinlge timeline file.
+    '''
+
+    assert os.path.isfile(timeline_file), 'Check file paths.'
+
+    first = True
+    with jsonlines.open(timeline_file) as reader:
+        for tweet_jsonl in reader:
+            for tweet_data in tweet_jsonl['data']:
+                if first:
+                    current_min_date = datetime.datetime.fromisoformat(tweet_data['created_at'][:-1])
+                    current_max_date = datetime.datetime.fromisoformat(tweet_data['created_at'][:-1])
+                    first = False
+                tweet_created_at = datetime.datetime.fromisoformat(tweet_data['created_at'][:-1])
+                if tweet_created_at > current_max_date:
+                    current_max_date = tweet_created_at
+                if tweet_created_at < current_min_date:
+                    current_min_date = tweet_created_at
+
+    return (current_min_date, current_max_date)
+
+def datetime_from_string(input_string):
+    return datetime.datetime.strptime(input_string, "%Y-%m-%d")
+
+def FAS_range_from_filename(FAS_filename):
+
+    '''
+    Obtain date range of FAS files from a file name.
+    '''
+    FAS_split = re.split('[_.]',FAS_filename)
+    FAS_min = FAS_split[-3]
+    FAS_max = FAS_split[-2]
+
+    # convert to datetime objects
+    FAS_min = datetime_from_string(FAS_min)
+    FAS_max = datetime_from_string(FAS_max)
+
+    return (FAS_min, FAS_max)
+
+def sort_FAS_by_daterange(FAS_filelist):
+
+    # get FAS files dates
+    FAS_dates = [(i, FAS_range_from_filename(i)[0], FAS_range_from_filename(i)[1]) for i in FAS_filelist]
+    sorted_FAS_list_with_dates = sorted(FAS_dates, key = lambda x: x[2])
+
+    return sorted_FAS_list_with_dates
+
+def filter_FAS(date_range, sorted_FAS_filelist):
+
+    '''
+    From the date range collected in a tuple (min, max), find the list of files required to scan in FAS.
+
+    N.B. the dates of the FAS files are not inclusive, whereas because both min an max dates of date range are from tweet objects they are inclusive.
+
+    This function returns indices
+    '''
+
+    required_min = len(sorted_FAS_filelist)
+    required_max = 0
+
+    for i, e in enumerate(sorted_FAS_filelist):
+        _, FAS_date_min, FAS_date_max = e
+        if date_range[0] > FAS_date_max:
+            continue
+        if date_range[1] < FAS_date_min:
+            continue
+        if date_range[0] < FAS_date_max:
+            required_min = min(required_min, i)
+        if date_range[1] > FAS_date_min:
+            required_max = max(required_max, i)
+    return sorted_FAS_filelist[required_min:required_max+1]
+
+def main(args):
+
+    # get filelist in strings
+    FAS_filelist = sort_FAS_by_daterange(glob.glob(os.path.join(args.FAS_dir, 'FAS*.jsonl')))
+    FAS_filelist = [i[0] for i in FAS_filelist]
+
+    # only take FAS files required:
+    FAS_dates = [(i,e,FAS_range_from_filename(e)) for i,e in enumerate(FAS_filelist)]
+    args.min_FAS_date = datetime.datetime.strptime(args.min_FAS_date,'%Y-%m-%d')
+    args.max_FAS_date = datetime.datetime.strptime(args.max_FAS_date,'%Y-%m-%d')
+
+    FAS_filelist = [i[1] for i in FAS_dates if (not i[2][0] > args.max_FAS_date) and not i[2][1] < args.min_FAS_date]
+
+    if args.custom_list:
+        logging.debug('Custom list supplied')
+        with open(args.custom_list, 'rb') as f:
+            timeline_filelist = pickle.load(f)
+    else:
+        logging.debug('No custom list supplied')
+        timeline_filelist = glob.glob(os.path.join(args.data_dir, 'timeline*.jsonl'))
+
+    if args.subset:
+        timeline_filelist = timeline_filelist[:args.subset]
+
+    logging.debug('Number of augmentation files to be created: {}'.format(len(timeline_filelist)))
+
+    # sort and extract date ranges
+    sorted_FAS_list_with_dates = sort_FAS_by_daterange(FAS_filelist)
+    logging.debug('FAS files to scan:')
+    for i in sorted_FAS_list_with_dates:
+        logging.debug(i)
+
+    # get user_ids
+    user_ids = [re.split('[_.]',timeline)[-2] for timeline in timeline_filelist]
+    logging.debug(f'first few user ids: {user_ids[:10]}')
+
+    for i in sorted_FAS_list_with_dates:
+        logging.info(f'Scanning file {i}')
+        with jsonlines.open(i[0]) as reader:
+            for tweet_json in reader:
+                for tweet in tweet_json['data']:
+                    if tweet['author_id'] in user_ids:
+
+                        logging.debug('potential tweet saving detected')
+
+                        created_at = datetime.datetime.fromisoformat(tweet['created_at'][:-1])
+
+                        if created_at < args.min_FAS_date or created_at > args.max_FAS_date:
+                            continue
+
+                        # 2021-11-08 version: write to jsonlines files as scan is happening so that we don't have to do hold a large amount of text in memory.
+                        save_filename = 'augmented_timeline_ids_' + tweet['author_id'] + '.jsonl'
+                        save_filename = os.path.join(args.data_dir, save_filename)
+                        logging.debug(f'writing to {save_filename}')
+                        with jsonlines.open(save_filename, 'a') as writer:
+                            writer.write(tweet)
+
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description='')
+
+    parser.add_argument(
+        'FAS_dir',
+        help='full archive search files data directory'
+    )
+
+    parser.add_argument(
+        'data_dir',
+        help='data directory'
+    )
+
+    parser.add_argument(
+        'min_FAS_date',
+        help='minimum FAS date required',
+    )
+
+    parser.add_argument(
+        'max_FAS_date',
+        help='maximum FAS date required',
+    )
+
+    parser.add_argument(
+        '--custom_list',
+        help='custom list of timeline files to collect'
+    )
+
+    parser.add_argument(
+        '--subset',
+        help='only run this script on a subset of the data. Used primarily for debugging.',
+        type = int,
+    )
+
+    parser.add_argument(
+        '--log_dir',
+        help='director to place log in. Defaults to $HOME',
+        default='$HOME'
+    )
+
+    parser.add_argument(
+        '--log_level',
+        help='logging_level',
+        type=str.upper,
+        choices=['INFO','DEBUG','WARNING','CRITICAL','ERROR','NONE'],
+        default='DEBUG'
+    )
+
+    args = parser.parse_args()
+
+    logging_dict = {
+        'NONE': None,
+        'CRITICAL': logging.CRITICAL,
+        'ERROR': logging.ERROR,
+        'WARNING': logging.WARNING,
+        'INFO': logging.INFO,
+        'DEBUG': logging.DEBUG
+    }
+
+    logging_level = logging_dict[args.log_level]
+
+    if logging_level is not None:
+
+        logging_fmt   = '[%(levelname)s] %(asctime)s - %(message)s'
+        today_datetime = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
+        logging_file  = os.path.join(args.log_dir, f'{today_datetime}_augmentation.log')
+        logging.basicConfig(
+            handlers=[
+                logging.FileHandler(filename=logging_file,mode='w'),
+                logging.StreamHandler()
+            ],
+            format=logging_fmt,
+            level=logging_level,
+            datefmt='%m/%d/%Y %I:%M:%S %p'
+        )
+
+        logging.info(f'Start time of script is {today_datetime}')
+
+    main(args)

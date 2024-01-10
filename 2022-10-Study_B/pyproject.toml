@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "newsanalysis"
+version = "0.1.0"
+description = "News analysis for rape myths"
+authors = ["Hubert Au <hubert.au@oii.ox.ac.uk>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+loguru = "^0.6.0"
+transformers = "^4.26.1"
+numpy = "1.23.5"
+
+[tool.poetry.scripts]
+newsanalysis = "newsanalysis.__main__:cli"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

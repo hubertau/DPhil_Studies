@@ -1,0 +1,32 @@
+'''
+This script is to define a function that takes a results file and obtain the unique user ids from it.
+'''
+
+import pandas as pd
+import argparse
+from collections import Counter
+
+def get_unique_users(input_tweets_csv):
+
+    # read in file
+    DATA = pd.read_csv(input_tweets_csv)
+
+    users_and_counts = Counter(DATA['author_id'])
+
+    return users_and_counts
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description='obtain unique users of results tweets collected')
+
+    parser.add_argument(
+        '--file',
+        help='results file from full archive search'
+    )
+
+    # parse 
+    args = parser.parse_args()
+
+    res = get_unique_users(args.file)
+    print('number of unique users: {}'.format(str(len(res))))
+    print(res.most_common(3))

@@ -1,3 +1,11 @@
 {
-    "python.analysis.extraPaths": ["./2021-04_Study_A_Diffusion"]
+    "python.analysis.extraPaths": [
+        "./2021-04_Study_A_Diffusion/src/d05_model_evaluation",
+        "./2021-04_Study_A_Diffusion/src/",
+        "/home/hubert/.local/lib/python3.9/site-packages",
+        "./2021-04_Study_A_Diffusion/src/d04_modelling"
+    ],
+    "jupyter.jupyterServerType": "local",
+    "python.analysis.useImportHeuristic": true,
+    "python.terminal.activateEnvironment": true
 }
