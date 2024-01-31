@@ -25,6 +25,9 @@ twarc.log
 2021-04_Study_A_Diffusion/data/02_intermediate/0*_group/group_*_snowball_*.txt
 *.jpeg
 *.JPG
+**/.ipynb_checkpoints/
+**.pkl
+**/logs/
 group_*_sampled*
 Research*.md
 *.BMP
