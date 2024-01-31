@@ -30,6 +30,8 @@ twarc.log
 **/logs/
 group_*_sampled*
 Research*.md
+**.mp4
+**.m4a
 *.BMP
 *.PNG
 *.bmp
