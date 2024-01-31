@@ -57,6 +57,7 @@ static/Cairo-SemiBold.ttf
 2021-04_Study_A_Diffusion/results/01_group/abm_example_results_df.txt
 2021-04_Study_A_Diffusion/results/03_group/table_act_post_peak_forward.tex
 2021-04_Study_A_Diffusion/src/d04_modelling/abm_history_eval.py.lprof
+2021-04_Study_A_Diffusion/data/*
 2022-10-Study_B/conda/*
 /home/hubert/DPhil_Studies/2022-10-Study_B/LASER/*
 /home/hubert/DPhil_Studies/2022-10-Study_B/JapaneseTokenizers/*
@@ -88,3 +89,6 @@ DPhil_Studies.code-workspace
 2022-10_Study_B/First Meeting Guide_files/*
 2021-04_Study_A_Diffusion/DPhil_Paragraph_Data_Collection_Twitter.docx
 2022-10_Study_B_Local/
+**/lib.bib
+**/Keplinger_et_al_data/
+**/.RData/
